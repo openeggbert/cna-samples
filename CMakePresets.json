@@ -1,0 +1,57 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug (EasyGL, Linux/macOS)",
+      "binaryDir": "${sourceDir}/cmake-build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":     "Debug",
+        "CNA_GRAPHICS_BACKEND": "EASYGL"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (EasyGL, Linux/macOS)",
+      "binaryDir": "${sourceDir}/cmake-build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":     "Release",
+        "CNA_GRAPHICS_BACKEND": "EASYGL"
+      }
+    },
+    {
+      "name": "sdl-renderer",
+      "displayName": "Debug (SDL_Renderer backend)",
+      "binaryDir": "${sourceDir}/cmake-build-sdl",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":     "Debug",
+        "CNA_GRAPHICS_BACKEND": "SDL_RENDERER"
+      }
+    },
+    {
+      "name": "web",
+      "displayName": "Emscripten (WebAssembly)",
+      "description": "Requires EMSDK active. Run: emcmake cmake --preset web",
+      "binaryDir": "${sourceDir}/cmake-build-web",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Release",
+        "CNA_GRAPHICS_BACKEND":  "EASYGL",
+        "EASYGL_BUILD_EXAMPLES": "OFF",
+        "EASYGL_BUILD_TESTS":    "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Build all samples (debug)",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Build all samples (release)",
+      "configurePreset": "release"
+    }
+  ]
+}
