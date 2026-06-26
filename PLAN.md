@@ -538,9 +538,75 @@ No version tag in directory name; likely XNA 3.x or earlier.
 
 ---
 
+## MonoGame Cross-Reference
+
+Two MonoGame sample repositories exist for cross-validation.
+Run the DesktopGL target on Linux to compare MonoGame vs. CNA behaviour.
+
+### Official MonoGame.Samples (`/rv/tmp/MonoGame.Samples`)
+
+Source: <https://github.com/MonoGame/MonoGame.Samples>
+
+Only 2 of our 83 portable samples have a direct equivalent here:
+
+| CNA task # | XNA source | MonoGame.Samples dir |
+|---|---|---|
+| 013 | `Platformer_4_0` | `Platformer2D/` |
+| 066 | `ShipGame_4_0` | `ShipGame/` |
+
+### CartBlanche/MonoGame-Samples (`/rv/tmp/CartBlanche-MonoGame-Samples`)
+
+Source: <https://github.com/CartBlanche/MonoGame-Samples>  
+A community port of ~35 XNA 4.0 samples to MonoGame. Much wider coverage.
+Note: XNB assets — not yet converted to open formats in this repo.
+
+| CNA task # | XNA source | CartBlanche dir | Notes |
+|---|---|---|---|
+| 001 | `PrimitivesSample_4_0` | `Primitives/` | ✓ ported |
+| **002** | **`Primitives3DSample_4_0`** | **—** | **NOT ported to MonoGame (3D mesh gen + VertexPositionNormal not done)** |
+| 005 | `ReachGraphicsDemo_4_0` | `ReachGraphicsDemo/` | ✓ |
+| 006 | `SpriteEffectsSample_4_0` | `SpriteEffects/` | ✓ |
+| 009 | `InputReporter_4_0` | `InputReporter/` | ✓ |
+| 017 | `CollisionSample_4_0` | `Collisions/` | ✓ (3D BoundingOrientedBox variant) |
+| 018 | `PerPixelCollisionSample_4_0` | `PerPixelCollision/` | ✓ |
+| 019 | `RectangleCollisionSample_4_0` | `RectangleCollision/` | ✓ |
+| 020 | `TransformedCollisionSample_4_0` | `TransformedCollision/` | ✓ |
+| 024 | `FlockingSample_4_0` | `Flocking/` | ✓ |
+| 025 | `ChaseAndEvadeSample_4_0` | `ChaseAndEvade/` | ✓ |
+| 026 | `AimingSample_4_0` | `Aiming/` | ✓ |
+| 029 | `ParticleSample_4_0` | `Particle2D/` | ✓ |
+| 031 | `BloomSample_4_0` | `BloomEffect/` | ✓ |
+| 038 | `ShadowMappingSample_4_0` | `ShadowMapping/` | ✓ |
+| 041 | `LensFlareSample_4_0` | `LensFlare/` | ✓ |
+| 042 | `ShatterEffectSample_4_0` | `ShatterEffect/` | ✓ |
+| 043 | `Particles3DSample_4_0` | `Particle3D/` | ✓ |
+| 046 | `Graphics3DSample_4_0` | `Graphics3D/` | ✓ |
+| 059 | `Audio3DSample_4_0` | `Audio3D/` | ✓ |
+| 060 | `SoundAndMusic_4_0` | `Sound/` | ✓ |
+| 062 | `NetRumble_4_0` | `NetRumble/` | ✓ |
+| 063 | `HoneycombRush_4_0` | `HoneycombRush/` | ✓ |
+| 067 | `CatapultWars_4_0` | `CatapultWars/` | ✓ |
+| 069 | `CardsStarterKit_4_0` | `CardsStarterKit/` | ✓ |
+| 070 | `RolePlayingGame_4_0_Win_Xbox` | `RolePlayingGame/` | ✓ |
+| 072 | `GSMSample_4_0_WIN_XBOX` | `GameStateManagement/` | ✓ |
+| 079 | `GesturesSample_4_0` | `TouchGesture/` | ✓ |
+| 080 | `TouchThumbsticksSample_4_0` | `VirtualGamePad/` | ✓ |
+| 081 | `PerformanceMeasuringSample_4_0` | `PerformanceMeasuring/` | ✓ |
+| 023 | `WaypointSample_4_0` | `Waypoints2D/` | ✓ |
+
+Additionally CartBlanche contains samples with no XNA 4.0 equivalent:
+`AdMob`, `BouncingBox`, `Colored3DCube`, `FarseerPhysics`, `GameComponents`,
+`GooCursor`, `MatchemPoker`, `PacMan`, `RacingGame`, `RenderTarget2D`,
+`RockRain`, `Shaders2D`, `Shooter`, `SpriteFont`, `StarWarrior`, `Tetris`,
+`TexturedQuad`, `UseCustomVertex`, `VideoPlayer`.
+
+---
+
 ## Related Projects
 
 - [CNA](../cna) — C++ XNA 4.0 reimplementation (the framework this samples repo runs on)
 - [sharp-runtime](../sharp-runtime) — C++ port of .NET BCL types used by CNA
 - [FNA](https://github.com/FNA-XNA/FNA) — Authoritative XNA 4.0 API reference (local: `/rv/data/library/github.com/FNA-XNA/FNA`)
 - XNA samples source: `/rv/tmp/XNAGameStudio/Samples`
+- MonoGame.Samples: `/rv/tmp/MonoGame.Samples` (<https://github.com/MonoGame/MonoGame.Samples>)
+- CartBlanche MonoGame ports: `/rv/tmp/CartBlanche-MonoGame-Samples` (<https://github.com/CartBlanche/MonoGame-Samples>)
