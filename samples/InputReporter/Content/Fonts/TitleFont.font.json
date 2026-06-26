@@ -1,5 +1,5 @@
 {
-  "texture": "TitleFont.png",
+  "texture": "Fonts/TitleFont.png",
   "lineSpacing": 44,
   "spacing": 0.0,
   "defaultCharacter": "?",

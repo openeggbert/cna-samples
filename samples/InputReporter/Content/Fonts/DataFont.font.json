@@ -1,5 +1,5 @@
 {
-  "texture": "DataFont.png",
+  "texture": "Fonts/DataFont.png",
   "lineSpacing": 18,
   "spacing": 0.0,
   "defaultCharacter": "?",

@@ -1,5 +1,5 @@
 {
-  "texture": "TypeFont.png",
+  "texture": "Fonts/TypeFont.png",
   "lineSpacing": 23,
   "spacing": 0.0,
   "defaultCharacter": "?",

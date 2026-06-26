@@ -1,5 +1,5 @@
 {
-  "texture": "DataActiveFont.png",
+  "texture": "Fonts/DataActiveFont.png",
   "lineSpacing": 18,
   "spacing": 0.0,
   "defaultCharacter": "?",

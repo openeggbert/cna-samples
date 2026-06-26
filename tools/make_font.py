@@ -55,7 +55,8 @@ def next_power_of_two(n: int) -> int:
 
 
 def generate_font(ttf_path: str, size_px: int, output_base: str,
-                  charset: str, padding: int) -> None:
+                  charset: str, padding: int,
+                  content_root: str | None = None) -> None:
     font = ImageFont.truetype(ttf_path, size_px)
     ascent, descent = font.getmetrics()
     line_spacing = ascent + descent
@@ -147,10 +148,16 @@ def generate_font(ttf_path: str, size_px: int, output_base: str,
                   chr(g["char"]), font=font, fill=(255, 255, 255, 255))
 
     # --- Write atlas PNG -----------------------------------------------------
-    atlas_filename = os.path.basename(output_base) + ".png"
     atlas_path = output_base + ".png"
     atlas.save(atlas_path)
     print(f"Atlas: {atlas_path}  ({atlas_w}×{atlas_h})")
+
+    # texture field = atlas path relative to content_root (what ContentManager uses).
+    # Default: same directory as the font file (works when fonts are directly in Content/).
+    root = content_root if content_root is not None else os.path.dirname(os.path.abspath(output_base))
+    atlas_filename = os.path.relpath(os.path.abspath(atlas_path), os.path.abspath(root))
+    # Normalise to forward slashes on all platforms.
+    atlas_filename = atlas_filename.replace("\\", "/")
 
     # --- Build .font.json ----------------------------------------------------
     font_json = {
@@ -185,10 +192,14 @@ def main():
                         help="Character set string (default: printable ASCII + Latin-1)")
     parser.add_argument("--padding", type=int, default=1,
                         help="Pixel padding between glyphs in atlas (default: 1)")
+    parser.add_argument("--content-root", default=None,
+                        help="Content root directory (default: directory of output file). "
+                             "Used to compute the 'texture' path in the .font.json so that "
+                             "ContentManager can find the atlas PNG.")
     args = parser.parse_args()
 
     charset = args.chars if args.chars is not None else DEFAULT_CHARS
-    generate_font(args.ttf, args.size, args.output, charset, args.padding)
+    generate_font(args.ttf, args.size, args.output, charset, args.padding, args.content_root)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 {
-  "texture": "InstructionsFont.png",
+  "texture": "Fonts/InstructionsFont.png",
   "lineSpacing": 17,
   "spacing": 0.0,
   "defaultCharacter": "?",
