@@ -49,6 +49,7 @@ add_subdirectory(samples/GeneratedGeometry)
 add_subdirectory(samples/SpriteEffects)
 add_subdirectory(samples/SpriteSheet)
 add_subdirectory(samples/SafeArea)
+add_subdirectory(samples/InputSequence)
 
 # Phase 2 — 2D Games  (uncomment as implemented)
 # add_subdirectory(samples/Platformer)
