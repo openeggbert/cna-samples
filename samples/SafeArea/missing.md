@@ -1,38 +1,24 @@
 # Missing / Differences from XNA 4.0 original
 
-## DrawString corner labels omitted
+## SafeAreaOverlay always shown (not Xbox-Debug-only)
 
-**XNA behaviour:** `DrawOverlays()` draws "Top Left", "Top Right", "Bottom Left",
-"Bottom Right" text labels in the four corners of the title-safe area using
-`AlignedSpriteBatch.DrawString(font, ...)`.
+**XNA behaviour:** `SafeAreaOverlay` is only created on Xbox Debug builds
+(`#if XBOX && DEBUG`); on PC it is null and therefore never shown.
 
-**CNA port behaviour:** `DrawOverlays()` is omitted entirely. The rest of the
-drawing (cat, scrolling background) is unchanged.
+**CNA port behaviour:** `SafeAreaOverlay` is always created and added to
+`Components`, so the translucent red safe-area border is always visible
+(and can be toggled with A / Keyboard-A). The toggle prompt text is also
+always shown.
 
-**Root cause:** CNA has no SpriteFont support yet.
+**Root cause:** CNA targets desktop Linux; the Xbox conditional was simplified
+to always-on since the safe-area overlay aids visual verification on any platform.
 
-**Tracked in:** DEFERRED.md (SpriteFont / DrawString).
-
----
-
-## SafeAreaOverlay not added to Components
-
-**XNA behaviour:** On Xbox Debug builds, `SafeAreaOverlay` is created and added
-to `Components`; it superimposes a translucent red border around the title-safe
-area to aid visual verification.
-
-**CNA port behaviour:** `SafeAreaOverlay.hpp` is included in the port but never
-instantiated. On PC (`#if XBOX && DEBUG` is never true), the original also skips
-it, so the visible output is identical.
-
-**Root cause:** CNA targets desktop Linux; the title-safe overlay is Xbox-only
-in the original.
-
-**Tracked in:** not planned (matches the original desktop behaviour).
+**Tracked in:** not planned (intentional simplification).
 
 ---
 
 ## No known differences otherwise
 
-Cat movement, scrolling background, camera clamping, and `Viewport.TitleSafeArea`
-usage all match the XNA 4.0 original.
+Cat movement, scrolling background, camera clamping, `Viewport.TitleSafeArea`
+usage, `AlignedSpriteBatch` corner labels, and the A-toggle all match the
+XNA 4.0 original.

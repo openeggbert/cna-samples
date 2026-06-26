@@ -1,37 +1,21 @@
 # Missing / Differences from XNA 4.0 original
 
-## Move names and player labels not drawn
+## Player index displayed as number, not enum name
 
-**XNA behaviour:** Move names (e.g. "Jump", "Fireball") are drawn above their
-button-icon sequence using `spriteFont.DrawString`. Player input rows are
-prefixed with "Player 0 input" and the currently active move name is shown
-in red.
+**XNA behaviour:** `"Player " + inputManager.PlayerIndex + " input  "` concatenates
+the `PlayerIndex` enum and produces `"Player One input  "` / `"Player Two input  "`.
 
-**CNA port behaviour:** All `DrawString` calls are omitted. Only the button-icon
-sequences (directional arrows, gamepad face buttons) are drawn. The combo
-detection logic and input buffer are fully functional.
+**CNA port behaviour:** Displays `"Player 1 input  "` / `"Player 2 input  "` using
+`std::to_string(i + 1)`. Functionally equivalent, style differs.
 
-**Root cause:** CNA has no SpriteFont support yet.
+**Root cause:** C++ enums don't stringify via `+`; `std::to_string` is idiomatic.
 
-**Tracked in:** DEFERRED.md (SpriteFont / DrawString).
-
----
-
-## MeasureMove ignores text height
-
-**XNA behaviour:** `MeasureMove` includes the text label height when computing
-layout row height, so each move row is tall enough for both text and icons.
-
-**CNA port behaviour:** `MeasureMove` returns only the icon sequence size
-(height = `padFaceTexture.Height`). Layout is otherwise identical.
-
-**Root cause:** consequence of omitting SpriteFont.
-
-**Tracked in:** DEFERRED.md (SpriteFont / DrawString).
+**Tracked in:** not planned (cosmetic difference).
 
 ---
 
 ## No known differences otherwise
 
 Direction detection, input buffer management, move matching (timeout, merge
-window, sub-move, sequence matching) all match the XNA 4.0 original.
+window, sub-move, sequence matching), move-name labels, player input rows,
+and the drop-shadow DrawString all match the XNA 4.0 original.

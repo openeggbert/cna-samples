@@ -42,19 +42,20 @@ CNA sample can load them:
 
 ---
 
-## 2. SpriteFont Loading
+## 2. SpriteFont Loading ✅ RESOLVED
 
-**What is missing:**
-`Content.Load<SpriteFont>("hudfont")` used in Primitives3D and many other samples.
-CNA's ContentManager has no SpriteFont loader; `SpriteFont` rendering support may
-itself be partial.
+**What was missing:**
+`Content.Load<SpriteFont>("hudfont")` — CNA now fully supports this via
+`.font.json` + atlas PNG format (`SpriteFontTypeReader` in `ContentManager.cpp`).
 
-**Where to implement:** `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`
-and `cna/include/Microsoft/Xna/Framework/Graphics/SpriteFont.hpp`.
+**How to generate a font asset:**
+```
+python3 tools/make_font.py <path/to/font.ttf> <size_px> <Content/FontName>
+```
+This produces `Content/FontName.font.json` + `Content/FontName.png`.
 
-**Blocked samples:** Primitives3D, Platformer, and all HUD-drawing samples.
-
-**Effort:** L
+**Already used in:** SafeArea (corner labels, A-toggle hint), InputSequence (move
+names, player labels, drop-shadow DrawString).
 
 ---
 
@@ -159,18 +160,14 @@ sample with background music or sound effects.
 
 ---
 
-## 8. SpriteBatch.DrawString (in-game text rendering)
+## 8. SpriteBatch.DrawString (in-game text rendering) ✅ RESOLVED
 
-**What is missing:**
-`SpriteBatch.DrawString(spriteFont, text, position, color)` requires a working
-`SpriteFont` (see item 2).  Without it, HUD text in all 3D samples is absent.
+**What was missing:**
+`SpriteBatch.DrawString(spriteFont, text, position, color)`.
 
-**Where to implement:** Depends on SpriteFont (item 2).
-
-**Blocked samples:** Primitives3D (controls overlay), Platformer (score HUD),
-and virtually all samples with on-screen text.
-
-**Effort:** M (after SpriteFont is done)
+**Status:** Fully implemented in CNA. Depends on SpriteFont (item 2 above), which
+is also resolved. Use `tools/make_font.py` to generate font assets, then load with
+`Content.Load<SpriteFont>("FontName")`.
 
 ---
 
@@ -206,12 +203,12 @@ In CNA, `Buttons` is accessed via `getButtonsProperty()` and `Back` via `getBack
 | # | Feature | Repo | Effort | Samples blocked |
 |---|---|---|---|---|
 | 1 | XNB → open format pipeline | all | M/sample | all |
-| 2 | SpriteFont loading | cna | L | many |
+| 2 | SpriteFont loading | cna | L | many | ✅ done |
 | 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D |
 | 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D |
 | 5 | VertexPositionNormal + lit shader | cna | L | many |
 | 6 | Model loading (glTF) | cna | XL | many |
 | 7 | Audio playback | cna | L | many |
-| 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most |
+| 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
 | 9 | Viewport.AspectRatio | cna | S | 0 (workaround) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |

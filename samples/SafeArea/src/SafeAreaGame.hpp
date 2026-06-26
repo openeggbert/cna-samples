@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 #include <string>
 #include "Microsoft/Xna/Framework/Game.hpp"
 #include "Microsoft/Xna/Framework/GraphicsDeviceManager.hpp"
@@ -8,6 +9,7 @@
 #include "Microsoft/Xna/Framework/MathHelper.hpp"
 #include "Microsoft/Xna/Framework/PlayerIndex.hpp"
 #include "Microsoft/Xna/Framework/Vector2.hpp"
+#include "Microsoft/Xna/Framework/Graphics/SpriteFont.hpp"
 #include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Keyboard.hpp"
 #include "Microsoft/Xna/Framework/Input/GamePad.hpp"
@@ -16,6 +18,7 @@
 #include "Microsoft/Xna/Framework/Input/Keys.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "AlignedSpriteBatch.hpp"
+#include "SafeAreaOverlay.hpp"
 
 namespace SafeArea {
 
@@ -27,6 +30,7 @@ class SafeAreaGame : public Microsoft::Xna::Framework::Game {
     std::unique_ptr<AlignedSpriteBatch> spriteBatch_;
     Microsoft::Xna::Framework::Graphics::Texture2D catTexture_;
     Microsoft::Xna::Framework::Graphics::Texture2D backgroundTexture_;
+    std::optional<Microsoft::Xna::Framework::Graphics::SpriteFont> font_;
 
     Microsoft::Xna::Framework::Vector2 catPosition_;
     Microsoft::Xna::Framework::Vector2 catVelocity_;
@@ -37,11 +41,17 @@ class SafeAreaGame : public Microsoft::Xna::Framework::Game {
     Microsoft::Xna::Framework::Input::KeyboardState previousKeyboardState_;
     Microsoft::Xna::Framework::Input::GamePadState  previousGamePadState_;
 
+    SafeAreaOverlay* safeAreaOverlay_ = nullptr;
+
 public:
     SafeAreaGame() : graphics_(this) {
         getContentProperty().setRootDirectoryProperty("Content");
         graphics_.setPreferredBackBufferWidthProperty(ScreenWidth);
         graphics_.setPreferredBackBufferHeightProperty(ScreenHeight);
+
+        auto* overlay = new SafeAreaOverlay(*this);
+        getComponentsProperty().Add(overlay);
+        safeAreaOverlay_ = overlay;
     }
 
     const std::string& GetTypeName() const override {
@@ -55,6 +65,7 @@ protected:
         spriteBatch_      = std::make_unique<AlignedSpriteBatch>(getGraphicsDeviceProperty());
         catTexture_        = getContentProperty().Load<Texture2D>("Cat");
         backgroundTexture_ = getContentProperty().Load<Texture2D>("Background");
+        font_.emplace(getContentProperty().Load<SpriteFont>("Font"));
     }
 
     void Update(Microsoft::Xna::Framework::GameTime& gameTime) override {
@@ -74,7 +85,7 @@ protected:
         spriteBatch_->Begin();
         DrawBackground(scrollOffset);
         DrawCat(scrollOffset);
-        // DrawOverlays() omitted — requires SpriteFont (not yet in CNA).
+        DrawOverlays();
         spriteBatch_->End();
 
         Game::Draw(gameTime);
@@ -92,6 +103,15 @@ private:
             currentGamePadState_.IsButtonDown(Buttons::Back))
         {
             Exit();
+        }
+
+        if (safeAreaOverlay_ != nullptr) {
+            bool aPressed = (currentKeyboardState_.IsKeyDown(Keys::A) &&
+                             previousKeyboardState_.IsKeyUp(Keys::A)) ||
+                            (currentGamePadState_.IsButtonDown(Buttons::A) &&
+                             previousGamePadState_.IsButtonUp(Buttons::A));
+            if (aPressed)
+                safeAreaOverlay_->setVisibleProperty(!safeAreaOverlay_->getVisibleProperty());
         }
     }
 
@@ -153,6 +173,41 @@ private:
                            (float)catTexture_.getHeightProperty() / 2.0f);
         Vector2 position = catPosition_ - catCenter + scrollOffset;
         spriteBatch_->Draw(catTexture_, position, Color::White);
+    }
+
+    void DrawOverlays() {
+        using namespace Microsoft::Xna::Framework;
+        using namespace Microsoft::Xna::Framework::Graphics;
+
+        Viewport viewport = getGraphicsDeviceProperty().getViewportProperty();
+        Rectangle safeArea = viewport.getTitleSafeAreaProperty();
+
+        spriteBatch_->DrawString(*font_, "Top Left",
+                                 Vector2((float)safeArea.getLeftProperty(),
+                                         (float)safeArea.getTopProperty()),
+                                 Color::White, Alignment::TopLeft);
+
+        spriteBatch_->DrawString(*font_, "Top Right",
+                                 Vector2((float)safeArea.getRightProperty(),
+                                         (float)safeArea.getTopProperty()),
+                                 Color::White, Alignment::TopRight);
+
+        spriteBatch_->DrawString(*font_, "Bottom Left",
+                                 Vector2((float)safeArea.getLeftProperty(),
+                                         (float)safeArea.getBottomProperty()),
+                                 Color::White, Alignment::BottomLeft);
+
+        spriteBatch_->DrawString(*font_, "Bottom Right",
+                                 Vector2((float)safeArea.getRightProperty(),
+                                         (float)safeArea.getBottomProperty()),
+                                 Color::White, Alignment::BottomRight);
+
+        if (safeAreaOverlay_ != nullptr) {
+            spriteBatch_->DrawString(*font_, "Press A to toggle the safe area overlay",
+                                     Vector2((float)safeArea.getCenterProperty().X,
+                                             (float)safeArea.getTopProperty()),
+                                     Color::White, Alignment::TopCenter);
+        }
     }
 };
 

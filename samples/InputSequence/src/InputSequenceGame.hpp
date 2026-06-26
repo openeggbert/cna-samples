@@ -1,6 +1,8 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Microsoft/Xna/Framework/Color.hpp"
@@ -10,6 +12,7 @@
 #include "Microsoft/Xna/Framework/PlayerIndex.hpp"
 #include "Microsoft/Xna/Framework/Vector2.hpp"
 #include "Microsoft/Xna/Framework/Graphics/SpriteBatch.hpp"
+#include "Microsoft/Xna/Framework/Graphics/SpriteFont.hpp"
 #include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "Microsoft/Xna/Framework/Input/Keys.hpp"
@@ -24,6 +27,7 @@ namespace InputSequenceSample {
 class InputSequenceGame : public Microsoft::Xna::Framework::Game {
     Microsoft::Xna::Framework::GraphicsDeviceManager graphics_;
     std::unique_ptr<Microsoft::Xna::Framework::Graphics::SpriteBatch> spriteBatch_;
+    std::optional<Microsoft::Xna::Framework::Graphics::SpriteFont> spriteFont_;
 
     std::vector<Move>     moves_;
     MoveList              moveList_;
@@ -95,7 +99,8 @@ public:
 protected:
     void LoadContent() override {
         using namespace Microsoft::Xna::Framework::Graphics;
-        spriteBatch_     = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+        spriteBatch_  = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+        spriteFont_.emplace(getContentProperty().Load<SpriteFont>("Font"));
         upTexture_        = getContentProperty().Load<Texture2D>("Up");
         downTexture_      = getContentProperty().Load<Texture2D>("Down");
         leftTexture_      = getContentProperty().Load<Texture2D>("Left");
@@ -215,8 +220,11 @@ private:
     }
 
     Microsoft::Xna::Framework::Vector2 MeasureMove(const Move& move) const {
-        // Text size omitted (no SpriteFont); width/height from icon sequence only.
-        return MeasureSequence(move.Sequence);
+        Microsoft::Xna::Framework::Vector2 textSize = spriteFont_->MeasureString(move.Name);
+        Microsoft::Xna::Framework::Vector2 seqSize  = MeasureSequence(move.Sequence);
+        return Microsoft::Xna::Framework::Vector2(
+            std::max(textSize.X, seqSize.X),
+            textSize.Y + seqSize.Y);
     }
 
     void DrawButtons(Microsoft::Xna::Framework::Input::Buttons buttons,
@@ -258,14 +266,30 @@ private:
         }
     }
 
+    void DrawString(const std::string& text,
+                    Microsoft::Xna::Framework::Vector2 position,
+                    Microsoft::Xna::Framework::Color color) {
+        using namespace Microsoft::Xna::Framework;
+        spriteBatch_->DrawString(*spriteFont_, text,
+                                 Vector2(position.X, position.Y + 1), Color::Black);
+        spriteBatch_->DrawString(*spriteFont_, text, position, color);
+    }
+
     void DrawMove(const Move& move, Microsoft::Xna::Framework::Vector2 position) {
-        // Move name (DrawString) omitted — no SpriteFont in CNA yet.
+        DrawString(move.Name, position, Microsoft::Xna::Framework::Color::White);
+        position.Y = position.Y + spriteFont_->MeasureString(move.Name).Y;
         DrawSequence(move.Sequence, position);
     }
 
     void DrawPlayerInput(int i, Microsoft::Xna::Framework::Vector2 position) {
-        // "Player N input" text label omitted — no SpriteFont in CNA yet.
-        // Draw the player's input buffer as button icons.
+        using namespace Microsoft::Xna::Framework;
+        std::string text = "Player " + std::to_string(i + 1) + " input  ";
+        Vector2 textSize = spriteFont_->MeasureString(text);
+        DrawString(text, position, Color::White);
+        if (playerMoves_[i] != nullptr)
+            DrawString(playerMoves_[i]->Name,
+                       Vector2(position.X + textSize.X, position.Y), Color::Red);
+        position.Y = position.Y + textSize.Y;
         DrawSequence(inputManagers_[i].Buffer, position);
     }
 };

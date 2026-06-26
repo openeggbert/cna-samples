@@ -189,7 +189,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ✅ Done |
 | 007 | SpriteSheet | `SpriteSheetSample_4_0` | ✅ Done |
 | 008 | ShapeRendering | `ShapeRenderingSample_4_0` | ✅ Done |
-| 009 | InputReporter | `InputReporter_4_0` | ⚠️ Deferred — entire display is DrawString; no meaningful visual without SpriteFont |
+| 009 | InputReporter | `InputReporter_4_0` | ⬜ Todo |
 | 010 | InputSequence | `InputSequenceSample_4_0` | ✅ Done |
 | 011 | SafeArea | `SafeAreaSample_4_0` | ✅ Done |
 | 012 | GeneratedGeometry | `GeneratedGeometrySample_4_0` | ✅ Done |
@@ -498,7 +498,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 
 | Phase | Samples | Done | Todo | Deferred / Out of scope |
 |---|---|---|---|---|
-| Phase 1 — Foundation | 12 | 9 | 0 | 3 |
+| Phase 1 — Foundation | 12 | 9 | 1 | 2 |
 | Phase 2 — 2D Games | 18 | 0 | 18 | 0 |
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **9** | **71** | **73** |
+| **Total** | **153** | **9** | **72** | **72** |
 
 ---
 
