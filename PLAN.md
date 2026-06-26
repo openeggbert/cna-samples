@@ -185,7 +185,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 002 | Primitives3D | `Primitives3DSample_4_0` | ✅ Done |
 | 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ✅ Done |
 | 004 | StockEffects | `StockEffectsSample_4_0` | ❌ Out of scope — effect source + CLI compiler, no runnable Game |
-| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ⬜ Todo |
+| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ⚠️ Deferred — SpriteFont menus + Model (4 scenes) + SkinnedAnim + custom pipeline types |
 | 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ✅ Done |
 | 007 | SpriteSheet | `SpriteSheetSample_4_0` | ✅ Done |
 | 008 | ShapeRendering | `ShapeRenderingSample_4_0` | ✅ Done |
@@ -498,7 +498,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 
 | Phase | Samples | Done | Todo | Deferred / Out of scope |
 |---|---|---|---|---|
-| Phase 1 — Foundation | 12 | 9 | 2 | 1 |
+| Phase 1 — Foundation | 12 | 9 | 1 | 2 |
 | Phase 2 — 2D Games | 18 | 0 | 18 | 0 |
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **9** | **73** | **71** |
+| **Total** | **153** | **9** | **72** | **72** |
 
 ---
 
