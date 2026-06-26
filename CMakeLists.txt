@@ -53,7 +53,7 @@ add_subdirectory(samples/InputSequence)
 add_subdirectory(samples/InputReporter)
 
 # Phase 2 — 2D Games  (uncomment as implemented)
-# add_subdirectory(samples/Platformer)
+add_subdirectory(samples/Platformer)
 # add_subdirectory(samples/CollisionSample)
 # add_subdirectory(samples/PerPixelCollision)
 # add_subdirectory(samples/RectangleCollision)
