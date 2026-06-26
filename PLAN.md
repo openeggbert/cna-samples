@@ -9,6 +9,11 @@ programming model built on SDL3 and a pluggable graphics backend.
 The original C# samples are archived at `/rv/tmp/XNAGameStudio/Samples` (local mirror of
 [XNA Game Studio archive](https://github.com/SimonDarksideJ/XNAGameStudio)).
 
+For cross-validation, the official MonoGame sample collection is cloned at
+`/rv/tmp/MonoGame.Samples`. Of the 83 portable XNA 4.0 samples in this plan,
+**only two** have a direct MonoGame equivalent: Platformer (#013) and ShipGame (#066).
+Those can be run under MonoGame (DesktopGL target) to compare MonoGame vs. CNA behaviour.
+
 ---
 
 ## Goals
@@ -197,7 +202,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 013 | Platformer | `Platformer_4_0` | ⬜ Todo |
+| 013 | Platformer | `Platformer_4_0` | ⬜ Todo | MonoGame: `Platformer2D` |
 | 014 | Spacewar | `Spacewar_4_0` | ⬜ Todo |
 | 015 | TicTacToe | `TicTacToe_4_0` | ⬜ Todo |
 | 016 | Bounce | `BounceSample_4_0` | ⬜ Todo |
@@ -287,7 +292,7 @@ Complete games and starter kits — the most demanding ports.
 | 063 | HoneycombRush | `HoneycombRush_4_0` | ⬜ Todo |
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
 | 065 | NinjAcademy | `NinjAcademy_4_0` | ⬜ Todo |
-| 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo |
+| 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
 | 067 | CatapultWars | `CatapultWars_4_0` | ⬜ Todo |
 | 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
 | 069 | CardsStarterKit | `CardsStarterKit_4_0` | ⬜ Todo |
