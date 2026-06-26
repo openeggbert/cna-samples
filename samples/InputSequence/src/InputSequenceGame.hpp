@@ -220,7 +220,7 @@ private:
     }
 
     void DrawButtons(Microsoft::Xna::Framework::Input::Buttons buttons,
-                     Microsoft::Xna::Framework::Vector2& position) {
+                     Microsoft::Xna::Framework::Vector2 position) {
         using namespace Microsoft::Xna::Framework;
         using namespace Microsoft::Xna::Framework::Input;
         using namespace Microsoft::Xna::Framework::Graphics;
