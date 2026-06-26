@@ -5,7 +5,7 @@
 C++ ports of the official **Microsoft XNA Game Studio 4.0** sample collection,
 running on [CNA](../cna) — a C++ reimplementation of XNA 4.0 built on SDL3.
 
-The original C# samples live at `/tmp/XNAGameStudio/Samples` (local mirror).
+The original C# samples live at `/rv/tmp/XNAGameStudio/Samples` (local mirror; `/rv/tmp` persists across reboots unlike `/tmp`).
 FNA source at `/rv/data/library/github.com/FNA-XNA/FNA` is the authoritative
 XNA 4.0 API behavioral reference.
 

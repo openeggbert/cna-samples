@@ -2,11 +2,11 @@
 
 ## Overview
 
-This repository contains C++ ports of the official **Microsoft XNA Game Studio 4.0** sample collection,
-migrated to run on [CNA](https://github.com/openeggbert/cna) — a C++ reimplementation of the XNA 4.0
+This repository contains C++ ports of the official **Microsoft XNA Game Studio 4.0** sample
+collection, migrated to run on [CNA](../cna) — a C++ reimplementation of the XNA 4.0
 programming model built on SDL3 and a pluggable graphics backend.
 
-The original C# samples are archived at `/tmp/XNAGameStudio/Samples` (local mirror of
+The original C# samples are archived at `/rv/tmp/XNAGameStudio/Samples` (local mirror of
 [XNA Game Studio archive](https://github.com/SimonDarksideJ/XNAGameStudio)).
 
 ---
@@ -25,53 +25,23 @@ The original C# samples are archived at `/tmp/XNAGameStudio/Samples` (local mirr
 
 ```
 cna-samples/
-├── CMakeLists.txt          # Root build; finds CNA, registers each sample subdirectory
-├── CMakePresets.json       # Convenience presets (debug, release, web/Emscripten)
+├── CMakeLists.txt             # Root build; finds CNA, registers each sample subdirectory
+├── CMakePresets.json          # Convenience presets (debug, release)
 ├── cmake/
-│   └── CopySampleContent.cmake   # Helper: copy Content/ assets next to built executable
+│   └── SampleHelpers.cmake    # cna_add_sample() helper macro
 ├── samples/
-│   ├── Platformer/         # Full platformer game (2D sprites, audio, levels)
-│   ├── PrimitivesSample/   # 2D primitive batch (lines, points, spacewar retro mode)
-│   ├── Primitives3D/       # 3D primitives (cube, sphere, cylinder, torus, teapot)
-│   ├── BloomSample/        # Post-process bloom effect
-│   ├── CollisionSample/    # Per-pixel 2D collision
-│   ├── SpriteBatch/        # SpriteBatch basics (textures, transforms, effects)
-│   ├── SpriteEffects/      # SpriteEffects (flip, color, rotation)
-│   ├── SpriteSheet/        # Sprite sheet / animation
-│   ├── Audio3D/            # 3D positional audio with AudioEmitter/AudioListener
-│   ├── SoundAndMusic/      # Background music + SFX
-│   ├── InputReporter/      # Keyboard, gamepad, touch input reporting
-│   ├── InputSequence/      # Combo/sequence detection
-│   ├── ChaseCamera/        # 3D chase camera following a model
-│   ├── HeightmapCollision/ # Terrain height-map + collision
-│   ├── Pathfinding/        # A* pathfinding on a tile grid
-│   ├── FlockingSample/     # Boids flocking simulation
-│   ├── ParticleSample/     # CPU particle system
-│   ├── ShadowMapping/      # Shadow mapping with render targets
-│   ├── NormalMapping/      # Normal / bump mapping shader
-│   ├── SkinningSample/     # GPU skinned model animation
-│   ├── MarbleMaze/         # Full marble-maze game (3D physics)
-│   ├── Spacewar/           # Classic Spacewar game
-│   ├── RolePlayingGame/    # Top-down RPG (map, dialogue, combat)
-│   ├── NetRumble/          # Multiplayer arcade shooter
-│   └── ... (see Sample Inventory below)
+│   └── SampleName/
+│       ├── CMakeLists.txt     # calls cna_add_sample()
+│       └── src/
+│           ├── Program.cpp    # int main(); includes CNA/Entrypoint.hpp
+│           └── *.hpp          # game and helper classes (inline/header-only per sample)
 ├── .gitignore
-├── LICENSE                 # Microsoft Permissive License (Ms-PL) — matches XNA originals
-├── NOTICE.md               # Third-party attribution
-├── PLAN.md                 # This file
+├── LICENSE                    # Microsoft Permissive License (Ms-PL) — matches XNA originals
+├── NOTICE.md
+├── PLAN.md                    # This file
+├── DEFERRED.md                # CNA feature gaps blocking specific ports
+├── CLAUDE.md                  # Porting guidelines for Claude Code sessions
 └── README.md
-```
-
-Each sample subdirectory follows this layout:
-
-```
-samples/SampleName/
-├── CMakeLists.txt          # add_executable, link CNA, copy assets
-├── src/
-│   ├── Program.cpp         # int main() — CNA/Entrypoint.hpp included here
-│   ├── SampleGame.cpp      # Derived from Microsoft::Xna::Framework::Game
-│   └── *.cpp / *.hpp       # Additional game classes
-└── Content/                # Assets: textures, audio, fonts, shaders (XNB or raw)
 ```
 
 ---
@@ -90,7 +60,6 @@ samples/SampleName/
 ### Integration with CNA
 
 `cna-samples` consumes CNA as an `add_subdirectory(../cna CNA_BUILD)` dependency.
-This matches the pattern used inside the CNA repository itself for its own examples.
 
 CMake cache variables forwarded to CNA:
 
@@ -104,21 +73,15 @@ CMake cache variables forwarded to CNA:
 
 Each sample `SampleName` produces a single executable target named `cna_sample_<lowercase_name>`.
 
-Example: `cna_sample_platformer`, `cna_sample_primitives3d`.
+Example: `cna_sample_primitives`, `cna_sample_primitives3d`.
 
 ### Linking Pattern
 
-Follows the same linker-group pattern as CNA's own examples to handle circular references
-between the CNA static library and the EasyGL backend:
+Handled automatically by `cna_add_sample()` in `cmake/SampleHelpers.cmake`:
 
 ```cmake
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
-    target_link_libraries(cna_sample_foo PRIVATE
-        -Wl,--start-group CNA ${CNA_BACKEND_TARGET} -Wl,--end-group
-        SHARP_RUNTIME)
-else()
-    target_link_libraries(cna_sample_foo PRIVATE CNA SHARP_RUNTIME)
-endif()
+target_link_libraries(target PRIVATE
+    -Wl,--start-group CNA ${BACKEND_TARGET} -Wl,--end-group SHARP_RUNTIME)
 ```
 
 ---
@@ -163,105 +126,248 @@ endif()
 | `Dictionary<K,V>` | `std::unordered_map<K,V>` |
 | `string` | `std::string` |
 | `new Foo(...)` | `std::make_unique<Foo>(...)` or stack allocation |
-| `#region ... #endregion` | removed (not applicable) |
-| Properties (`get; set;`) | member variables or accessor methods |
 | `foreach (var x in list)` | range-for `for (auto& x : list)` |
 | `Math.Sin(x)` | `std::sin(x)` |
 | `Random` | `std::mt19937` / `std::uniform_real_distribution` |
 | `TimeSpan` | `sharp_runtime::TimeSpan` (from sharp-runtime) |
 | `int?` / nullable | `std::optional<int>` |
-| `event EventHandler<T>` | CNA event mechanism or `std::function` callbacks |
-| Content pipeline (`.xnb`) | CNA ContentManager loading or raw asset loading |
+| Properties (`get; set;`) | `getXxxProperty()` / `setXxxProperty()` via `DEF_PROP` |
 
 ### Content / Assets
 
-XNA uses compiled `.xnb` binary assets. CNA's `ContentManager` either:
-- Loads raw assets (PNG, OGG, WAV, etc.) with automatic format detection, **or**
-- Uses a lightweight CNA content pipeline that processes source assets at build time.
-
-For each sample, the `Content/` directory is copied next to the built executable via
-a post-build CMake command (`cmake -E copy_directory`).
+XNA uses compiled `.xnb` binary assets — **not supported by CNA**.
+Use raw formats instead: PNG textures, OGG/WAV audio, glTF models.
+Each sample's `Content/` directory is copied next to the built executable.
 
 ---
 
-## Sample Inventory and Priority
+## Sample Count Summary
 
-### Phase 1 — Foundation (implement first, these validate core CNA APIs)
-
-| Sample | XNA Source Dir | Key APIs Exercised |
-|---|---|---|
-| **PrimitivesSample** | `PrimitivesSample_4_0` | PrimitiveBatch, Vector2, Color, Game loop |
-| **Primitives3D** | `Primitives3DSample_4_0` | 3D primitives, BasicEffect, VertexBuffer |
-| **SpriteBatch basics** | `ReachGraphicsDemo_4_0` | SpriteBatch, Texture2D, SpriteFont |
-| **SpriteEffects** | `SpriteEffectsSample_4_0` | SpriteEffects enum, SpriteBatch.Draw |
-| **SpriteSheet** | `SpriteSheetSample_4_0` | Animated sprites, source rectangles |
-| **TexturesAndColors** | `TexturesAndColorsSample_4_0` | Texture2D creation, color math |
-| **InputReporter** | `InputReporter_4_0` | Keyboard, GamePad, Touch input |
-
-### Phase 2 — 2D Games
-
-| Sample | XNA Source Dir |
+| Category | Count |
 |---|---|
-| **Platformer** | `Platformer_4_0` |
-| **CollisionSample** | `CollisionSample_4_0` |
-| **PerPixelCollision** | `PerPixelCollisionSample_4_0` |
-| **RectangleCollision** | `RectangleCollisionSample_4_0` |
-| **PathDrawing** | `PathDrawing_4_0` |
-| **Pathfinding** | `Pathfinding_4_0` |
-| **FlockingSample** | `FlockingSample_4_0` |
-| **Spacewar** | `Spacewar_4_0` |
-| **TicTacToe** | `TicTacToe_4_0` |
-| **ParticleSample** | `ParticleSample_4_0` |
+| Primary `_4_0` samples (code) | 109 |
+| Desktop platform variants included | 2 |
+| **Total tasks in this plan** | **111** |
+| Phases 1–7 (portable, planned to port) | 83 |
+| Deferred (phone HW / Avatar / WinForms / Xbox Live) | 28 |
 
-### Phase 3 — 3D Graphics
+**Not counted** (non-C# code, duplicates, archives):
+art asset packs (`AvatarAnimPack_4_0_*`, `AvatarRig_4_0_*`),
+VB duplicates (`CardsStarterKit_4_0_VB`, `GSMSample_4_0_Mango_VB`, `PaddleBattle_4_0_Mango_VB`),
+phone-only variants (`GSMSample_4_0_PHONE`, `GSMSample_4_0_Mango`, `PaddleBattle_4_0_Mango`,
+`ModelViewerDemo_4_0_Mango`, `RolePlayingGame_4_0_Phone`),
+XNA 2.0/3.x ARCHIVE items, Silverlight samples, image-only dirs,
+third-party kits, `.msi` installers.
 
-| Sample | XNA Source Dir |
-|---|---|
-| **ChaseCamera** | `ChaseCamera_4_0` |
-| **HeightmapCollision** | `HeightmapCollisionSample_4_0` |
-| **BloomSample** | `BloomSample_4_0` |
-| **ShadowMapping** | `ShadowMappingSample_4_0` |
-| **NormalMapping** | `NormalMappingSample_4_0` |
-| **SkinningSample** | `SkinningSample_4_0` |
-| **Particles3D** | `Particles3DSample_4_0` |
-| **BillboardSample** | `BillboardSample_4_0` |
-| **InstancedModel** | `InstancedModelSample_4_0` |
-| **LensFlare** | `LensFlareSample_4_0` |
+---
 
-### Phase 4 — Full Games
+## Complete Sample Task List
 
-| Sample | XNA Source Dir |
-|---|---|
-| **MarbleMaze** | `MarbleMaze_4_0` |
-| **RolePlayingGame** | `RolePlayingGame_4_0_Win_Xbox` |
-| **NetRumble** | `NetRumble_4_0` |
-| **HoneycombRush** | `HoneycombRush_4_0` |
-| **NinjAcademy** | `NinjAcademy_4_0` |
-| **ShipGame** | `ShipGame_4_0` |
+Status legend: ✅ Done · 🔨 In progress · ⬜ Todo · ⚠️ Deferred
 
-### Phase 5 — Audio, AI, Misc
+---
 
-| Sample | XNA Source Dir |
-|---|---|
-| **Audio3D** | `Audio3DSample_4_0` |
-| **SoundAndMusic** | `SoundAndMusic_4_0` |
-| **ChaseAndEvade** | `ChaseAndEvadeSample_4_0` |
-| **FuzzyLogic** | `FuzzyLogicSample_4_0` |
-| **InverseKinematics** | `InverseKinematics_4_0` |
-| **WaypointSample** | `WaypointSample_4_0` |
-| **SplitScreen** | `SplitScreenSample_4_0` |
-| **CameraShake** | `CameraShake_4_0` |
+### Phase 1 — Foundation (Core Rendering, Input Basics)
 
-### Excluded / Deferred
+These samples validate the most fundamental CNA APIs and must work before anything else.
 
-The following categories are deferred until CNA gains the corresponding platform support:
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 001 | PrimitivesSample | `PrimitivesSample_4_0` | ✅ Done |
+| 002 | Primitives3D | `Primitives3DSample_4_0` | ✅ Done |
+| 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ⬜ Todo |
+| 004 | StockEffects | `StockEffectsSample_4_0` | ⬜ Todo |
+| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ⬜ Todo |
+| 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ⬜ Todo |
+| 007 | SpriteSheet | `SpriteSheetSample_4_0` | ⬜ Todo |
+| 008 | ShapeRendering | `ShapeRenderingSample_4_0` | ⬜ Todo |
+| 009 | InputReporter | `InputReporter_4_0` | ⬜ Todo |
+| 010 | InputSequence | `InputSequenceSample_4_0` | ⬜ Todo |
+| 011 | SafeArea | `SafeAreaSample_4_0` | ⬜ Todo |
+| 012 | GeneratedGeometry | `GeneratedGeometrySample_4_0` | ⬜ Todo |
 
-- **Phone/Mango-only samples** (`*_PHONE`, `*_Mango`, `PushNotifications`, `Geolocation`, `Accelerometer`) — require WP7 APIs
-- **Silverlight samples** (`SilverlightMicrophoneSample`, `PushRecipe_WP7_SL`) — require Silverlight
-- **WinForms samples** (`WinFormsGraphicsSample`, `WinFormsContentSample`) — require WinForms
-- **Avatar/Rig samples** (`AvatarRig_*`, `AvatarAnimPack_*`) — require Xbox Live Avatar system
-- **XNA 2.0 ARCHIVE samples** — older API, lower priority
-- **Tool samples** (`BitmapFontMaker`, `CurveEditor`, `XnaGraphicsProfileChecker`) — desktop tooling, not games
+---
+
+### Phase 2 — 2D Games & Gameplay
+
+2D games, collision detection, steering, particle effects, and AI.
+
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 013 | Platformer | `Platformer_4_0` | ⬜ Todo |
+| 014 | Spacewar | `Spacewar_4_0` | ⬜ Todo |
+| 015 | TicTacToe | `TicTacToe_4_0` | ⬜ Todo |
+| 016 | Bounce | `BounceSample_4_0` | ⬜ Todo |
+| 017 | CollisionSample | `CollisionSample_4_0` | ⬜ Todo |
+| 018 | PerPixelCollision | `PerPixelCollisionSample_4_0` | ⬜ Todo |
+| 019 | RectangleCollision | `RectangleCollisionSample_4_0` | ⬜ Todo |
+| 020 | TransformedCollision | `TransformedCollisionSample_4_0` | ⬜ Todo |
+| 021 | PathDrawing | `PathDrawing_4_0` | ⬜ Todo |
+| 022 | Pathfinding | `Pathfinding_4_0` | ⬜ Todo |
+| 023 | WaypointSample | `WaypointSample_4_0` | ⬜ Todo |
+| 024 | FlockingSample | `FlockingSample_4_0` | ⬜ Todo |
+| 025 | ChaseAndEvade | `ChaseAndEvadeSample_4_0` | ⬜ Todo |
+| 026 | AimingSample | `AimingSample_4_0` | ⬜ Todo |
+| 027 | FuzzyLogic | `FuzzyLogicSample_4_0` | ⬜ Todo |
+| 028 | ColorReplacement | `ColorReplacementSample_4_0` | ⬜ Todo |
+| 029 | ParticleSample | `ParticleSample_4_0` | ⬜ Todo |
+| 030 | CameraShake | `CameraShake_4_0` | ⬜ Todo |
+
+---
+
+### Phase 3 — 3D Graphics & Shaders
+
+Post-processing, advanced lighting, shadows, picking, terrain.
+
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 031 | BloomSample | `BloomSample_4_0` | ⬜ Todo |
+| 032 | DistortionSample | `DistortionSample_4_0` | ⬜ Todo |
+| 033 | NonPhotoRealistic | `NonPhotoRealisticSample_4_0` | ⬜ Todo |
+| 034 | NormalMapping | `NormalMappingSample_4_0` | ⬜ Todo |
+| 035 | PerPixelLighting | `PerPixelLightingSample_4_0` | ⬜ Todo |
+| 036 | VertexLighting | `VertexLightingSample_4_0` | ⬜ Todo |
+| 037 | RimLighting | `RimLighting_4_0` | ⬜ Todo |
+| 038 | ShadowMapping | `ShadowMappingSample_4_0` | ⬜ Todo |
+| 039 | BillboardSample | `BillboardSample_4_0` | ⬜ Todo |
+| 040 | InstancedModel | `InstancedModelSample_4_0` | ⬜ Todo |
+| 041 | LensFlare | `LensFlareSample_4_0` | ⬜ Todo |
+| 042 | ShatterEffect | `ShatterEffectSample_4_0` | ⬜ Todo |
+| 043 | Particles3D | `Particles3DSample_4_0` | ⬜ Todo |
+| 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ⬜ Todo |
+| 045 | XmlParticles | `XmlParticles_4_0` | ⬜ Todo |
+| 046 | Graphics3D | `Graphics3DSample_4_0` | ⬜ Todo |
+| 047 | PickingSample | `PickingSample_4_0` | ⬜ Todo |
+| 048 | TrianglePicking | `TrianglePickingSample_4_0` | ⬜ Todo |
+| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | ⬜ Todo |
+
+---
+
+### Phase 4 — Models & Animation
+
+3D model loading, skeletal animation, inverse kinematics, camera systems.
+
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 050 | SimpleAnimation | `SimpleAnimation_4_0` | ⬜ Todo |
+| 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | ⬜ Todo |
+| 052 | CustomModelClass | `CustomModelClassSample_4_0` | ⬜ Todo |
+| 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | ⬜ Todo |
+| 054 | SkinningSample | `SkinningSample_4_0` | ⬜ Todo |
+| 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | ⬜ Todo |
+| 056 | CPUSkinning | `CPUSkinningSample_4_0` | ⬜ Todo |
+| 057 | InverseKinematics | `InverseKinematics_4_0` | ⬜ Todo |
+| 058 | ChaseCamera | `ChaseCamera_4_0` | ⬜ Todo |
+
+---
+
+### Phase 5 — Audio
+
+3D positional audio, background music, sound effects.
+Requires CNA audio backend (see `DEFERRED.md` item 7).
+
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 059 | Audio3D | `Audio3DSample_4_0` | ⬜ Todo |
+| 060 | SoundAndMusic | `SoundAndMusic_4_0` | ⬜ Todo |
+
+---
+
+### Phase 6 — Full Games & Starter Kits
+
+Complete games and starter kits — the most demanding ports.
+
+| # | Sample Name | Source Directory | Status |
+|---|---|---|---|
+| 061 | MarbleMaze | `MarbleMaze_4_0` | ⬜ Todo |
+| 062 | NetRumble | `NetRumble_4_0` | ⬜ Todo |
+| 063 | HoneycombRush | `HoneycombRush_4_0` | ⬜ Todo |
+| 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
+| 065 | NinjAcademy | `NinjAcademy_4_0` | ⬜ Todo |
+| 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo |
+| 067 | CatapultWars | `CatapultWars_4_0` | ⬜ Todo |
+| 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
+| 069 | CardsStarterKit | `CardsStarterKit_4_0` | ⬜ Todo |
+| 070 | RolePlayingGame | `RolePlayingGame_4_0_Win_Xbox` | ⬜ Todo |
+| 071 | Yacht | `Yacht_4_0` | ⬜ Todo |
+| 072 | GSMSample | `GSMSample_4_0_WIN_XBOX` | ⬜ Todo |
+| 073 | SoccerPitch | `SoccerPitchSample_4_0` | ⬜ Todo |
+| 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | ⬜ Todo |
+
+---
+
+### Phase 7 — Advanced, UI, Misc
+
+UI navigation, localization, performance measurement, touch/gesture, networking.
+
+| # | Sample Name | Source Directory | Notes |
+|---|---|---|---|
+| 075 | NGSMSample | `NGSMSample_4_0` | Network-aware Game State Management |
+| 076 | SplitScreen | `SplitScreenSample_4_0` | Multiple viewport split screen |
+| 077 | DynamicMenu | `DynamicMenu_4_0` | Runtime-built UI menu |
+| 078 | LocalizationSample | `LocalizationSample_4_0` | String/resource localization |
+| 079 | GesturesSample | `GesturesSample_4_0` | Touch/mouse gesture recognition |
+| 080 | TouchThumbsticks | `TouchThumbsticksSample_4_0` | Virtual on-screen thumbstick |
+| 081 | PerformanceMeasuring | `PerformanceMeasuringSample_4_0` | Frame timing & profiling |
+| 082 | UISample | `UISample_4_0` | Menu/UI navigation system |
+| 083 | SnowShovel | `SnowShovelSample_4_0` | Physics-based 2D game |
+
+All Phase 7 samples: status ⬜ Todo
+
+---
+
+### Deferred — Platform-specific, Tools, Xbox Live
+
+These samples cannot be ported until CNA gains the relevant platform support,
+or require hardware not available on a desktop Linux target.
+They are listed here for completeness.
+
+| # | Sample Name | Source Directory | Reason deferred |
+|---|---|---|---|
+| 084 | AccelerometerSample | `AccelerometerSample_4_0` | Phone accelerometer hardware |
+| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | Xbox Live Avatar system |
+| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | Xbox Live Avatar system |
+| 087 | AvatarShadows | `AvatarShadows_4_0` | Xbox Live Avatar system |
+| 088 | BingMaps | `BingMaps_4_0` | Bing Maps REST API |
+| 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | Bing Maps REST API |
+| 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | WinForms desktop tool |
+| 091 | ClientServerSample | `ClientServerSample_4_0` | Xbox Live networking stack |
+| 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | Content pipeline extension (not a game) |
+| 093 | CurveEditor | `CurveEditor_4_0` | WinForms animation tool |
+| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | Xbox Live Avatar system |
+| 095 | GeolocationSample | `GeolocationSample_4_0` | Phone GPS hardware |
+| 096 | InvitesSample | `InvitesSample_4_0` | Xbox Live invite system |
+| 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | WP7 memory management lab |
+| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | Microphone capture hardware |
+| 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension (not a game) |
+| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | Xbox Live networking stack |
+| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Xbox Live Avatar system |
+| 102 | Orientation | `Orientation_4_0` | Phone orientation sensor |
+| 103 | PeerToPeer | `PeerToPeerSample_4_0` | Xbox Live P2P networking |
+| 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only (no standalone executable) |
+| 105 | PushNotifications | `PushNotificationsSample_4_0` | Windows Phone push notifications |
+| 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | Phone media library API |
+| 107 | TiltPerspective | `TiltPerspective_4_0` | Phone accelerometer / tilt |
+| 108 | WinFormsContent | `WinFormsContentSample_4_0` | WinForms host window |
+| 109 | WinFormsGraphics | `WinFormsGraphicsSample_4_0` | WinForms host window |
+| 110 | WP7MusicManagement | `WP7MusicManagement_4_0` | Windows Phone 7 media APIs |
+| 111 | XnaGraphicsProfileChecker | `XnaGraphicsProfileChecker_4_0` | WinForms diagnostic tool |
+
+---
+
+## Phase Status Overview
+
+| Phase | Samples | Done | Todo | Deferred |
+|---|---|---|---|---|
+| Phase 1 — Foundation | 12 | 2 | 10 | 0 |
+| Phase 2 — 2D Games | 18 | 0 | 18 | 0 |
+| Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
+| Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
+| Phase 5 — Audio | 2 | 0 | 2 | 0 |
+| Phase 6 — Full Games | 14 | 0 | 14 | 0 |
+| Phase 7 — Advanced / Misc | 9 | 0 | 9 | 0 |
+| Deferred | 28 | 0 | 0 | 28 |
+| **Total** | **111** | **2** | **81** | **28** |
 
 ---
 
@@ -278,21 +384,8 @@ The following categories are deferred until CNA gains the corresponding platform
 - C++23 standard throughout
 - `using namespace Microsoft::Xna::Framework;` is permitted inside `.cpp` files (not headers)
 - No `using namespace std;` in headers
-- Class fields prefixed with nothing (XNA convention uses camelCase fields, keep it)
 - `#pragma once` in all headers
-- No copyright header blocks in migrated files (content is credited in NOTICE.md)
-
----
-
-## Status
-
-| Phase | Status |
-|---|---|
-| Phase 1 — Foundation | In progress |
-| Phase 2 — 2D Games | Planned |
-| Phase 3 — 3D Graphics | Planned |
-| Phase 4 — Full Games | Planned |
-| Phase 5 — Audio, AI, Misc | Planned |
+- No copyright header blocks in migrated files (content is credited in `NOTICE.md`)
 
 ---
 
@@ -300,4 +393,5 @@ The following categories are deferred until CNA gains the corresponding platform
 
 - [CNA](../cna) — C++ XNA 4.0 reimplementation (the framework this samples repo runs on)
 - [sharp-runtime](../sharp-runtime) — C++ port of .NET BCL types used by CNA
-- [FNA](https://github.com/FNA-XNA/FNA) — Authoritative XNA 4.0 API behavioral reference (local: `/rv/data/library/github.com/FNA-XNA/FNA`)
+- [FNA](https://github.com/FNA-XNA/FNA) — Authoritative XNA 4.0 API reference (local: `/rv/data/library/github.com/FNA-XNA/FNA`)
+- XNA samples source: `/rv/tmp/XNAGameStudio/Samples`
