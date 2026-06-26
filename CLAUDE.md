@@ -13,8 +13,10 @@ XNA 4.0 API behavioral reference.
 
 ## Porting philosophy — stay close to the C# original
 
-Each C++ port must be **as similar as possible to the XNA 4.0 C# original**.
-Deviation is allowed only when forced by a language or API difference.
+Each C++ port must be **as similar as possible to the XNA 4.0 C# original**,
+within the natural constraints of the C# → C++ language difference
+(no GC, no properties, no `using` blocks, value/reference semantics, etc.).
+Deviation beyond those constraints needs a concrete reason.
 
 **Prefer sharp-runtime types over raw C++ equivalents:**
 
