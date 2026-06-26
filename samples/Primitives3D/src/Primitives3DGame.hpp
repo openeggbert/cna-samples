@@ -140,10 +140,10 @@ namespace Primitives3D
             auto& device = *graphics.getGraphicsDeviceProperty();
             device.Clear(Color::CornflowerBlue);
 
-            // Wireframe toggle: CNA doesn't yet have GraphicsDevice.RasterizerState
-            // XNA-style property — setting is handled inside GeometricPrimitive for now.
-            // TODO: apply wireFrameState via GraphicsDevice.RasterizerState once CNA
-            //       exposes that setter.
+            if (isWireframe)
+                device.setRasterizerStateProperty(wireFrameState);
+            else
+                device.setRasterizerStateProperty(RasterizerState::CullCounterClockwise);
 
             float time  = static_cast<float>(gameTime.getTotalGameTimeProperty().getTotalSecondsProperty());
             float yaw   = time * 0.4f;
@@ -160,6 +160,8 @@ namespace Primitives3D
             Matrix projection = Matrix::CreatePerspectiveFieldOfView(1.0f, aspect, 1.0f, 10.0f);
 
             primitives[currentPrimitiveIndex]->Draw(world, view, projection, colors[currentColorIndex]);
+
+            device.setRasterizerStateProperty(RasterizerState::CullCounterClockwise);
 
             Game::Draw(gameTime);
         }

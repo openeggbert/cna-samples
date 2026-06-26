@@ -54,6 +54,10 @@ Key examples that often trip up porting:
 | `mouse.X` / `mouse.Y` | `mouse.getXProperty()` / `mouse.getYProperty()` |
 | `gamePad.Buttons.Back` | `gamePad.IsButtonDown(Buttons::Back)` |
 | `Color(byte, byte, byte)` | `Color(int, int, int, 255)` |
+| `device.BlendState = BlendState.AlphaBlend` | `device.setBlendStateProperty(BlendState::AlphaBlend)` |
+| `device.DepthStencilState = DepthStencilState.Default` | `device.setDepthStencilStateProperty(DepthStencilState::Default)` |
+| `device.RasterizerState = RasterizerState.CullCounterClockwise` | `device.setRasterizerStateProperty(RasterizerState::CullCounterClockwise)` |
+| `effect.GraphicsDevice` | `effect.getGraphicsDeviceInternal()` |
 
 ## Game class requirements
 
@@ -66,33 +70,51 @@ const std::string& GetTypeName() const override {
 }
 ```
 
-## GraphicsDevice state (NOXNA workarounds)
+## GraphicsDevice state
 
-CNA does not yet expose XNA-style `GraphicsDevice.BlendState` or
-`GraphicsDevice.RasterizerState` property setters.  Use:
+CNA exposes the full XNA-style property setters — use them directly:
 
 ```cpp
-device.SetDepthTestEnabled(bool);
-device.SetBlendEnabled(bool);
-device.SetDepthWriteEnabled(bool);
+device.setBlendStateProperty(BlendState::AlphaBlend);   // or ::Opaque
+device.setDepthStencilStateProperty(DepthStencilState::Default);
+device.setRasterizerStateProperty(RasterizerState::CullCounterClockwise);
+// wireframe: set FillMode::WireFrame + CullMode::None on a RasterizerState instance
 ```
 
-These are `NOXNA` extensions (not in XNA 4.0 public API).
+Do **not** use the NOXNA helpers `SetBlendEnabled` / `SetDepthTestEnabled` /
+`SetDepthWriteEnabled` — they exist but bypass the XNA state objects.
 
 ## Assets
 
-XNA `.xnb` files are NOT supported.  See `DEFERRED.md` item 1 for the
-asset conversion strategy.  Place raw assets (PNG, OGG, WAV) in `Content/`.
+XNA `.xnb` files are **never** supported by CNA and will not be.
+When porting a sample that loads assets via `Content.Load<T>()`:
+
+- **Textures** (`.xnb` → `Texture2D`): convert the source art to PNG and place in `Content/`.
+- **Audio** (`.xnb` → `SoundEffect`/`Song`): convert to OGG or WAV and place in `Content/`.
+- **Models** (`.xnb` → `Model`): convert to glTF and place in `Content/`.
+- **SpriteFont** (`.xnb` → `SpriteFont`): deferred — CNA has no SpriteFont yet (see `DEFERRED.md`).
+  Omit `DrawString` calls and the `Content.Load<SpriteFont>` call from the port.
+- **Effects** (`.xnb` → custom `Effect`): deferred until CNA supports user shaders.
+
+Source art is usually in the XNA sample's `*Content/` directory or next to the `.xnb` files.
+
+## Sample documentation
+
+Every sample directory must contain the original **`SampleName.htm`** documentation file,
+copied verbatim from `/rv/tmp/XNAGameStudio/Samples/SampleName_4_0/SampleName.htm`.
+Copy it to `samples/SampleName/` (next to `src/` and optionally `Content/`).
 
 ## Adding a new sample
 
 1. Create `samples/SampleName/` with `src/` and optionally `Content/`.
-2. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
-3. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
-4. Implement `GetTypeName()` in every `Game` subclass.
-5. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
+2. Copy `SampleName.htm` from `/rv/tmp/XNAGameStudio/Samples/SampleName_4_0/` to `samples/SampleName/`.
+3. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
+4. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
+5. Implement `GetTypeName()` in every `Game` subclass.
+6. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
    member access.
-6. See `DEFERRED.md` for known gaps that may require CNA changes.
+7. Convert any XNB assets to open formats (see Assets section above).
+8. See `DEFERRED.md` for known gaps that may require CNA changes.
 
 ## Related projects
 

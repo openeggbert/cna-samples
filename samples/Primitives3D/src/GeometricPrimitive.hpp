@@ -16,6 +16,8 @@
 #include "Microsoft/Xna/Framework/Matrix.hpp"
 #include "Microsoft/Xna/Framework/Vector3.hpp"
 #include "Microsoft/Xna/Framework/Graphics/BasicEffect.hpp"
+#include "Microsoft/Xna/Framework/Graphics/BlendState.hpp"
+#include "Microsoft/Xna/Framework/Graphics/DepthStencilState.hpp"
 #include "Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp"
 #include "Microsoft/Xna/Framework/Graphics/IndexBuffer.hpp"
 #include "Microsoft/Xna/Framework/Graphics/PrimitiveType.hpp"
@@ -99,22 +101,13 @@ namespace Primitives3D
                         color.getBProperty() / 255.0f));
             basicEffect->setAlphaProperty(color.getAProperty() / 255.0f);
 
-            device.SetDepthTestEnabled(true);
+            device.setDepthStencilStateProperty(DepthStencilState::Default);
             if (color.getAProperty() < 255)
-            {
-                device.SetBlendEnabled(true);
-                device.SetDepthWriteEnabled(false);
-            }
+                device.setBlendStateProperty(BlendState::AlphaBlend);
             else
-            {
-                device.SetBlendEnabled(false);
-                device.SetDepthWriteEnabled(true);
-            }
+                device.setBlendStateProperty(BlendState::Opaque);
 
             Draw(*basicEffect);
-
-            device.SetBlendEnabled(false);
-            device.SetDepthWriteEnabled(true);
         }
 
         void Draw(Effect& effect)
