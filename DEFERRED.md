@@ -58,36 +58,52 @@ and `cna/include/Microsoft/Xna/Framework/Graphics/SpriteFont.hpp`.
 
 ---
 
-## 3. GraphicsDevice.RasterizerState Property Setter
+## 3. EasyGL: DiffuseColor ignored for VertexPositionColor meshes
 
 **What is missing:**
-`GraphicsDevice.RasterizerState = value` (XNA 4.0 property setter) is not exposed
-on `GraphicsDevice`.  Only the NOXNA helpers `SetDepthTestEnabled` / `SetBlendEnabled`
-/ `SetDepthWriteEnabled` exist.
+`EasyGLGraphicsBackend::SelectProgram` selects the GLSL shader program purely by
+vertex **stride** (byte size).  `VertexPositionColor` has stride 16 → falls into
+`default: EnsureColored3DProgram()`.  That shader has only `FragColor = vColor`
+(vertex color) and **no `uDiffuseColor` uniform** — so `loc_diffuse = -1` and
+`BindDrawParams` never uploads `BasicEffect.DiffuseColor` to the GPU.
 
-Wireframe rendering in Primitives3D is therefore a no-op in the current port.
+Consequence: `BasicEffect.DiffuseColor` (and the `setDiffuseColorProperty()` setter)
+is silently ignored for any geometry stored in a `VertexPositionColor` vertex buffer.
+In practice the mesh always renders in white.
 
-**Where to implement:** `cna/include/Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp`
-and the corresponding backend in `cna/src/CNA/Internal/Backends/EasyGL/`.
+**Where to implement:** `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`,
+`EnsureColored3DProgram()` — add `uDiffuseColor` uniform and multiply:
+`FragColor = vColor * uDiffuseColor`.  When `params.vertexColorEnabled == false`,
+the vertex color should be treated as `vec4(1.0)` so only `uDiffuseColor` tints the
+output (needed for `BasicEffect` without `VertexColorEnabled`).
 
-**Blocked samples:** Primitives3D (wireframe toggle), ShadowMapping, NonPhotoRealistic.
+**Blocked samples:** Primitives3D (color change via B key produces no visible effect).
 
-**Effort:** M
+**Effort:** S
 
 ---
 
-## 4. GraphicsDevice.BlendState / DepthStencilState Property Setters
+## 4. EasyGL: Wireframe rendering not possible on OpenGL ES
 
 **What is missing:**
-XNA-style `device.BlendState = BlendState.AlphaBlend` property setters are not
-exposed; only the NOXNA helpers exist.  The current port works around this by using
-`SetBlendEnabled`/`SetDepthWriteEnabled`, but full XNA compatibility is missing.
+`FillMode::WireFrame` in `RasterizerState` is silently ignored by the EasyGL backend
+(see `EasyGLGraphicsBackend.cpp` line with comment
+`// FillMode::WireFrame not supported in OpenGL ES — silently ignored`).
 
-**Where to implement:** `cna/include/Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp`.
+Desktop OpenGL has `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)`, but **OpenGL ES 3.x
+does not expose this function at all** — it is a fundamental API omission, not a
+driver bug.
 
-**Blocked samples:** Affects 3D samples that use alpha blending, bloom, particles.
+**Where to implement (workaround in CNA):**
+When `fillMode == WireFrame`, `DrawIndexedPrimitivesEx` could emit each triangle
+as three `GL_LINES` instead of one `GL_TRIANGLES`, effectively emulating wireframe.
+This requires rewriting index data on the fly (or maintaining a line-index buffer).
+Alternatively target OpenGL ES 3.2+ which exposes `GL_OES_polygon_mode` on some
+drivers, but that is not universally available.
 
-**Effort:** S
+**Blocked samples:** Primitives3D (Y key wireframe toggle has no visual effect).
+
+**Effort:** M
 
 ---
 
@@ -191,8 +207,8 @@ In CNA, `Buttons` is accessed via `getButtonsProperty()` and `Back` via `getBack
 |---|---|---|---|---|
 | 1 | XNB → open format pipeline | all | M/sample | all |
 | 2 | SpriteFont loading | cna | L | many |
-| 3 | RasterizerState setter | cna | M | 3+ |
-| 4 | BlendState/DepthStencilState setters | cna | S | many |
+| 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D |
+| 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D |
 | 5 | VertexPositionNormal + lit shader | cna | L | many |
 | 6 | Model loading (glTF) | cna | XL | many |
 | 7 | Audio playback | cna | L | many |
