@@ -108,13 +108,34 @@ Copy it to `samples/SampleName/` (next to `src/` and optionally `Content/`).
 
 1. Create `samples/SampleName/` with `src/` and optionally `Content/`.
 2. Copy `SampleName.htm` from `/rv/tmp/XNAGameStudio/Samples/SampleName_4_0/` to `samples/SampleName/`.
-3. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
-4. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
-5. Implement `GetTypeName()` in every `Game` subclass.
-6. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
+3. Create `samples/SampleName/missing.md` — see **Sample missing.md** below.
+4. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
+5. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
+6. Implement `GetTypeName()` in every `Game` subclass.
+7. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
    member access.
-7. Convert any XNB assets to open formats (see Assets section above).
-8. See `DEFERRED.md` for known gaps that may require CNA changes.
+8. Convert any XNB assets to open formats (see Assets section above).
+9. See `DEFERRED.md` for known gaps that may require CNA changes.
+
+## Sample missing.md
+
+Every sample directory **must** contain a `missing.md` file that documents all
+known differences between the CNA C++ port and the XNA 4.0 C# original.
+
+Format:
+
+```markdown
+# Missing / Differences from XNA 4.0 original
+
+## <Short title of difference>
+**XNA behaviour:** …
+**CNA port behaviour:** …
+**Root cause:** …
+**Tracked in:** DEFERRED.md item N  (or "CNA issue", "not planned", etc.)
+```
+
+Write one section per difference.  If the port is fully faithful, write
+`No known differences.` so it is clear the file was reviewed.
 
 ## Related projects
 
