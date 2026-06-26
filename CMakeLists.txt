@@ -43,6 +43,7 @@ include(SampleHelpers)
 # Phase 1 — Foundation
 add_subdirectory(samples/PrimitivesSample)
 add_subdirectory(samples/Primitives3D)
+add_subdirectory(samples/TexturesAndColors)
 
 # Phase 2 — 2D Games  (uncomment as implemented)
 # add_subdirectory(samples/Platformer)

@@ -183,7 +183,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 |---|---|---|---|
 | 001 | PrimitivesSample | `PrimitivesSample_4_0` | ✅ Done |
 | 002 | Primitives3D | `Primitives3DSample_4_0` | ✅ Done |
-| 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ⬜ Todo |
+| 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ✅ Done |
 | 004 | StockEffects | `StockEffectsSample_4_0` | ⬜ Todo |
 | 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ⬜ Todo |
 | 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ⬜ Todo |
