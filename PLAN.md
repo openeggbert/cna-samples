@@ -143,27 +143,30 @@ Each sample's `Content/` directory is copied next to the built executable.
 
 ## Sample Count Summary
 
+Source directory `/rv/tmp/XNAGameStudio/Samples` contains **153 subdirectories**
+(excluding `.idea`). All 153 are listed as numbered tasks below.
+
 | Category | Count |
 |---|---|
-| Primary `_4_0` samples (code) | 109 |
-| Desktop platform variants included | 2 |
-| **Total tasks in this plan** | **111** |
-| Phases 1–7 (portable, planned to port) | 83 |
-| Deferred (phone HW / Avatar / WinForms / Xbox Live) | 28 |
-
-**Not counted** (non-C# code, duplicates, archives):
-art asset packs (`AvatarAnimPack_4_0_*`, `AvatarRig_4_0_*`),
-VB duplicates (`CardsStarterKit_4_0_VB`, `GSMSample_4_0_Mango_VB`, `PaddleBattle_4_0_Mango_VB`),
-phone-only variants (`GSMSample_4_0_PHONE`, `GSMSample_4_0_Mango`, `PaddleBattle_4_0_Mango`,
-`ModelViewerDemo_4_0_Mango`, `RolePlayingGame_4_0_Phone`),
-XNA 2.0/3.x ARCHIVE items, Silverlight samples, image-only dirs,
-third-party kits, `.msi` installers.
+| Phase 1–7 portable desktop samples | 83 |
+| Deferred — phone HW / Avatar / WinForms / Xbox Live | 28 |
+| XNA 2.0 / 3.0 / 3.1 archive samples | 12 |
+| Avatar asset packs (art, no C# code) | 4 |
+| Avatar rig packs (art, no C# code) | 3 |
+| Phone / Mango platform variants | 7 |
+| VB language duplicates | 1 |
+| Silverlight / WP7 (no XNA 4.0 code) | 5 |
+| Image / resource-only directories | 3 |
+| Third-party kits | 3 |
+| Unversioned starter kits | 2 |
+| Misc / non-code | 2 |
+| **Total** | **153** |
 
 ---
 
 ## Complete Sample Task List
 
-Status legend: ✅ Done · 🔨 In progress · ⬜ Todo · ⚠️ Deferred
+Status legend: ✅ Done · 🔨 In progress · ⬜ Todo · ⚠️ Deferred (CNA gap) · ❌ Out of scope
 
 ---
 
@@ -288,9 +291,9 @@ Complete games and starter kits — the most demanding ports.
 | 067 | CatapultWars | `CatapultWars_4_0` | ⬜ Todo |
 | 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
 | 069 | CardsStarterKit | `CardsStarterKit_4_0` | ⬜ Todo |
-| 070 | RolePlayingGame | `RolePlayingGame_4_0_Win_Xbox` | ⬜ Todo |
+| 070 | RolePlayingGame (Win+Xbox) | `RolePlayingGame_4_0_Win_Xbox` | ⬜ Todo |
 | 071 | Yacht | `Yacht_4_0` | ⬜ Todo |
-| 072 | GSMSample | `GSMSample_4_0_WIN_XBOX` | ⬜ Todo |
+| 072 | GSMSample (Win+Xbox) | `GSMSample_4_0_WIN_XBOX` | ⬜ Todo |
 | 073 | SoccerPitch | `SoccerPitchSample_4_0` | ⬜ Todo |
 | 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | ⬜ Todo |
 
@@ -300,27 +303,24 @@ Complete games and starter kits — the most demanding ports.
 
 UI navigation, localization, performance measurement, touch/gesture, networking.
 
-| # | Sample Name | Source Directory | Notes |
+| # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 075 | NGSMSample | `NGSMSample_4_0` | Network-aware Game State Management |
-| 076 | SplitScreen | `SplitScreenSample_4_0` | Multiple viewport split screen |
-| 077 | DynamicMenu | `DynamicMenu_4_0` | Runtime-built UI menu |
-| 078 | LocalizationSample | `LocalizationSample_4_0` | String/resource localization |
-| 079 | GesturesSample | `GesturesSample_4_0` | Touch/mouse gesture recognition |
-| 080 | TouchThumbsticks | `TouchThumbsticksSample_4_0` | Virtual on-screen thumbstick |
-| 081 | PerformanceMeasuring | `PerformanceMeasuringSample_4_0` | Frame timing & profiling |
-| 082 | UISample | `UISample_4_0` | Menu/UI navigation system |
-| 083 | SnowShovel | `SnowShovelSample_4_0` | Physics-based 2D game |
-
-All Phase 7 samples: status ⬜ Todo
+| 075 | NGSMSample | `NGSMSample_4_0` | ⬜ Todo |
+| 076 | SplitScreen | `SplitScreenSample_4_0` | ⬜ Todo |
+| 077 | DynamicMenu | `DynamicMenu_4_0` | ⬜ Todo |
+| 078 | LocalizationSample | `LocalizationSample_4_0` | ⬜ Todo |
+| 079 | GesturesSample | `GesturesSample_4_0` | ⬜ Todo |
+| 080 | TouchThumbsticks | `TouchThumbsticksSample_4_0` | ⬜ Todo |
+| 081 | PerformanceMeasuring | `PerformanceMeasuringSample_4_0` | ⬜ Todo |
+| 082 | UISample | `UISample_4_0` | ⬜ Todo |
+| 083 | SnowShovel | `SnowShovelSample_4_0` | ⬜ Todo |
 
 ---
 
-### Deferred — Platform-specific, Tools, Xbox Live
+### Deferred — Phone Hardware / Avatar / WinForms / Xbox Live Networking
 
-These samples cannot be ported until CNA gains the relevant platform support,
-or require hardware not available on a desktop Linux target.
-They are listed here for completeness.
+Cannot be ported until CNA gains the relevant platform support, or requires
+hardware / services not available on a desktop Linux target.
 
 | # | Sample Name | Source Directory | Reason deferred |
 |---|---|---|---|
@@ -332,19 +332,19 @@ They are listed here for completeness.
 | 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | Bing Maps REST API |
 | 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | WinForms desktop tool |
 | 091 | ClientServerSample | `ClientServerSample_4_0` | Xbox Live networking stack |
-| 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | Content pipeline extension (not a game) |
+| 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | Content pipeline extension, no executable |
 | 093 | CurveEditor | `CurveEditor_4_0` | WinForms animation tool |
 | 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | Xbox Live Avatar system |
 | 095 | GeolocationSample | `GeolocationSample_4_0` | Phone GPS hardware |
 | 096 | InvitesSample | `InvitesSample_4_0` | Xbox Live invite system |
 | 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | WP7 memory management lab |
 | 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | Microphone capture hardware |
-| 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension (not a game) |
+| 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension, no executable |
 | 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | Xbox Live networking stack |
 | 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Xbox Live Avatar system |
 | 102 | Orientation | `Orientation_4_0` | Phone orientation sensor |
 | 103 | PeerToPeer | `PeerToPeerSample_4_0` | Xbox Live P2P networking |
-| 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only (no standalone executable) |
+| 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only, no standalone executable |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | Windows Phone push notifications |
 | 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | Phone media library API |
 | 107 | TiltPerspective | `TiltPerspective_4_0` | Phone accelerometer / tilt |
@@ -355,9 +355,143 @@ They are listed here for completeness.
 
 ---
 
+### XNA 2.0 / 3.0 / 3.1 Archive Samples
+
+Older XNA versions; lower API compatibility with CNA 4.0 target.
+Deferred until all _4_0 samples are done and CNA is mature.
+
+| # | Sample Name | Source Directory | XNA Version |
+|---|---|---|---|
+| 112 | BasicEffectShader | `BasicEffectShader_ARCHIVE_2_0` | XNA 2.0 |
+| 113 | Catapult | `Catapult_ARCHIVE_2_0` | XNA 2.0 |
+| 114 | MaterialsAndLights | `MaterialsAndLights_ARCHIVE_2_0` | XNA 2.0 |
+| 115 | Minjie | `Minjie_ARCHIVE_2_0` | XNA 2.0 |
+| 116 | MultipassLighting | `MultipassLighting_ARCHIVE_2_0` | XNA 2.0 |
+| 117 | Pickture | `Pickture_ARCHIVE_2_0` | XNA 2.0 |
+| 118 | RobotGame | `RobotGame_ARCHIVE_2_0` | XNA 2.0 |
+| 119 | SpriteBatchShader | `SpriteBatchShader_ARCHIVE_2_0` | XNA 2.0 |
+| 120 | VectorRumble | `VectorRumble_ARCHIVE_2_0` | XNA 2.0 |
+| 121 | SpaceShooter | `SpaceShooter_ARCHIVE_3_0` | XNA 3.0 |
+| 122 | TiledSprites | `TiledSpritesSample_ARCHIVE_3_1` | XNA 3.1 |
+| 123 | RedistributableTTFs | `RedistributableTTFs_ARCHIVE_3_1` | XNA 3.1 (fonts only) |
+
+---
+
+### Avatar Asset Packs (Art, No C# Code)
+
+Animation data for the Xbox Avatar system. No C# game code to port.
+Relevant only after Avatar system support is added to CNA.
+
+| # | Name | Source Directory |
+|---|---|---|
+| 124 | AvatarAnimPack (BIN) | `AvatarAnimPack_4_0_BIN` |
+| 125 | AvatarAnimPack (FBX) | `AvatarAnimPack_4_0_FBX` |
+| 126 | AvatarAnimPack (Maya) | `AvatarAnimPack_4_0_Maya` |
+| 127 | AvatarAnimPack (Mod Tool) | `AvatarAnimPack_4_0_Mod_Tool` |
+
+---
+
+### Avatar Rig Packs (Art, No C# Code)
+
+Rigging data for 3D DCCs. No C# game code to port.
+
+| # | Name | Source Directory |
+|---|---|---|
+| 128 | AvatarRig (3ds Max 2010) | `AvatarRig_4_0_Max_2010` |
+| 129 | AvatarRig (Maya 2009) | `AvatarRig_4_0_Maya_2009` |
+| 130 | AvatarRig (SoftImage Mod Tool 7.5) | `AvatarRig_4_0_SoftImage_Mod_Tool7_5` |
+
+---
+
+### Phone / Mango Platform Variants
+
+These are phone-only or Mango-specific variants of samples that already have a
+desktop (`_WIN_XBOX`) equivalent listed above (or are phone-exclusive games).
+
+| # | Name | Source Directory | Desktop equivalent |
+|---|---|---|---|
+| 131 | GSMSample (Mango) | `GSMSample_4_0_Mango` | #072 |
+| 132 | GSMSample (Mango VB) | `GSMSample_4_0_Mango_VB` | #072 (VB dup) |
+| 133 | GSMSample (Phone) | `GSMSample_4_0_PHONE` | #072 |
+| 134 | ModelViewerDemo (Mango) | `ModelViewerDemo_4_0_Mango` | None (phone-only) |
+| 135 | PaddleBattle (Mango) | `PaddleBattle_4_0_Mango` | None (phone-only) |
+| 136 | PaddleBattle (Mango VB) | `PaddleBattle_4_0_Mango_VB` | None (VB dup) |
+| 137 | RolePlayingGame (Phone) | `RolePlayingGame_4_0_Phone` | #070 |
+
+---
+
+### VB Language Duplicates
+
+Visual Basic versions of samples already covered by their C# counterpart above.
+
+| # | Name | Source Directory | C# equivalent |
+|---|---|---|---|
+| 138 | CardsStarterKit (VB) | `CardsStarterKit_4_0_VB` | #069 |
+
+---
+
+### Silverlight / Windows Phone 7 (No XNA 4.0 Code)
+
+These directories contain Silverlight or WP7-native code, not XNA 4.0 C#.
+Not applicable for CNA porting.
+
+| # | Name | Source Directory |
+|---|---|---|
+| 139 | CustomIndeterminateProgressBar | `CustomIndeterminateProgressBarSample` |
+| 140 | NonLinear WP SL Navigation | `NonLinear-WP-SLApp-Navigation-Service` |
+| 141 | PushRecipe WP7 | `PushRecipe_WP7_SL` |
+| 142 | SilverlightMicrophone | `SilverlightMicrophoneSample` |
+| 143 | TombstoningSample | `TombstoningSample` |
+
+---
+
+### Image / Resource-Only Directories
+
+No C# code — contain only image assets used by other samples.
+
+| # | Name | Source Directory |
+|---|---|---|
+| 144 | ButtonImages | `ButtonImages` |
+| 145 | ControllerImages | `ControllerImages` |
+| 146 | LobbyChatImages | `LobbyChatImages` |
+
+---
+
+### Third-Party / Community Kits
+
+Not official Microsoft samples. Listed for reference.
+
+| # | Name | Source Directory | Notes |
+|---|---|---|---|
+| 147 | Riemers Tutorials | `Riemers` | Third-party XNA tutorials |
+| 148 | XNA 4 Racing Game Kit | `XNA-4-Racing-Game-Kit-master` | Community game kit |
+| 149 | Movipa | `Movipa` | Third-party video playback sample |
+
+---
+
+### Unversioned Starter Kits
+
+No version tag in directory name; likely XNA 3.x or earlier.
+
+| # | Name | Source Directory |
+|---|---|---|
+| 150 | LevelStarterKit | `LevelStarterKit` |
+| 151 | UnitConverterStarterKit | `UnitConverterStarterKit` |
+
+---
+
+### Misc / Non-Code
+
+| # | Name | Source Directory | Notes |
+|---|---|---|---|
+| 152 | XNA XNB Format | `XNA_XNB_Format` | Binary format documentation, no C# code |
+| 153 | SoundLab | `SoundLab` | Audio tool / no XNA 4.0 game code |
+
+---
+
 ## Phase Status Overview
 
-| Phase | Samples | Done | Todo | Deferred |
+| Phase | Samples | Done | Todo | Deferred / Out of scope |
 |---|---|---|---|---|
 | Phase 1 — Foundation | 12 | 2 | 10 | 0 |
 | Phase 2 — 2D Games | 18 | 0 | 18 | 0 |
@@ -366,8 +500,18 @@ They are listed here for completeness.
 | Phase 5 — Audio | 2 | 0 | 2 | 0 |
 | Phase 6 — Full Games | 14 | 0 | 14 | 0 |
 | Phase 7 — Advanced / Misc | 9 | 0 | 9 | 0 |
-| Deferred | 28 | 0 | 0 | 28 |
-| **Total** | **111** | **2** | **81** | **28** |
+| Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
+| XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
+| Avatar asset packs | 4 | 0 | 0 | 4 |
+| Avatar rig packs | 3 | 0 | 0 | 3 |
+| Phone / Mango variants | 7 | 0 | 0 | 7 |
+| VB duplicates | 1 | 0 | 0 | 1 |
+| Silverlight / WP7 | 5 | 0 | 0 | 5 |
+| Image / resource-only | 3 | 0 | 0 | 3 |
+| Third-party | 3 | 0 | 0 | 3 |
+| Unversioned starters | 2 | 0 | 0 | 2 |
+| Misc / non-code | 2 | 0 | 0 | 2 |
+| **Total** | **153** | **2** | **81** | **70** |
 
 ---
 
