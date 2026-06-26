@@ -1,0 +1,4 @@
+{
+  "vertex": "sprites.vert.glsl",
+  "fragment": "normalmap.frag.glsl"
+}

@@ -46,6 +46,7 @@ add_subdirectory(samples/Primitives3D)
 add_subdirectory(samples/TexturesAndColors)
 add_subdirectory(samples/ShapeRendering)
 add_subdirectory(samples/GeneratedGeometry)
+add_subdirectory(samples/SpriteEffects)
 
 # Phase 2 — 2D Games  (uncomment as implemented)
 # add_subdirectory(samples/Platformer)
