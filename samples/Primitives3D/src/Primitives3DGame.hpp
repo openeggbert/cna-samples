@@ -24,6 +24,7 @@
 #include "SpherePrimitive.hpp"
 #include "CylinderPrimitive.hpp"
 #include "TorusPrimitive.hpp"
+#include "TeapotPrimitive.hpp"
 
 namespace Primitives3D
 {
@@ -125,6 +126,7 @@ namespace Primitives3D
             primitives.push_back(std::make_unique<SpherePrimitive>(device));
             primitives.push_back(std::make_unique<CylinderPrimitive>(device));
             primitives.push_back(std::make_unique<TorusPrimitive>(device));
+            primitives.push_back(std::make_unique<TeapotPrimitive>(device));
         }
 
         void Update(GameTime& gameTime) override

@@ -87,7 +87,7 @@ namespace Primitives3D
 
         void Draw(const Matrix& world, const Matrix& view, const Matrix& projection, Color color)
         {
-            GraphicsDevice& device = basicEffect->GraphicsDeviceRef();
+            GraphicsDevice& device = basicEffect->getGraphicsDeviceInternal();
 
             basicEffect->World      = world;
             basicEffect->View       = view;
@@ -119,20 +119,20 @@ namespace Primitives3D
 
         void Draw(Effect& effect)
         {
-            GraphicsDevice& device = effect.GraphicsDeviceRef();
+            GraphicsDevice& device = effect.getGraphicsDeviceInternal();
 
             device.SetVertexBuffer(vertexBuffer.get());
-            device.Indices(indexBuffer.get());
+            device.setIndicesProperty(indexBuffer.get());
 
-            int primitiveCount = indexBuffer->IndexCount() / 3;
+            int primitiveCount = indexBuffer->getIndexCountProperty() / 3;
 
-            for (auto& pass : effect.CurrentTechnique().Passes())
+            for (auto& pass : effect.getCurrentTechniqueProperty()->getPassesProperty())
             {
                 pass.Apply();
                 device.DrawIndexedPrimitives(
                     PrimitiveType::TriangleList,
                     0, 0,
-                    vertexBuffer->VertexCount(),
+                    vertexBuffer->getVertexCountProperty(),
                     0, primitiveCount);
             }
         }
