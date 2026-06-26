@@ -11,6 +11,26 @@ XNA 4.0 API behavioral reference.
 
 ---
 
+## Porting philosophy — stay close to the C# original
+
+Each C++ port must be **as similar as possible to the XNA 4.0 C# original**.
+Deviation is allowed only when forced by a language or API difference.
+
+**Prefer sharp-runtime types over raw C++ equivalents:**
+
+| C# (.NET) | sharp-runtime C++ | Do NOT use |
+|---|---|---|
+| `new Random()` | `System::Random random;` | `std::mt19937 rng(42)` |
+| `random.Next(min, max)` | `random.Next(min, max)` | `std::uniform_int_distribution` |
+| `random.NextDouble()` | `random.NextDouble()` | `std::uniform_real_distribution` |
+| `List<T>` | `std::vector<T>` | — (no sharp-runtime List yet) |
+| `Math.Cos(x)` | `std::cos(x)` | — (no System::Math yet) |
+
+Include sharp-runtime types with: `#include "System/Random.hpp"` etc.
+The `SHARP_RUNTIME` CMake target exposes its `include/` directory publicly.
+
+---
+
 ## CNA Property Access Patterns
 
 CNA uses a `DEF_PROP` macro that generates `getXxxProperty()` / `setXxxProperty()`
@@ -25,7 +45,7 @@ Key examples that often trip up porting:
 | `graphics.GraphicsDevice` | `graphics.getGraphicsDeviceProperty()` (returns pointer) |
 | `graphics.PreferredBackBufferWidth = 800` | `graphics.setPreferredBackBufferWidthProperty(800)` |
 | `Content.RootDirectory = "Content"` | `getContentProperty().setRootDirectoryProperty("Content")` |
-| `effect.CurrentTechnique.Passes[0].Apply()` | `effect.CurrentTechnique().Passes()[0].Apply()` |
+| `effect.CurrentTechnique.Passes[0].Apply()` | `effect.getCurrentTechniqueProperty()->getPassesProperty()[0].Apply()` |
 | `gameTime.TotalGameTime.TotalSeconds` | `gameTime.getTotalGameTimeProperty().getTotalSecondsProperty()` |
 | `color.R / 255.0f` | `color.getRProperty() / 255.0f` |
 | `mouse.LeftButton` | `mouse.getLeftButtonProperty()` |

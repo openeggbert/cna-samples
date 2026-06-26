@@ -1,9 +1,10 @@
 #pragma once
 
 #include <vector>
-#include <random>
 #include <cmath>
 #include <string>
+
+#include "System/Random.hpp"
 
 #include "Microsoft/Xna/Framework/Color.hpp"
 #include "Microsoft/Xna/Framework/Game.hpp"
@@ -43,25 +44,20 @@ namespace PrimitivesSample
 
         void CreateStars()
         {
-            std::mt19937 rng(42);
+            System::Random random;
             const auto& vp         = graphics.getGraphicsDeviceProperty()->getViewportProperty();
             const int screenWidth  = vp.getWidthProperty();
             const int screenHeight = vp.getHeightProperty();
 
-            std::uniform_int_distribution<int> distX(0, screenWidth  - 1);
-            std::uniform_int_distribution<int> distY(0, screenHeight - 1);
-            std::uniform_int_distribution<int> distBrightness(MinimumStarBrightness, MaximumStarBrightness);
-            std::uniform_real_distribution<float> distReal(0.0f, 1.0f);
-
             for (int i = 0; i < NumStars; ++i)
             {
-                Vector2 where(static_cast<float>(distX(rng)),
-                              static_cast<float>(distY(rng)));
+                Vector2 where(static_cast<float>(random.Next(0, screenWidth)),
+                              static_cast<float>(random.Next(0, screenHeight)));
 
-                int greyInt = distBrightness(rng);
+                int greyInt = random.Next(MinimumStarBrightness, MaximumStarBrightness);
                 Color color(greyInt, greyInt, greyInt, 255);
 
-                if (distReal(rng) > PercentBigStars)
+                if (static_cast<float>(random.NextDouble()) > PercentBigStars)
                 {
                     starColors.push_back(color);
                     stars.push_back(where);
