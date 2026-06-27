@@ -50,6 +50,11 @@ class PathfindingGame : public Microsoft::Xna::Framework::Game {
     GamePadState  prevGamePad_;
     GamePadState  curGamePad_;
 
+    // --- F1 help overlay ---
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "PathfindingGame";
@@ -89,9 +94,16 @@ protected:
         map_.LoadContent(getContentProperty());
         tank_.LoadContent(getContentProperty());
         pathFinder_.LoadContent(getContentProperty());
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+
         HandleInput();
 
         if (map_.MapReload()) {
@@ -122,6 +134,14 @@ protected:
         pathFinder_.Draw(*spriteBatch_);
         tank_.Draw(*spriteBatch_);
         DrawHUD();
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
         spriteBatch_->End();
 
         Game::Draw(gameTime);

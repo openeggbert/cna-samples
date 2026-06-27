@@ -16,6 +16,7 @@
 #include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "Microsoft/Xna/Framework/Input/Keys.hpp"
+#include "Microsoft/Xna/Framework/Input/Keyboard.hpp"
 #include "System/TimeSpan.hpp"
 #include "Direction.hpp"
 #include "InputManager.hpp"
@@ -34,6 +35,11 @@ class InputSequenceGame : public Microsoft::Xna::Framework::Game {
     std::array<InputManager, 2> inputManagers_;
     std::array<Move*, 2>  playerMoves_    = { nullptr, nullptr };
     std::array<System::TimeSpan, 2> playerMoveTimes_;
+
+    // --- F1 help overlay ---
+    std::optional<Microsoft::Xna::Framework::Graphics::Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
 
     const System::TimeSpan MoveTimeOut = System::TimeSpan::FromSeconds(1.0);
 
@@ -115,10 +121,18 @@ protected:
         yButtonTexture_   = getContentProperty().Load<Texture2D>("Y");
         plusTexture_      = getContentProperty().Load<Texture2D>("Plus");
         padFaceTexture_   = getContentProperty().Load<Texture2D>("PadFace");
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
     }
 
     void Update(Microsoft::Xna::Framework::GameTime& gameTime) override {
         using namespace Microsoft::Xna::Framework::Input;
+
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+
         for (int i = 0; i < 2; ++i) {
             if (gameTime.getTotalGameTimeProperty() - playerMoveTimes_[i] > MoveTimeOut)
                 playerMoves_[i] = nullptr;
@@ -172,6 +186,15 @@ protected:
             position.X = topLeft.X;
             DrawPlayerInput(i, position);
             position.Y = position.Y + 80.0f;
+        }
+
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
         }
 
         spriteBatch_->End();

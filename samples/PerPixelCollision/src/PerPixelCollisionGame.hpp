@@ -50,6 +50,11 @@ class PerPixelCollisionGame : public Microsoft::Xna::Framework::Game {
     Rectangle safeBounds_;
     static constexpr float SafeAreaPortion = 0.05f;
 
+    // --- F1 help overlay ---
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "PerPixelCollisionGame";
@@ -87,9 +92,16 @@ protected:
         personTexture_->GetData(personTextureData_.data(), personPixels);
 
         spriteBatch_ = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+
         KeyboardState keyboard = Keyboard::GetState();
         GamePadState  gamePad  = GamePad::GetState(PlayerIndex::One);
 
@@ -149,6 +161,14 @@ protected:
         spriteBatch_->Draw(*personTexture_, personPosition_, Color(255, 255, 255, 255));
         for (const Vector2& pos : blockPositions_)
             spriteBatch_->Draw(*blockTexture_, pos, Color(255, 255, 255, 255));
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
         spriteBatch_->End();
 
         Game::Draw(gameTime);

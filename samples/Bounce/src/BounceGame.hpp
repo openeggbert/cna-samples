@@ -72,6 +72,10 @@ class BounceGame : public Microsoft::Xna::Framework::Game {
     // Default accelZ=-tiltOffset so that effective rotateX=0 → gravity straight down
     Vector3 simAccel_{0.0f, 0.0f, -tiltOffset};
 
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "BounceGame";
@@ -95,6 +99,7 @@ protected:
         pixel_->SetData(&white, 1);
 
         primitive_ = std::make_unique<SpherePrimitive>(getGraphicsDeviceProperty());
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
 
         float xpos = -10.0f, zpos = -2.0f, ypos = floorPlaneHeight;
         for (int i = 0; i < numSpheres; i++) {
@@ -115,6 +120,11 @@ protected:
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
         HandleInput();
         UpdateSpheres(gameTime);
         Game::Update(gameTime);
@@ -313,6 +323,15 @@ private:
         int dx = CX + (int)(nx * HALF) - DOT / 2;
         int dy = CY + (int)(ny * HALF) - DOT / 2;
         FillRect(dx, dy, DOT, DOT, dotColor);
+
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
 
         spriteBatch_->End();
     }

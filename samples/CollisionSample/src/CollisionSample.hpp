@@ -23,6 +23,8 @@
 #include "Microsoft/Xna/Framework/Vector2.hpp"
 #include "Microsoft/Xna/Framework/Vector3.hpp"
 #include "Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp"
+#include "Microsoft/Xna/Framework/Graphics/SpriteBatch.hpp"
+#include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "Microsoft/Xna/Framework/Input/GamePad.hpp"
 #include "Microsoft/Xna/Framework/Input/Keys.hpp"
@@ -91,6 +93,11 @@ class CollisionSampleGame : public Microsoft::Xna::Framework::Game {
     double unpausedClock_ = 0.0;
     bool   paused_        = false;
 
+    std::unique_ptr<SpriteBatch> helpSpriteBatch_;
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "CollisionSampleGame";
@@ -151,6 +158,8 @@ protected:
         }
 
         rayHitResult_ = std::nullopt;
+        helpSpriteBatch_ = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
 
         cameraYaw_      = MathHelper::Pi * 0.75f;
         cameraPitch_    = MathHelper::PiOver4;
@@ -162,6 +171,11 @@ protected:
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
         ReadInputDevices();
 
         if (currentKeyboardState_.IsKeyDown(Keys::Escape) ||
@@ -225,6 +239,17 @@ protected:
         }
 
         debugDraw_->End();
+
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            helpSpriteBatch_->Begin();
+            helpSpriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+            helpSpriteBatch_->End();
+        }
 
         Game::Draw(gameTime);
     }

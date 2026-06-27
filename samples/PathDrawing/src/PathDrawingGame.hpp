@@ -44,6 +44,11 @@ class PathDrawingGame : public Microsoft::Xna::Framework::Game {
     MouseState prevMouse_;
     MouseState currentMouse_;
 
+    // --- F1 help overlay ---
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "PathDrawingGame";
@@ -64,9 +69,16 @@ protected:
         tank_ = std::make_unique<Tank>(getGraphicsDeviceProperty(), getContentProperty());
         tank_->Reset(Vector2(100.0f, 100.0f));
         tank_->SetMoveSpeed(225.0f);
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+
         KeyboardState keyboard = Keyboard::GetState();
         GamePadState  gamePad  = GamePad::GetState(PlayerIndex::One);
 
@@ -111,6 +123,14 @@ protected:
         spriteBatch_->Begin();
         DrawGround();
         tank_->Draw(*spriteBatch_);
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
         spriteBatch_->End();
 
         DrawPath();

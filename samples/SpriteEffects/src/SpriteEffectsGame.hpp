@@ -68,6 +68,11 @@ namespace SpriteEffectsSample
 
         std::unique_ptr<SpriteBatch> spriteBatch_;
 
+        std::unique_ptr<SpriteBatch> helpSpriteBatch_;
+        std::optional<Texture2D>     helpTexture_;
+        float helpTimer_ = 0.0f;
+        bool  prevF1_    = false;
+
     public:
         SpriteEffectsGame()
         {
@@ -95,10 +100,17 @@ namespace SpriteEffectsSample
             waterfallTexture_   = getContentProperty().Load<Texture2D>("waterfall");
 
             spriteBatch_ = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+            helpSpriteBatch_ = std::make_unique<SpriteBatch>(getGraphicsDeviceProperty());
+            helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
         }
 
         void Update(GameTime& gameTime) override
         {
+            float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+            bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+            if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+            prevF1_ = curF1;
+            if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
             HandleInput();
 
             if (NextButtonPressed())
@@ -122,6 +134,17 @@ namespace SpriteEffectsSample
                 case DemoEffect::RefractCat:    DrawRefractCat(gameTime);    break;
                 case DemoEffect::RefractGlacier: DrawRefractGlacier(gameTime); break;
                 default: break;
+            }
+
+            if (helpTimer_ > 0.0f) {
+                int hw = helpTexture_->getWidthProperty();
+                int hh = helpTexture_->getHeightProperty();
+                auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+                float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+                float sy = (float)((vp.getHeightProperty() - hh) / 2);
+                helpSpriteBatch_->Begin();
+                helpSpriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+                helpSpriteBatch_->End();
             }
 
             Game::Draw(gameTime);

@@ -72,6 +72,11 @@ class InputReporterGame : public Microsoft::Xna::Framework::Game {
     ChargeSwitchExit      exitSwitch_;
     ChargeSwitchDeadZone  deadZoneSwitch_;
 
+    // --- F1 help overlay ---
+    std::optional<Microsoft::Xna::Framework::Graphics::Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool  prevF1_    = false;
+
 public:
     InputReporterGame()
         : graphics_(this)
@@ -124,11 +129,18 @@ protected:
             selectedTextures_[i] = content.Load<Texture2D>(
                 "Textures/select_controller" + std::to_string(i + 1));
         }
+        helpTexture_.emplace(content.Load<Texture2D>("help"));
         SetDeadZone(deadZone_);
     }
 
     void Update(Microsoft::Xna::Framework::GameTime& gameTime) override {
         using namespace Microsoft::Xna::Framework::Input;
+
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
 
         KeyboardState kb = Keyboard::GetState();
         if (kb.IsKeyDown(Keys::Escape))
@@ -206,6 +218,15 @@ protected:
         auto& exFont = exitSwitch_.Active() ? instructionsActiveFont_ : instructionsFont_;
         spriteBatch_->DrawString(*exFont,
             InputReporterResources::ExitInstructions, exitInstrPos, instructionsColor);
+
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
 
         spriteBatch_->End();
     }
