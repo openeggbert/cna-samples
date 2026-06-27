@@ -107,12 +107,13 @@ protected:
     void Draw(const GameTime& gameTime) override {
         getGraphicsDeviceProperty().Clear(Color(100, 149, 237, 255));
 
-        DrawGround();
-        DrawPath();
-
+        // All sprite draws in one Begin/End to avoid state issues.
         spriteBatch_->Begin();
+        DrawGround();
         tank_->Draw(*spriteBatch_);
         spriteBatch_->End();
+
+        DrawPath();
 
         Game::Draw(gameTime);
     }
@@ -122,19 +123,14 @@ private:
         Viewport vp = getGraphicsDeviceProperty().getViewportProperty();
         int vw = vp.getWidthProperty();
         int vh = vp.getHeightProperty();
-        float scale = (float)groundSize / (float)groundTexture_->getWidthProperty();
 
-        spriteBatch_->Begin();
         for (int ty = 0; ty * groundSize < vh; ty++) {
             for (int tx = 0; tx * groundSize < vw; tx++) {
                 spriteBatch_->Draw(*groundTexture_,
                     Vector2((float)(tx * groundSize), (float)(ty * groundSize)),
-                    std::nullopt, Color(255, 255, 255, 255),
-                    0.0f, Vector2::Zero, scale,
-                    SpriteEffects::None, 0.0f);
+                    Color(255, 255, 255, 255));
             }
         }
-        spriteBatch_->End();
     }
 
     void DrawPath() {
