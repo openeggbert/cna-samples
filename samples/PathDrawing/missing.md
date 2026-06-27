@@ -15,6 +15,15 @@ a `SpriteFont` loaded from `Font.spritefont`.
 **Root cause:** CNA has no SpriteFont support.
 **Tracked in:** DEFERRED.md.
 
+## Ground drawn by manual tiling instead of LinearWrap
+**XNA behaviour:** `SpriteBatch.Begin` with `SamplerState.LinearWrap` and a source
+rectangle wider than the texture causes the GPU sampler to tile the texture.
+**CNA port behaviour:** Ground texture drawn in a loop of `groundSize × groundSize`
+pixel tiles using the default SpriteBatch (no LinearWrap needed).
+**Root cause:** CNA Vulkan backend does not yet forward the SamplerState from
+`SpriteBatch::Begin` to the GPU sampler, so UV wrapping has no effect.
+**Tracked in:** CNA issue.
+
 ## IsFullScreen and TargetElapsedTime omitted
 **XNA behaviour:** Sets `IsFullScreen = true` and `TargetElapsedTime` to 30 fps (phone defaults).
 **CNA port behaviour:** Default window mode and 60 fps.

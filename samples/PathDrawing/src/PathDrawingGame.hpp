@@ -8,11 +8,8 @@
 #include "Microsoft/Xna/Framework/GraphicsDeviceManager.hpp"
 #include "Microsoft/Xna/Framework/Rectangle.hpp"
 #include "Microsoft/Xna/Framework/Vector2.hpp"
-#include "Microsoft/Xna/Framework/Graphics/BlendState.hpp"
 #include "Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp"
-#include "Microsoft/Xna/Framework/Graphics/SamplerState.hpp"
 #include "Microsoft/Xna/Framework/Graphics/SpriteBatch.hpp"
-#include "Microsoft/Xna/Framework/Graphics/SpriteSortMode.hpp"
 #include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "Microsoft/Xna/Framework/Input/ButtonState.hpp"
@@ -121,20 +118,20 @@ protected:
 
 private:
     void DrawGround() {
-        SamplerState linearWrap = SamplerState::LinearWrap;
-        spriteBatch_->Begin(SpriteSortMode::Deferred, BlendState::AlphaBlend,
-                            &linearWrap, nullptr, nullptr);
-
         Viewport vp = getGraphicsDeviceProperty().getViewportProperty();
         int vw = vp.getWidthProperty();
         int vh = vp.getHeightProperty();
-        int tw = groundTexture_->getWidthProperty();
-        int th = groundTexture_->getHeightProperty();
 
-        Rectangle source(0, 0, (vw / groundSize) * tw, (vh / groundSize) * th);
-
-        spriteBatch_->Draw(*groundTexture_, vp.getBoundsProperty(), source,
-                           Color(255, 255, 255, 255));
+        // Tile the ground texture in groundSize x groundSize blocks.
+        // LinearWrap via SpriteBatch::Begin is not yet reliable in CNA;
+        // manual tiling achieves the same result.
+        spriteBatch_->Begin();
+        for (int ty = 0; ty * groundSize < vh; ty++) {
+            for (int tx = 0; tx * groundSize < vw; tx++) {
+                Rectangle dst(tx * groundSize, ty * groundSize, groundSize, groundSize);
+                spriteBatch_->Draw(*groundTexture_, dst, Color(255, 255, 255, 255));
+            }
+        }
         spriteBatch_->End();
     }
 
