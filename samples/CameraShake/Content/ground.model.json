@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "ground",
+      "vertices": "ground_verts.bin",
+      "indices": "ground_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

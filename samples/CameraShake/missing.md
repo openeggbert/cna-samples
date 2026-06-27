@@ -1,14 +1,44 @@
 # Missing / Differences from XNA 4.0 original
 
-## Not ported — blocked by Model loading
+## VibrationManager omitted
+**XNA behaviour:** A `VibrationManager` GameComponent vibrates the gamepad motors
+(left/right, with linear decay) in sync with the camera shake. On Windows Phone it
+also triggers the phone's vibration motor via `VibrateController`.
+**CNA port behaviour:** No vibration — the camera shake visual effect is identical
+but no rumble feedback is produced.
+**Root cause:** `GameComponent`/`Game.Components` not yet in CNA; `GamePad.SetVibration`
+exists but is not wired up without the component. Low priority for a desktop demo.
+**Tracked in:** not planned
 
-**XNA behaviour:** Loads a 3D tank model (`tank.fbx`) and ground plane (`Ground.x`).
-A camera-shake effect is applied when the user taps (or triggers a shake event),
-creating an oscillating view offset to simulate explosion impact.
+## Touch input removed
+**XNA behaviour:** On Windows Phone, tap triggers a short shake and double-tap triggers
+a long shake via `TouchPanel`.
+**CNA port behaviour:** Desktop only — keyboard A / X keys used instead.
+**Root cause:** Touch input is phone-specific.
+**Tracked in:** not planned
 
-**CNA port behaviour:** Not implemented. No source files exist yet.
+## Model format converted from FBX/X to .model.json
+**XNA behaviour:** Loads `tank.fbx` (ASCII FBX 6.1, 12 mesh parts) and `Ground.x`
+via XNA ContentManager.
+**CNA port behaviour:** Models converted to CNA's `.model.json` binary format using
+`tools/fbx_ascii2model.py` (for FBX) and `tools/obj2model.py` (for .x via assimp).
+Geometry and normals are preserved; textures reference original TGA files.
+**Root cause:** CNA does not load FBX/X natively; uses its own .model.json format.
+**Tracked in:** DEFERRED.md item #6
 
-**Root cause:** Tank model (`tank.fbx`, `Ground.x`) must be converted from FBX/X format
-to CNA's `.model.json` format. CNA supports Model loading — the gap is asset conversion.
+## Textures not assigned to model meshes
+**XNA behaviour:** `BasicEffect` on each mesh is given the appropriate texture
+(`engine_diff_tex.tga` for engine/wheel parts, `turret_alt_diff_tex.tga` for turret).
+**CNA port behaviour:** Textures are present in Content/ but the `.model.json` format
+does not yet specify per-mesh textures — meshes render with `BasicEffect` default
+(untextured, white diffuse).
+**Root cause:** `.model.json` `"effect"` field does not support texture assignment;
+would require a named `.shader.json` Effect or a texture field extension.
+**Tracked in:** not planned (visual difference only)
 
-**Tracked in:** DEFERRED.md item #6 (model asset conversion)
+## Ground uses checker texture but renders untextured
+**XNA behaviour:** Ground plane uses `SamplerState.LinearWrap` and `Checker.bmp`
+tiled texture via BasicEffect.
+**CNA port behaviour:** Ground renders as plain white/grey (no texture assigned).
+**Root cause:** Same as mesh texture limitation above.
+**Tracked in:** not planned
