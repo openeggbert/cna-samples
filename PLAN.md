@@ -203,7 +203,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
 | 013 | Platformer | `Platformer_4_0` | ✅ Done | MonoGame: `Platformer2D` |
-| 014 | Spacewar | `Spacewar_4_0` | ⬜ Todo |
+| 014 | Spacewar | `Spacewar_4_0` | 🚫 Deferred — Model + custom shaders + RenderTarget2D + XACT not in CNA |
 | 015 | TicTacToe | `TicTacToe_4_0` | ✅ Done |
 | 016 | Bounce | `BounceSample_4_0` | ✅ Done |
 | 017 | CollisionSample | `CollisionSample_4_0` | ✅ Done |
