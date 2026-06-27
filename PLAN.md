@@ -206,7 +206,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 014 | Spacewar | `Spacewar_4_0` | ⬜ Todo |
 | 015 | TicTacToe | `TicTacToe_4_0` | ⬜ Todo |
 | 016 | Bounce | `BounceSample_4_0` | ✅ Done |
-| 017 | CollisionSample | `CollisionSample_4_0` | ⬜ Todo |
+| 017 | CollisionSample | `CollisionSample_4_0` | ✅ Done |
 | 018 | PerPixelCollision | `PerPixelCollisionSample_4_0` | ⬜ Todo |
 | 019 | RectangleCollision | `RectangleCollisionSample_4_0` | ✅ Done |
 | 020 | TransformedCollision | `TransformedCollisionSample_4_0` | ⬜ Todo |
