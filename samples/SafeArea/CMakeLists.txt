@@ -1,4 +1,4 @@
-cna_add_sample(safearea
+cna_add_sample(SafeArea
     SOURCES
         src/Program.cpp
     CONTENT_DIR

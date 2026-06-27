@@ -1,4 +1,4 @@
-cna_add_sample(inputsequence
+cna_add_sample(InputSequence
     SOURCES
         src/Program.cpp
     CONTENT_DIR

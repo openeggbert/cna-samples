@@ -1,4 +1,4 @@
-cna_add_sample(platformer
+cna_add_sample(Platformer
     SOURCES
         src/Program.cpp
     CONTENT_DIR

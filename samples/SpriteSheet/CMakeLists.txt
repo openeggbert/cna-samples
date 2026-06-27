@@ -1,4 +1,4 @@
-cna_add_sample(spritesheet
+cna_add_sample(SpriteSheet
     SOURCES
         src/Program.cpp
     CONTENT_DIR

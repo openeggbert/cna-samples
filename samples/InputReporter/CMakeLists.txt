@@ -1,4 +1,4 @@
-cna_add_sample(inputreporter
+cna_add_sample(InputReporter
     SOURCES
         src/Program.cpp
     CONTENT_DIR

@@ -6,13 +6,14 @@
 #     [CONTENT_DIR path/to/Content]   # optional: copies assets next to the exe
 # )
 #
-# Creates an executable named `cna_sample_<target_name>`, links it against the
-# CNA framework and (on GNU/Clang Linux) wraps the link in a linker group to
-# resolve circular references between CNA and the graphics backend.
+# Creates an executable named `<target_name>_cna_samples` (use exact directory
+# name, e.g. SafeArea, Platformer), links it against the CNA framework and
+# (on GNU/Clang Linux) wraps the link in a linker group to resolve circular
+# references between CNA and the graphics backend.
 function(cna_add_sample target_name)
     cmake_parse_arguments(ARG "" "CONTENT_DIR" "SOURCES" ${ARGN})
 
-    set(full_target "cna_sample_${target_name}")
+    set(full_target "${target_name}_cna_samples")
 
     add_executable(${full_target} ${ARG_SOURCES})
 

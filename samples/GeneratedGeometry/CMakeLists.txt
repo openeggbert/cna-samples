@@ -1,4 +1,4 @@
-cna_add_sample(generatedgeometry
+cna_add_sample(GeneratedGeometry
     SOURCES
         src/Program.cpp
     CONTENT_DIR

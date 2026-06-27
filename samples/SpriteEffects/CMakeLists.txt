@@ -1,4 +1,4 @@
-cna_add_sample(spriteeffects
+cna_add_sample(SpriteEffects
     SOURCES
         src/Program.cpp
     CONTENT_DIR
