@@ -198,6 +198,47 @@ In CNA, `Buttons` is accessed via `getButtonsProperty()` and `Back` via `getBack
 
 ---
 
+## 11. Custom User Effects (HLSL / GLSL pixel shaders)
+
+**What is missing:**
+`Content.Load<Effect>("MyShader")` — loading user-authored HLSL `.fx` shaders at
+runtime.  Many post-processing and advanced rendering samples ship compiled `.xnb`
+effect files that CNA cannot load.
+
+**Where to implement:**
+- Add an Effect content reader to CNA's ContentManager
+- Compile HLSL to backend-specific SPIR-V (Vulkan) or GLSL (EasyGL) as part of the
+  asset build pipeline (e.g., via `glslc`, `dxc`, or SPIRV-Cross)
+- Wire the compiled shader into `Effect::Apply()` in the render backend
+
+**Blocked samples:** BloomSample (3 shaders), DistortionSample, NonPhotoRealistic,
+NormalMapping, PerPixelLighting, VertexLighting, RimLighting, ShadowMapping,
+ShatterEffect, Particles3D, and all Phase 3+ shader samples.
+
+**Effort:** XL
+
+---
+
+## 12. RenderTarget2D (off-screen render targets)
+
+**What is missing:**
+`new RenderTarget2D(GraphicsDevice, width, height, ...)` and
+`GraphicsDevice.SetRenderTarget(rt)` / `SetRenderTarget(null)`.
+Post-processing samples require rendering the scene to an off-screen texture,
+then sampling that texture in subsequent shader passes.
+
+**Where to implement:**
+- `cna/include/Microsoft/Xna/Framework/Graphics/RenderTarget2D.hpp`
+- `cna/src/Microsoft/Xna/Framework/Graphics/RenderTarget2D.cpp`
+- Backend-specific framebuffer / FBO support in EasyGL and Vulkan backends
+
+**Blocked samples:** BloomSample, DistortionSample, ShadowMapping, LensFlare,
+and any sample that redirects rendering to a texture.
+
+**Effort:** L
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -212,3 +253,5 @@ In CNA, `Buttons` is accessed via `getButtonsProperty()` and `Back` via `getBack
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
 | 9 | Viewport.AspectRatio | cna | S | 0 (workaround) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
+| 11 | Custom user Effect / HLSL shaders | cna | XL | many Phase 3+ |
+| 12 | RenderTarget2D (off-screen targets) | cna | L | many Phase 3+ |

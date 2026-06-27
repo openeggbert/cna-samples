@@ -229,7 +229,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 031 | BloomSample | `BloomSample_4_0` | ⬜ Todo |
+| 031 | BloomSample | `BloomSample_4_0` | 🚫 Deferred — custom Effect (shaders) + RenderTarget2D + Model not in CNA |
 | 032 | DistortionSample | `DistortionSample_4_0` | ⬜ Todo |
 | 033 | NonPhotoRealistic | `NonPhotoRealisticSample_4_0` | ⬜ Todo |
 | 034 | NormalMapping | `NormalMappingSample_4_0` | ⬜ Todo |
