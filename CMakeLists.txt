@@ -10,6 +10,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # CNA dependency — consumed as a sibling add_subdirectory so that CNA's own
 # CMake machinery (SDL vendoring, backend selection, etc.) is fully reused.
 # ---------------------------------------------------------------------------
+
+# Default to the Vulkan backend so CLion profiles and bare cmake invocations
+# (which don't pass -DCNA_GRAPHICS_BACKEND) get Vulkan automatically.
+# A preset or command-line -DCNA_GRAPHICS_BACKEND=<X> still wins because
+# CACHE variables set earlier on the command line are not overwritten here.
+if(NOT DEFINED CNA_GRAPHICS_BACKEND)
+    set(CNA_GRAPHICS_BACKEND "VULKAN" CACHE STRING
+        "Graphics backend to use (SDL_RENDERER, EASYGL, BGFX, or VULKAN)")
+endif()
+
 set(CNA_BUILD_TESTS         OFF CACHE BOOL "Build CNA tests"         FORCE)
 set(CNA_BUILD_EXAMPLES      OFF CACHE BOOL "Build CNA examples"      FORCE)
 set(SHARP_RUNTIME_BUILD_TESTS OFF CACHE BOOL "Build sharp-runtime tests" FORCE)
