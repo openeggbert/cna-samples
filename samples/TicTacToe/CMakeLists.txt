@@ -1,4 +1,4 @@
-cna_add_sample(tictactoe
+cna_add_sample(TicTacToe
     SOURCES
         src/Program.cpp
 )
