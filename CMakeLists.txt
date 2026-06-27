@@ -73,7 +73,7 @@ add_subdirectory(samples/PathDrawing)
 add_subdirectory(samples/Pathfinding)
 add_subdirectory(samples/FlockingSample)
 # add_subdirectory(samples/Spacewar)
-# add_subdirectory(samples/TicTacToe)
+add_subdirectory(samples/TicTacToe)
 add_subdirectory(samples/ParticleSample)
 
 # Phase 3 — 3D Graphics
