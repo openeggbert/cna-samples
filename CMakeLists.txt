@@ -74,7 +74,7 @@ add_subdirectory(samples/Pathfinding)
 add_subdirectory(samples/FlockingSample)
 # add_subdirectory(samples/Spacewar)
 # add_subdirectory(samples/TicTacToe)
-# add_subdirectory(samples/ParticleSample)
+add_subdirectory(samples/ParticleSample)
 
 # Phase 3 — 3D Graphics
 # add_subdirectory(samples/ChaseCamera)
