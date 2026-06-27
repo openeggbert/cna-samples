@@ -205,10 +205,10 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 013 | Platformer | `Platformer_4_0` | ✅ Done | MonoGame: `Platformer2D` |
 | 014 | Spacewar | `Spacewar_4_0` | ⬜ Todo |
 | 015 | TicTacToe | `TicTacToe_4_0` | ⬜ Todo |
-| 016 | Bounce | `BounceSample_4_0` | ⬜ Todo |
+| 016 | Bounce | `BounceSample_4_0` | ✅ Done |
 | 017 | CollisionSample | `CollisionSample_4_0` | ⬜ Todo |
 | 018 | PerPixelCollision | `PerPixelCollisionSample_4_0` | ⬜ Todo |
-| 019 | RectangleCollision | `RectangleCollisionSample_4_0` | ⬜ Todo |
+| 019 | RectangleCollision | `RectangleCollisionSample_4_0` | ✅ Done |
 | 020 | TransformedCollision | `TransformedCollisionSample_4_0` | ⬜ Todo |
 | 021 | PathDrawing | `PathDrawing_4_0` | ⬜ Todo |
 | 022 | Pathfinding | `Pathfinding_4_0` | ⬜ Todo |
