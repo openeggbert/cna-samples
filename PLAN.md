@@ -276,7 +276,7 @@ Requires CNA audio backend (see `DEFERRED.md` item 7).
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 059 | Audio3D | `Audio3DSample_4_0` | ⬜ Todo |
+| 059 | Audio3D | `Audio3DSample_4_0` | ✅ Done |
 | 060 | SoundAndMusic | `SoundAndMusic_4_0` | ⬜ Todo |
 
 ---
