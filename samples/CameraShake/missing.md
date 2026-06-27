@@ -43,13 +43,20 @@ tiled texture via BasicEffect.
 **Root cause:** Same as mesh texture limitation above.
 **Tracked in:** not planned
 
-## 3D scene rendering (fixed in CNA Vulkan shaders)
-**Issue:** The scene previously rendered as a thin white diagonal line.
-**Root cause:** All CNA Vulkan 3D vertex shaders applied `pos.z = (pos.z + pos.w) * 0.5`
-(an OpenGL→Vulkan z remap), but CNA's `CreatePerspectiveFieldOfView` already uses the
-XNA/DirectX [0,w] clip-space z convention — the remap was applied twice, shifting the
-near plane to NDC.z=0.5 and breaking near-plane clipping for large triangles.
-**Fix applied:** Removed the redundant z remap from all 5 affected Vulkan vertex shaders
-(`lit_textured3d`, `alpha_test3d`, `textured3d`, `colored_textured3d`, `colored3d`)
-and recompiled SPIR-V. The 3D scene now renders correctly.
-**Tracked in:** Fixed in CNA — `src/CNA/Internal/Backends/Vulkan/shaders/`
+## 3D scene rendering (fixed in CNA Vulkan shaders + ground scale)
+**XNA behaviour:** Camera at (1000,1000,1000) with ground scale 0.1 renders correctly.
+DirectX clips triangles whose vertices extend behind the camera (near-plane clip of
+the +X+Z corner vertex at (6554,0,6554)) and the visible portion of the ground renders.
+**CNA port behaviour:** Ground scale reduced from 0.1 to 0.02 to keep all vertices
+in front of the camera. At scale 0.02 the farthest ground vertex at (1310,0,1310) has
+x+z=2620 which is safely inside the camera forward half-space (threshold ≈ 3000 for
+camera at (1000,1000,1000)). Scene renders correctly at the smaller scale.
+**Root cause (two issues fixed):**
+1. All CNA Vulkan 3D vertex shaders previously applied `pos.z = (pos.z + pos.w) * 0.5`
+   (OpenGL→Vulkan z remap), but CNA's `CreatePerspectiveFieldOfView` already uses the
+   XNA/DirectX [0,w] clip-space z convention. Removed from all 5 affected shaders.
+2. Vulkan near-plane clipping of triangles with w<0 vertices produces visible artifacts
+   (white stripe) rather than the clean clip DirectX provides. Reducing ground scale
+   eliminates any vertex behind the camera, avoiding the clip entirely.
+**Tracked in:** Shader fix in CNA `src/CNA/Internal/Backends/Vulkan/shaders/`; ground
+scale difference is a CNA/Vulkan near-plane clipping limitation.
