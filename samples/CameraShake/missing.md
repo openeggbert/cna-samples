@@ -42,3 +42,14 @@ tiled texture via BasicEffect.
 **CNA port behaviour:** Ground renders as plain white/grey (no texture assigned).
 **Root cause:** Same as mesh texture limitation above.
 **Tracked in:** not planned
+
+## 3D scene rendering (fixed in CNA Vulkan shaders)
+**Issue:** The scene previously rendered as a thin white diagonal line.
+**Root cause:** All CNA Vulkan 3D vertex shaders applied `pos.z = (pos.z + pos.w) * 0.5`
+(an OpenGL→Vulkan z remap), but CNA's `CreatePerspectiveFieldOfView` already uses the
+XNA/DirectX [0,w] clip-space z convention — the remap was applied twice, shifting the
+near plane to NDC.z=0.5 and breaking near-plane clipping for large triangles.
+**Fix applied:** Removed the redundant z remap from all 5 affected Vulkan vertex shaders
+(`lit_textured3d`, `alpha_test3d`, `textured3d`, `colored_textured3d`, `colored3d`)
+and recompiled SPIR-V. The 3D scene now renders correctly.
+**Tracked in:** Fixed in CNA — `src/CNA/Internal/Backends/Vulkan/shaders/`
