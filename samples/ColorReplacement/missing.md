@@ -9,7 +9,8 @@ user-adjustable RGB target values.
 **CNA port behaviour:** Not implemented. No source files exist yet.
 
 **Root cause:**
-- `Content.Load<Model>()` is not implemented in CNA (DEFERRED.md item #6).
-- Custom HLSL Effect loading (`Content.Load<Effect>()`) is not implemented in CNA.
+- `Car.x` model must be converted to CNA's `.model.json` format (DEFERRED.md item #6).
+- `ReplaceColor.fx` HLSL shader must be rewritten as GLSL `.shader.json` (DEFERRED.md item #11).
+- CNA supports both Model loading and custom Effects — the gap is asset/shader conversion.
 
-**Tracked in:** DEFERRED.md items #5 (custom shaders) and #6 (Model loading)
+**Tracked in:** DEFERRED.md items #6 (model conversion) and #11 (shader conversion)

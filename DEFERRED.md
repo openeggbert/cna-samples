@@ -126,37 +126,34 @@ HeightmapCollision, BillboardSample, and all samples using `BasicEffect` with li
 
 ---
 
-## 6. Model Loading (ContentManager.Load<Model>)
+## 6. Model Asset Conversion (FBX/X → .model.json) ✅ CNA SUPPORTS MODELS
 
 **What is missing:**
-`Content.Load<Model>("foo")` is not implemented.  Many samples rely on `.xnb`
-model files (originally from FBX/X sources).
+`Content.Load<Model>()` IS implemented in CNA via `.model.json` descriptor +
+binary vertex/index files.  The gap is **asset conversion**: XNA samples ship
+`.x` and `.fbx` model files that must be converted to CNA's `.model.json` format.
 
-**Where to implement:**
-- Add a glTF 2.0 model loader to CNA's ContentManager
-- `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`
-- Depends on a glTF parser library (e.g., `cgltf` or `tinygltf`)
+**What needs to happen:**
+- Convert source `.x`/`.fbx` files to `.model.json` + binary buffers
+- Tools: Blender export script, `assimp` CLI, or custom converter
+- One conversion per model file per sample
 
-**Blocked samples:** ChaseCamera, HeightmapCollision, SkinningSample, MarbleMaze,
-ShipGame, RolePlayingGame, and many more.
+**Blocked samples:** CameraShake, BloomSample (tank), Spacewar (Evolved ships/asteroids),
+ChaseCamera, HeightmapCollision, SkinningSample, MarbleMaze, ShipGame, RolePlayingGame,
+and many more.
 
-**Effort:** XL
+**Effort:** M per model (conversion) — no CNA code changes needed
 
 ---
 
-## 7. Audio (SoundEffect, SoundEffectInstance, Song)
+## 7. Audio (SoundEffect, SoundEffectInstance, Song) ✅ RESOLVED
 
-**What is missing:**
-CNA stubs exist for the audio namespace but actual playback is not implemented
-for all platforms.  Samples that rely on `SoundEffect.Play()`, `MediaPlayer.Play()`,
-or `AudioEmitter`/`AudioListener` 3D audio will either fail or produce no sound.
+**What was missing:**
+Audio was thought to be unimplemented but CNA fully supports audio via SDL3_mixer
+(`SOUND_ENABLED`). `SoundEffect`, `SoundEffectInstance`, `Song`, `MediaPlayer`,
+`SoundBank`, `WaveBank`, `AudioEngine`, and `Cue` are all implemented.
 
-**Where to implement:** `cna/src/Microsoft/Xna/Framework/Audio/`
-
-**Blocked samples:** Audio3DSample, SoundAndMusic, Platformer (music), and any
-sample with background music or sound effects.
-
-**Effort:** L
+**Status:** Fully working. No blocker for audio samples.
 
 ---
 
@@ -198,18 +195,18 @@ In CNA, `Buttons` is accessed via `getButtonsProperty()` and `Back` via `getBack
 
 ---
 
-## 11. Custom User Effects (HLSL / GLSL pixel shaders)
+## 11. Custom User Effect Shader Conversion (HLSL .fx → .shader.json) ✅ CNA SUPPORTS CUSTOM EFFECTS
 
 **What is missing:**
-`Content.Load<Effect>("MyShader")` — loading user-authored HLSL `.fx` shaders at
-runtime.  Many post-processing and advanced rendering samples ship compiled `.xnb`
-effect files that CNA cannot load.
+`Content.Load<Effect>()` IS implemented in CNA via `.shader.json` descriptor
+referencing GLSL vertex + fragment shader files.  The gap is **shader conversion**:
+XNA samples use HLSL `.fx` files that must be rewritten as GLSL and described
+via `.shader.json`.
 
-**Where to implement:**
-- Add an Effect content reader to CNA's ContentManager
-- Compile HLSL to backend-specific SPIR-V (Vulkan) or GLSL (EasyGL) as part of the
-  asset build pipeline (e.g., via `glslc`, `dxc`, or SPIRV-Cross)
-- Wire the compiled shader into `Effect::Apply()` in the render backend
+**What needs to happen:**
+- Translate HLSL `.fx` shader logic to GLSL (vertex + fragment)
+- Create `.shader.json` descriptor per effect
+- Tools: manual port or `SPIRV-Cross` + `dxc` pipeline
 
 **Blocked samples:** BloomSample (3 shaders), DistortionSample, NonPhotoRealistic,
 NormalMapping, PerPixelLighting, VertexLighting, RimLighting, ShadowMapping,
@@ -219,23 +216,14 @@ ShatterEffect, Particles3D, and all Phase 3+ shader samples.
 
 ---
 
-## 12. RenderTarget2D (off-screen render targets)
+## 12. RenderTarget2D ✅ RESOLVED
 
-**What is missing:**
-`new RenderTarget2D(GraphicsDevice, width, height, ...)` and
-`GraphicsDevice.SetRenderTarget(rt)` / `SetRenderTarget(null)`.
-Post-processing samples require rendering the scene to an off-screen texture,
-then sampling that texture in subsequent shader passes.
+**What was missing:**
+`RenderTarget2D` and `GraphicsDevice.SetRenderTarget()` were thought to be missing
+but are fully implemented in CNA (`RenderTarget2D.hpp` / `.cpp`, backend framebuffer
+support in both EasyGL and Vulkan backends).
 
-**Where to implement:**
-- `cna/include/Microsoft/Xna/Framework/Graphics/RenderTarget2D.hpp`
-- `cna/src/Microsoft/Xna/Framework/Graphics/RenderTarget2D.cpp`
-- Backend-specific framebuffer / FBO support in EasyGL and Vulkan backends
-
-**Blocked samples:** BloomSample, DistortionSample, ShadowMapping, LensFlare,
-and any sample that redirects rendering to a texture.
-
-**Effort:** L
+**Status:** Fully working. No blocker.
 
 ---
 
@@ -248,10 +236,10 @@ and any sample that redirects rendering to a texture.
 | 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D |
 | 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D |
 | 5 | VertexPositionNormal + lit shader | cna | L | many |
-| 6 | Model loading (glTF) | cna | XL | many |
-| 7 | Audio playback | cna | L | many |
+| 6 | Model asset conversion (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
+| 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
 | 9 | Viewport.AspectRatio | cna | S | 0 (workaround) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
-| 11 | Custom user Effect / HLSL shaders | cna | XL | many Phase 3+ |
-| 12 | RenderTarget2D (off-screen targets) | cna | L | many Phase 3+ |
+| 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
+| 12 | RenderTarget2D | cna | — | — | ✅ done |

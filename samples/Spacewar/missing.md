@@ -11,10 +11,12 @@ VictoryScreen), a scene-graph system, camera, particles, and XACT SoundBank/Wave
 
 **CNA port behaviour:** Not implemented. No source files exist yet.
 
-**Root cause:** Multiple CNA features are missing:
-1. `Content.Load<Model>()` — Evolved ships/asteroids use `.x` / `.fbx` models (DEFERRED.md #6)
-2. Custom user Effect / HLSL shaders — 5× `.fx` files (backdrop, ship, simple, sun, simplescreen) (DEFERRED.md #11)
-3. `RenderTarget2D` — offscreen draw-scaling pipeline (DEFERRED.md #12)
-4. XACT SoundBank/WaveBank compiled output — source `.xap` has no pre-built `.xsb`/`.xwb` in the repo
+**Root cause:** Asset conversion work required:
+1. Evolved ships/asteroids (`.x`/`.fbx` models) must be converted to `.model.json` (DEFERRED.md #6)
+2. 5× HLSL `.fx` shaders must be rewritten as GLSL `.shader.json` (DEFERRED.md #11)
+3. XACT `.xap` source must be compiled to `.xsb`/`.xwb` — the source repo has only the
+   XACT project, not the compiled SoundBank/WaveBank output files
+4. `RenderTarget2D` is supported in CNA (no blocker); `DrawableGameComponent`/`Game.Components`
+   not yet in CNA but can be managed manually as in ParticleSample
 
 **Tracked in:** DEFERRED.md items #6, #11, #12
