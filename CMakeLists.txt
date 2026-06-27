@@ -25,7 +25,7 @@ if(NOT DEFINED BACKEND_TARGET)
     if(CNA_GRAPHICS_BACKEND STREQUAL "EASYGL")
         set(BACKEND_TARGET "easy-gl")
     elseif(CNA_GRAPHICS_BACKEND STREQUAL "VULKAN")
-        set(BACKEND_TARGET "fake-gl")
+        set(BACKEND_TARGET "cna_backend_graphics_vulkan")
     endif()
 endif()
 

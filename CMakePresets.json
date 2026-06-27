@@ -4,17 +4,35 @@
   "configurePresets": [
     {
       "name": "debug",
-      "displayName": "Debug (EasyGL, Linux/macOS)",
+      "displayName": "Debug (Vulkan, Linux/macOS)",
       "binaryDir": "${sourceDir}/cmake-build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":     "Debug",
+        "CNA_GRAPHICS_BACKEND": "VULKAN"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (Vulkan, Linux/macOS)",
+      "binaryDir": "${sourceDir}/cmake-build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":     "Release",
+        "CNA_GRAPHICS_BACKEND": "VULKAN"
+      }
+    },
+    {
+      "name": "debug-easygl",
+      "displayName": "Debug (EasyGL, Linux/macOS)",
+      "binaryDir": "${sourceDir}/cmake-build-easygl",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE":     "Debug",
         "CNA_GRAPHICS_BACKEND": "EASYGL"
       }
     },
     {
-      "name": "release",
+      "name": "release-easygl",
       "displayName": "Release (EasyGL, Linux/macOS)",
-      "binaryDir": "${sourceDir}/cmake-build-release",
+      "binaryDir": "${sourceDir}/cmake-build-easygl-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE":     "Release",
         "CNA_GRAPHICS_BACKEND": "EASYGL"
@@ -45,13 +63,18 @@
   "buildPresets": [
     {
       "name": "debug",
-      "displayName": "Build all samples (debug)",
+      "displayName": "Build all samples (Vulkan debug)",
       "configurePreset": "debug"
     },
     {
       "name": "release",
-      "displayName": "Build all samples (release)",
+      "displayName": "Build all samples (Vulkan release)",
       "configurePreset": "release"
+    },
+    {
+      "name": "debug-easygl",
+      "displayName": "Build all samples (EasyGL debug)",
+      "configurePreset": "debug-easygl"
     }
   ]
 }
