@@ -17,6 +17,7 @@
 #include "Microsoft/Xna/Framework/Input/GamePad.hpp"
 #include "Microsoft/Xna/Framework/Input/Keys.hpp"
 #include "Microsoft/Xna/Framework/Input/Keyboard.hpp"
+#include "Microsoft/Devices/Sensors/Accelerometer.hpp"
 #include "System/Random.hpp"
 
 namespace Bounce {
@@ -24,6 +25,7 @@ namespace Bounce {
 using namespace Microsoft::Xna::Framework;
 using namespace Microsoft::Xna::Framework::Graphics;
 using namespace Microsoft::Xna::Framework::Input;
+using namespace Microsoft::Devices::Sensors;
 
 class BounceGame : public Microsoft::Xna::Framework::Game {
     GraphicsDeviceManager graphics_;
@@ -50,6 +52,9 @@ class BounceGame : public Microsoft::Xna::Framework::Game {
     GamePadState  lastGamePadState_;
 
     System::Random random_;
+    float accelhistory_[2] = {0.0f, 0.0f};
+    Accelerometer accelerometer_;
+    bool accelerometerStarted_ = false;
 
 public:
     const std::string& GetTypeName() const override {
@@ -63,6 +68,11 @@ public:
 
 protected:
     void LoadContent() override {
+        try {
+            accelerometer_.Start();
+            accelerometerStarted_ = true;
+        } catch (...) {}
+
         primitive_ = std::make_unique<SpherePrimitive>(getGraphicsDeviceProperty());
 
         float xpos = -10.0f, zpos = -2.0f, ypos = floorPlaneHeight;
@@ -157,6 +167,37 @@ private:
     void UpdateSpheres(GameTime& gameTime) {
         Vector3 gravity = Vector3::UnitY * -4.0f;
         float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+
+        if (accelerometerStarted_) {
+            const float limit      = 0.85f;
+            const float tiltoffset = 0.76f;
+            float shakeForce = 1.0f;
+
+            Vector3 accel = accelerometer_.getCurrentValueProperty().getAccelerationProperty();
+            float newMag = accel.Length();
+
+            if (accelhistory_[1] > 1.3f && accelhistory_[0] < accelhistory_[1] && accelhistory_[1] > newMag)
+                shakeForce += 10.0f * (accelhistory_[1] - 1.3f) / 3.5f;
+            accelhistory_[0] = accelhistory_[1];
+            accelhistory_[1] = newMag;
+
+            float rotateX = std::max(std::min(-(accel.Z + tiltoffset), limit), -limit);
+            float rotateY = std::max(std::min(accel.Y, limit), -limit);
+            gravity = Vector3::Transform(gravity, Matrix::CreateRotationX(rotateX * MathHelper::PiOver2));
+            gravity = Vector3::Transform(gravity, Matrix::CreateRotationZ(rotateY * MathHelper::PiOver2));
+
+            if (shakeForce > 1.0f) {
+                for (int i = 0; i < numSpheres; i++) {
+                    Sphere& s = spheres_[i];
+                    if (s.Position.Y <= floorPlaneHeight + s.Radius + 0.01f) {
+                        s.Velocity.Y += 0.1f;
+                        float speed = s.Velocity.Length();
+                        float speedadjust = std::min(std::max(speed, 2.0f), 4.0f);
+                        if (speed > 0.0f) s.Velocity = s.Velocity * (speedadjust * shakeForce / speed);
+                    }
+                }
+            }
+        }
 
         for (int i = 0; i < numSpheres; i++) {
             spheres_[i].Position = spheres_[i].Position + spheres_[i].Velocity * elapsed * 0.99f;

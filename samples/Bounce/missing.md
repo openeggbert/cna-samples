@@ -1,11 +1,10 @@
 # Missing / Differences from XNA 4.0 original
 
-## Accelerometer and shake-to-bounce omitted
-**XNA behaviour:** The original targets Windows Phone 7; accelerometer tilt rotates
-gravity so spheres roll toward the physical low point of the device, and a shake
-gesture launches all spheres upward with extra force.
-**CNA port behaviour:** Desktop-only port; gravity is fixed downward (Y = -4.0).
-**Root cause:** Phone-specific features outside the scope of a desktop port.
+## Accelerometer orientation check omitted
+**XNA behaviour:** When the phone is in `DisplayOrientation.LandscapeLeft` mode the
+Y component of the accelerometer reading is negated before use.
+**CNA port behaviour:** Orientation check skipped; desktop has no display orientation.
+**Root cause:** Desktop-specific scope decision.
 **Tracked in:** not planned.
 
 ## VertexPositionNormal replaced with VertexPositionNormalTexture

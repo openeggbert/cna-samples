@@ -54,6 +54,7 @@ protected:
         basicEffect_ = std::make_unique<BasicEffect>(graphicsDevice);
         basicEffect_->setLightingEnabledProperty(true);
         basicEffect_->getDirectionalLight0Property().setEnabledProperty(true);
+        basicEffect_->getDirectionalLight0Property().setDiffuseColorProperty(Vector3::One);
         Vector3 lightDir(0.25f, -1.0f, -1.0f);
         lightDir.Normalize();
         basicEffect_->getDirectionalLight0Property().setDirectionProperty(lightDir);
