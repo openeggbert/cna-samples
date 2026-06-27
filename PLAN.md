@@ -209,7 +209,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 017 | CollisionSample | `CollisionSample_4_0` | ✅ Done |
 | 018 | PerPixelCollision | `PerPixelCollisionSample_4_0` | ✅ Done |
 | 019 | RectangleCollision | `RectangleCollisionSample_4_0` | ✅ Done |
-| 020 | TransformedCollision | `TransformedCollisionSample_4_0` | ⬜ Todo |
+| 020 | TransformedCollision | `TransformedCollisionSample_4_0` | ✅ Done |
 | 021 | PathDrawing | `PathDrawing_4_0` | ⬜ Todo |
 | 022 | Pathfinding | `Pathfinding_4_0` | ⬜ Todo |
 | 023 | WaypointSample | `WaypointSample_4_0` | ⬜ Todo |
