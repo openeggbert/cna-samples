@@ -16,7 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # A preset or command-line -DCNA_GRAPHICS_BACKEND=<X> still wins because
 # CACHE variables set earlier on the command line are not overwritten here.
 if(NOT DEFINED CNA_GRAPHICS_BACKEND)
-    set(CNA_GRAPHICS_BACKEND "VULKAN" CACHE STRING
+    set(CNA_GRAPHICS_BACKEND "EASYGL" CACHE STRING
         "Graphics backend to use (SDL_RENDERER, EASYGL, BGFX, or VULKAN)")
 endif()
 
