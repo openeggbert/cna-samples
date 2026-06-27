@@ -65,6 +65,10 @@ class ChaseAndEvadeGame : public Microsoft::Xna::Framework::Game {
 
     System::Random random_;
 
+    std::optional<Texture2D> helpTexture_;
+    float helpTimer_ = 0.0f;
+    bool prevF1_     = false;
+
 public:
     const std::string& GetTypeName() const override {
         static const std::string name = "ChaseAndEvadeGame";
@@ -95,9 +99,16 @@ protected:
         tankTextureCenter_  = Vector2((float)(tankTexture_->getWidthProperty()  / 2), (float)(tankTexture_->getHeightProperty()  / 2));
         catTextureCenter_   = Vector2((float)(catTexture_->getWidthProperty()   / 2), (float)(catTexture_->getHeightProperty()   / 2));
         mouseTextureCenter_ = Vector2((float)(mouseTexture_->getWidthProperty() / 2), (float)(mouseTexture_->getHeightProperty() / 2));
+        helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
     }
 
     void Update(GameTime& gameTime) override {
+        float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+        bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+        if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+        prevF1_ = curF1;
+        if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+
         HandleInput();
         UpdateTank();
         UpdateMouse();
@@ -113,6 +124,14 @@ protected:
         spriteBatch_->Draw(*tankTexture_,  tankPosition_,  std::nullopt, Color(255,255,255,255), tankOrientation_,  tankTextureCenter_,  1.0f, SpriteEffects::None, 0.0f);
         spriteBatch_->Draw(*catTexture_,   catPosition_,   std::nullopt, Color(255,255,255,255), 0.0f,              catTextureCenter_,   1.0f, SpriteEffects::None, 0.0f);
         spriteBatch_->Draw(*mouseTexture_, mousePosition_, std::nullopt, Color(255,255,255,255), mouseOrientation_, mouseTextureCenter_, 1.0f, SpriteEffects::None, 0.0f);
+        if (helpTimer_ > 0.0f) {
+            int hw = helpTexture_->getWidthProperty();
+            int hh = helpTexture_->getHeightProperty();
+            auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+            float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+            float sy = (float)((vp.getHeightProperty() - hh) / 2);
+            spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+        }
         spriteBatch_->End();
         Game::Draw(gameTime);
     }

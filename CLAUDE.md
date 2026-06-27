@@ -104,18 +104,78 @@ Every sample directory must contain the original **`SampleName.htm`** documentat
 copied verbatim from `/rv/tmp/XNAGameStudio/Samples/SampleName_4_0/SampleName.htm`.
 Copy it to `samples/SampleName/` (next to `src/` and optionally `Content/`).
 
+## F1 Help Overlay (CNA addition beyond XNA original)
+
+Every CNA sample must support an **F1 key help overlay** — this is an addition
+that does not exist in the XNA 4.0 originals.
+
+**Behaviour:** Press F1 → semi-transparent white panel with English control
+description appears centred on screen for **10 seconds**.  Press F1 again to
+dismiss early.
+
+**How to implement:**
+
+1. Generate `Content/help.png` from the sample's `.htm` documentation:
+   ```
+   python3 tools/gen_help_png.py samples/SampleName/SampleName.htm \
+                                  samples/SampleName/Content/help.png
+   ```
+   The tool extracts the "Sample Controls" table and renders it as an RGBA PNG
+   with a semi-transparent white background (alpha ≈ 80 %).
+
+2. In the `Game` subclass add these fields:
+   ```cpp
+   std::optional<Texture2D> helpTexture_;
+   float helpTimer_ = 0.0f;
+   bool  prevF1_    = false;
+   ```
+
+3. In `LoadContent()`:
+   ```cpp
+   helpTexture_.emplace(getContentProperty().Load<Texture2D>("help"));
+   ```
+
+4. At the top of `Update()` (before other input handling):
+   ```cpp
+   float elapsed = (float)gameTime.getElapsedGameTimeProperty().getTotalSecondsProperty();
+   bool curF1 = Keyboard::GetState().IsKeyDown(Keys::F1);
+   if (curF1 && !prevF1_) helpTimer_ = 10.0f;
+   prevF1_ = curF1;
+   if (helpTimer_ > 0.0f) helpTimer_ -= elapsed;
+   ```
+
+5. In `Draw()`, inside the single `spriteBatch_->Begin()` / `End()` block,
+   draw the overlay **last** (on top of everything else):
+   ```cpp
+   if (helpTimer_ > 0.0f) {
+       int hw = helpTexture_->getWidthProperty();
+       int hh = helpTexture_->getHeightProperty();
+       auto& vp = getGraphicsDeviceProperty().getViewportProperty();
+       float sx = (float)((vp.getWidthProperty()  - hw) / 2);
+       float sy = (float)((vp.getHeightProperty() - hh) / 2);
+       spriteBatch_->Draw(*helpTexture_, Vector2(sx, sy), Color(255, 255, 255, 255));
+   }
+   ```
+
+The `help.png` has the semi-transparent white background baked in (RGBA PNG,
+color-type 6), so no extra 1×1 white texture is needed.
+
+---
+
 ## Adding a new sample
 
 1. Create `samples/SampleName/` with `src/` and optionally `Content/`.
 2. Copy `SampleName.htm` from `/rv/tmp/XNAGameStudio/Samples/SampleName_4_0/` to `samples/SampleName/`.
-3. Create `samples/SampleName/missing.md` — see **Sample missing.md** below.
-4. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
-5. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
-6. Implement `GetTypeName()` in every `Game` subclass.
-7. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
+3. Generate `Content/help.png` with `tools/gen_help_png.py` (see **F1 Help Overlay** above).
+4. Create `samples/SampleName/missing.md` — see **Sample missing.md** below.
+5. Add `cna_add_sample(sample_name SOURCES src/Program.cpp ...)` in `CMakeLists.txt`.
+6. Uncomment the matching `add_subdirectory(samples/SampleName)` in root `CMakeLists.txt`.
+7. Implement `GetTypeName()` in every `Game` subclass.
+8. Use `getXxxProperty()` / `setXxxProperty()` for all property access — no direct
    member access.
-8. Convert any XNB assets to open formats (see Assets section above).
-9. See `DEFERRED.md` for known gaps that may require CNA changes.
+9. Convert any XNB assets to open formats (see Assets section above).
+10. Implement F1 help overlay (see **F1 Help Overlay** above).
+11. See `DEFERRED.md` for known gaps that may require CNA changes.
 
 ## Sample missing.md
 
