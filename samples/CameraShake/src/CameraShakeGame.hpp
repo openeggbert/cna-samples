@@ -151,7 +151,7 @@ protected:
         Matrix view = camera_.getViewProperty();
         Matrix proj = camera_.Projection;
 
-        ground_->Draw(Matrix::CreateScale(0.02f), view, proj);
+        ground_->Draw(Matrix::CreateScale(0.1f), view, proj);
         tank_->Draw(Matrix::getIdentityProperty(), view, proj);
 
         DrawInstructions();

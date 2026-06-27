@@ -43,20 +43,16 @@ tiled texture via BasicEffect.
 **Root cause:** Same as mesh texture limitation above.
 **Tracked in:** not planned
 
-## 3D scene rendering (fixed in CNA Vulkan shaders + ground scale)
-**XNA behaviour:** Camera at (1000,1000,1000) with ground scale 0.1 renders correctly.
-DirectX clips triangles whose vertices extend behind the camera (near-plane clip of
-the +X+Z corner vertex at (6554,0,6554)) and the visible portion of the ground renders.
-**CNA port behaviour:** Ground scale reduced from 0.1 to 0.02 to keep all vertices
-in front of the camera. At scale 0.02 the farthest ground vertex at (1310,0,1310) has
-x+z=2620 which is safely inside the camera forward half-space (threshold ≈ 3000 for
-camera at (1000,1000,1000)). Scene renders correctly at the smaller scale.
-**Root cause (two issues fixed):**
-1. All CNA Vulkan 3D vertex shaders previously applied `pos.z = (pos.z + pos.w) * 0.5`
-   (OpenGL→Vulkan z remap), but CNA's `CreatePerspectiveFieldOfView` already uses the
-   XNA/DirectX [0,w] clip-space z convention. Removed from all 5 affected shaders.
-2. Vulkan near-plane clipping of triangles with w<0 vertices produces visible artifacts
-   (white stripe) rather than the clean clip DirectX provides. Reducing ground scale
-   eliminates any vertex behind the camera, avoiding the clip entirely.
-**Tracked in:** Shader fix in CNA `src/CNA/Internal/Backends/Vulkan/shaders/`; ground
-scale difference is a CNA/Vulkan near-plane clipping limitation.
+## 3D scene renders as white stripe on Vulkan backend
+**XNA behaviour:** Camera at (1000,1000,1000) with ground scale 0.1 renders correctly —
+DirectX clips triangles whose vertices extend behind the camera and the visible ground
+and tank scene is displayed.
+**CNA port behaviour (Vulkan):** The scene renders as a white stripe only. The ground
+corner vertex at (6554,0,6554) falls behind the camera (x+z=13108 exceeds the threshold
+≈3000 for camera at (1000,1000,1000)). Vulkan's near-plane clipping of w<0 vertices
+produces a visible white artifact instead of the clean clip DirectX provides. The z-remap
+bug in CNA shaders (`pos.z = (pos.z + pos.w) * 0.5`) was also removed (fix in CNA repo),
+but the near-plane clipping artefact remains on the Vulkan backend.
+**Root cause:** Vulkan near-plane clipping behaviour for triangles with w<0 vertices
+differs from DirectX. Works correctly on the easygl backend.
+**Tracked in:** CNA Vulkan near-plane clipping limitation.
