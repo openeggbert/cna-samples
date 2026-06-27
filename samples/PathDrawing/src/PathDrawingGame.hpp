@@ -10,6 +10,7 @@
 #include "Microsoft/Xna/Framework/Vector2.hpp"
 #include "Microsoft/Xna/Framework/Graphics/GraphicsDevice.hpp"
 #include "Microsoft/Xna/Framework/Graphics/SpriteBatch.hpp"
+#include "Microsoft/Xna/Framework/Graphics/SpriteEffects.hpp"
 #include "Microsoft/Xna/Framework/Graphics/Texture2D.hpp"
 #include "Microsoft/Xna/Framework/Input/Buttons.hpp"
 #include "Microsoft/Xna/Framework/Input/ButtonState.hpp"
@@ -121,15 +122,16 @@ private:
         Viewport vp = getGraphicsDeviceProperty().getViewportProperty();
         int vw = vp.getWidthProperty();
         int vh = vp.getHeightProperty();
+        float scale = (float)groundSize / (float)groundTexture_->getWidthProperty();
 
-        // Tile the ground texture in groundSize x groundSize blocks.
-        // LinearWrap via SpriteBatch::Begin is not yet reliable in CNA;
-        // manual tiling achieves the same result.
         spriteBatch_->Begin();
         for (int ty = 0; ty * groundSize < vh; ty++) {
             for (int tx = 0; tx * groundSize < vw; tx++) {
-                Rectangle dst(tx * groundSize, ty * groundSize, groundSize, groundSize);
-                spriteBatch_->Draw(*groundTexture_, dst, Color(255, 255, 255, 255));
+                spriteBatch_->Draw(*groundTexture_,
+                    Vector2((float)(tx * groundSize), (float)(ty * groundSize)),
+                    std::nullopt, Color(255, 255, 255, 255),
+                    0.0f, Vector2::Zero, scale,
+                    SpriteEffects::None, 0.0f);
             }
         }
         spriteBatch_->End();
