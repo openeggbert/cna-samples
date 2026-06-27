@@ -213,7 +213,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 021 | PathDrawing | `PathDrawing_4_0` | ✅ Done |
 | 022 | Pathfinding | `Pathfinding_4_0` | ✅ Done |
 | 023 | WaypointSample | `WaypointSample_4_0` | ✅ Done |
-| 024 | FlockingSample | `FlockingSample_4_0` | ⬜ Todo |
+| 024 | FlockingSample | `FlockingSample_4_0` | ✅ Done |
 | 025 | ChaseAndEvade | `ChaseAndEvadeSample_4_0` | ⬜ Todo |
 | 026 | AimingSample | `AimingSample_4_0` | ⬜ Todo |
 | 027 | FuzzyLogic | `FuzzyLogicSample_4_0` | ⬜ Todo |
