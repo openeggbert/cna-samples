@@ -61,6 +61,7 @@ All enabled samples compile cleanly on both the Vulkan and EasyGL backends.
 | 029 | ParticleSample       | ✅ runs | |
 | 030 | CameraShake          | ⚠️ runs | 3D scene renders as white stripe on all CNA backends |
 | 059 | Audio3D              | ✅ runs | 3D positional audio; cat/dog sprites; alpha-test billboards |
+| 060 | SoundAndMusic        | ✅ runs | portrait 480×800; SoundEffect + Song; mouse-driven pan/pitch/volume sliders |
 
 ### Deferred (not built)
 | #   | Sample           | Blocker |
@@ -83,6 +84,17 @@ All enabled samples compile cleanly on both the Vulkan and EasyGL backends.
 
 ## 3. Recent Changes
 
+- **PLAN.md Phase Status Overview** — Corrected: Phase 2 now shows 16 Done / 2 Deferred (was 0/18);
+  Phase 5 shows 1 Done / 1 Todo (was 0/2); Total updated to 27 Done / 52 Todo / 74 Deferred.
+- **cna repo (GraphicsDeviceManager.cpp)** — Fixed portrait-orientation bug FNA-faithfully:
+  `supportsOrientations_` is now platform-gated via `SDL_GetPlatform()` (true only on iOS/Android,
+  matching FNA's `SupportsOrientations`). On desktop `PreferredBackBufferWidth × Height` is honoured
+  verbatim (no landscape min/max swap), so portrait 480×800 back buffers work. Landscape samples
+  unaffected (verified TicTacToe still 800×600).
+- **samples/SoundAndMusic/** (new) — Full port of XNA SoundAndMusic (#060): `SoundEffect` fire-and-
+  forget (Laser.wav), `SoundEffectInstance` with Pan/Pitch/Volume sliders (EngineLoop.wav looped),
+  `Song` with Play/Pause/Stop (Music.mp3); touch input adapted to mouse click-and-drag. Portrait
+  480×800, all controls visible (verified by screenshot).
 - **samples/CameraShake/missing.md** — Updated: 3D white stripe confirmed on both Vulkan and
   EasyGL backends (not just Vulkan); documented as a CNA near-plane clipping limitation.
 - **samples/CameraShake/src/CameraShakeGame.hpp** — Reverted attempted scale-0.02 workaround;
@@ -123,10 +135,8 @@ All enabled samples compile cleanly on both the Vulkan and EasyGL backends.
 | confirmed bug | **CameraShake: white stripe on all backends.** CNA near-plane clipping of w<0 vertices differs from DirectX. |
 | confirmed bug | **Primitives3D: DiffuseColor ignored (EasyGL).** `BasicEffect.setDiffuseColorProperty()` has no effect for `VertexPositionColor` geometry. EasyGL selects shader by vertex stride; fix in `cna/EasyGLGraphicsBackend.cpp`. |
 | confirmed bug | **Primitives3D: wireframe silent (EasyGL).** `FillMode::WireFrame` not supported on OpenGL ES. Emulation (emit GL_LINES) needed. |
-| incomplete | **SoundAndMusic (#060)** — not ported yet. Button/slider UI helpers + audio controls. |
 | incomplete | **Phase 3 (3D shaders)** — all 19 samples blocked on HLSL→GLSL shader translation. |
 | incomplete | **Phase 4 (Models/Anim)** — all 9 samples blocked on model animation support in CNA. |
-| incomplete | **PLAN.md Phase Status Overview table** — out of date (shows Phase 2 as 0 Done). |
 
 ---
 
@@ -167,8 +177,13 @@ samples/SampleName/
 
 ### SpriteFont generation
 ```bash
-python3 tools/make_font.py /path/to/Font.ttf <size_px> samples/X/Content/FontName
+python3 tools/make_font.py /path/to/Font.ttf <size_px> \
+    samples/X/Content/Fonts/FontName \
+    --content-root samples/X/Content
 ```
+**Always pass `--content-root samples/X/Content`.** Without it the `.font.json`
+records a bare filename (`"FontName.png"`) instead of the path relative to the
+Content root (`"Fonts/FontName.png"`), and ContentManager fails at runtime.
 
 ### Sound assets
 - `SoundEffect` loads `.wav` only.
@@ -203,9 +218,10 @@ cmake --build cmake-build-easygl
 # Run Platformer (full game)
 ./cmake-build-debug/samples/Platformer/Platformer_cna_samples
 
-# Generate SpriteFont asset
+# Generate SpriteFont asset (--content-root is required to get the correct texture path)
 python3 tools/make_font.py /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf 19 \
-    samples/MySample/Content/HudFont
+    samples/MySample/Content/Fonts/HudFont \
+    --content-root samples/MySample/Content
 
 # Generate F1 help overlay
 python3 tools/gen_help_png.py samples/MySample/MySample.htm \
@@ -216,25 +232,16 @@ python3 tools/gen_help_png.py samples/MySample/MySample.htm \
 
 ## 8. Next Smallest Tasks
 
-1. **Port #060 SoundAndMusic** — audio controls (volume/pitch/pan sliders), SoundEffect + Song.
-   - Source: `/rv/tmp/XNAGameStudio/Samples/SoundAndMusic_4_0/SoundAndMusicSample/`
-   - Pure 2D, no 3D, no custom shaders. Button/menu helpers need porting.
-   - Verify: `./cmake-build-debug/samples/SoundAndMusic/SoundAndMusic_cna_samples`
-
-2. **Fix CameraShake white stripe in CNA** — investigate near-plane clipping for w<0 vertices
+1. **Fix CameraShake white stripe in CNA** — investigate near-plane clipping for w<0 vertices
    in EasyGL backend (`cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`).
    - Verify fix: white stripe disappears in CameraShake on EasyGL.
 
-3. **Fix Primitives3D DiffuseColor bug in CNA** — `EnsureColored3DProgram()` must multiply
+2. **Fix Primitives3D DiffuseColor bug in CNA** — `EnsureColored3DProgram()` must multiply
    vertex color by `uDiffuseColor` uniform.
    - File: `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`
    - Verify: B-key changes tint color in `./cmake-build-easygl/samples/Primitives3D/Primitives3D_cna_samples`
 
-4. **Update PLAN.md Phase Status Overview table** — Phase 2 currently shows 0 Done but 16 are done.
-   - File: `PLAN.md` (bottom summary table only).
-   - Verify: counts match actual sample statuses in the task list.
-
-5. **Port first Phase 3 sample (#035 PerPixelLighting or #036 VertexLighting)** — single model,
+3. **Port first Phase 3 sample (#035 PerPixelLighting or #036 VertexLighting)** — single model,
    one custom HLSL shader, simplest entry point to Phase 3.
    - Requires: translate HLSL `.fx` to GLSL + `.shader.json` + convert model asset.
 

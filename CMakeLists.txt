@@ -98,7 +98,7 @@ add_subdirectory(samples/ParticleSample)
 
 # Phase 5 — Audio, AI, Misc
 add_subdirectory(samples/Audio3D)
-# add_subdirectory(samples/SoundAndMusic)
+add_subdirectory(samples/SoundAndMusic)
 add_subdirectory(samples/ChaseAndEvade)
 add_subdirectory(samples/AimingSample)
 add_subdirectory(samples/FuzzyLogic)

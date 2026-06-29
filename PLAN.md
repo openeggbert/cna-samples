@@ -277,7 +277,7 @@ Requires CNA audio backend (see `DEFERRED.md` item 7).
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
 | 059 | Audio3D | `Audio3DSample_4_0` | ✅ Done |
-| 060 | SoundAndMusic | `SoundAndMusic_4_0` | ⬜ Todo |
+| 060 | SoundAndMusic | `SoundAndMusic_4_0` | ✅ Done |
 
 ---
 
@@ -499,10 +499,10 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase | Samples | Done | Todo | Deferred / Out of scope |
 |---|---|---|---|---|
 | Phase 1 — Foundation | 12 | 10 | 0 | 2 |
-| Phase 2 — 2D Games | 18 | 0 | 18 | 0 |
+| Phase 2 — 2D Games | 18 | 16 | 0 | 2 |
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
-| Phase 5 — Audio | 2 | 0 | 2 | 0 |
+| Phase 5 — Audio | 2 | 2 | 0 | 0 |
 | Phase 6 — Full Games | 14 | 0 | 14 | 0 |
 | Phase 7 — Advanced / Misc | 9 | 0 | 9 | 0 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **10** | **71** | **72** |
+| **Total** | **153** | **28** | **51** | **74** |
 
 ---
 
