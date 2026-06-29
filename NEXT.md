@@ -62,6 +62,7 @@ All enabled samples compile cleanly on both the Vulkan and EasyGL backends.
 | 030 | CameraShake          | ⚠️ runs | 3D scene renders as white stripe on all CNA backends |
 | 059 | Audio3D              | ✅ runs | 3D positional audio; cat/dog sprites; alpha-test billboards |
 | 060 | SoundAndMusic        | ✅ runs | portrait 480×800; SoundEffect + Song; mouse-driven pan/pitch/volume sliders |
+| 072 | GameStateManagement  | ✅ runs | menu/screen system: Main/Options/Pause menus, MessageBox popups, LoadingScreen, placeholder Gameplay; multiple SpriteBatch/frame works on EasyGL |
 
 ### Deferred (not built)
 | #   | Sample           | Blocker |
@@ -84,6 +85,12 @@ All enabled samples compile cleanly on both the Vulkan and EasyGL backends.
 
 ## 3. Recent Changes
 
+- **samples/GameStateManagement/** (new) — Full port of XNA GSMSample (#072, Win+Xbox):
+  `ScreenManager` (DrawableGameComponent), `GameScreen` transition state machine, `InputState`,
+  `MenuScreen`/`MenuEntry`, and all screens (Background, MainMenu, Options, Pause, MessageBox,
+  Loading, Gameplay). Screens owned via `shared_ptr` to mirror C# GC semantics (a screen can
+  remove itself mid-Update). Screenshot-verified: Main Menu, Options (with working toggles),
+  and Gameplay all render; multiple SpriteBatch Begin/End per frame works on EasyGL.
 - **PLAN.md Phase Status Overview** — Corrected: Phase 2 now shows 16 Done / 2 Deferred (was 0/18);
   Phase 5 shows 1 Done / 1 Todo (was 0/2); Total updated to 27 Done / 52 Todo / 74 Deferred.
 - **cna repo (GraphicsDeviceManager.cpp)** — Fixed portrait-orientation bug FNA-faithfully:
