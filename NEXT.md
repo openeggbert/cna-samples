@@ -39,7 +39,7 @@ integration tests. Verification is by running a sample and inspecting it (screen
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
-| 002 | Primitives3D         | ⚠️ runs | DiffuseColor (B) and wireframe (Y) silently broken on EasyGL |
+| 002 | Primitives3D         | ✅ runs | DiffuseColor (B) and wireframe (Y) now work on EasyGL |
 | 003 | TexturesAndColors    | ✅ runs | |
 | 006 | SpriteEffects        | ✅ runs | |
 | 007 | SpriteSheet          | ✅ runs | |
@@ -78,8 +78,6 @@ integration tests. Verification is by running a sample and inspecting it (screen
 
 ### What does not work yet
 - **CameraShake 3D scene**: white stripe on all backends (near-plane clipping of w<0).
-- **Primitives3D on EasyGL**: `BasicEffect.DiffuseColor` ignored for `VertexPositionColor`;
-  `FillMode::WireFrame` silently ignored on OpenGL ES.
 - **Phases 3 & 4** (3D shaders / models + animation): no sample ported; need an
   HLSL→GLSL workflow and a model-conversion pipeline (neither exists yet).
 
@@ -87,6 +85,20 @@ integration tests. Verification is by running a sample and inspecting it (screen
 
 ## 3. Recent Changes
 
+- **cna repo (EasyGL backend)** — Two Primitives3D bugs fixed + verified (screenshots):
+  (1) **DiffuseColor** — `EnsureColored3DProgram()` now outputs `vColor * uDiffuseColor`
+  and wires `loc_diffuse`; the non-Ex user-primitive paths upload white explicitly so the
+  uniform never defaults to 0/black. (2) **Wireframe** — `ApplyRasterizerState` sets a
+  `wireframe_` flag and the 3D draw paths re-expand triangles to `GL_LINES` via the new
+  `DrawWireframe` helper (scratch 32-bit line index buffer; indexed + non-indexed list/strip).
+  DEFERRED.md items 3 & 4 closed.
+- **samples (CONTENT_DIR audit)** — Several enabled samples had `Content/help.png` but no
+  `CONTENT_DIR` in their `CMakeLists.txt`, so the F1 overlay asset was never copied next to
+  the binary and the sample **aborted at startup** (only "ran" when launched from the source
+  dir). Added `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content` to **Primitives3D,
+  PrimitivesSample, ShapeRendering, Bounce, CollisionSample** (all re-verified running).
+  The 4 deferred samples with the same gap (BloomSample, ColorReplacement, ReachGraphicsDemo,
+  Spacewar) have no `CMakeLists.txt` yet — fix when they are enabled.
 - **samples/GameStateManagement/** (new, #072) — Full port of the canonical XNA GSMSample
   (Win+Xbox): `ScreenManager` (DrawableGameComponent), `GameScreen` transition state
   machine, `InputState`, `MenuScreen`/`MenuEntry`, and all screens (Background, MainMenu,
@@ -130,8 +142,8 @@ Phase 6/7. The most important *standing bug* and the main *capability gap* are:
 | Label | Description |
 |-------|-------------|
 | confirmed bug | **CameraShake white stripe (all backends).** CNA near-plane clipping of w<0 vertices differs from DirectX. |
-| confirmed bug | **Primitives3D DiffuseColor ignored (EasyGL).** No effect for `VertexPositionColor`. Fix in `cna/.../EasyGL/EasyGLGraphicsBackend.cpp`. |
-| confirmed bug | **Primitives3D wireframe silent (EasyGL).** `FillMode::WireFrame` unsupported on GLES; needs GL_LINES emulation. |
+| fixed | **Primitives3D DiffuseColor (EasyGL).** `prog_colored_` now multiplies `vColor * uDiffuseColor`. |
+| fixed | **Primitives3D wireframe (EasyGL).** `FillMode::WireFrame` emulated by re-expanding triangles to `GL_LINES` (`DrawWireframe`). |
 | confirmed bug | **Multiple SpriteBatch/frame on Vulkan.** Second `Begin/End` discards the first. Works on EasyGL (default). Affects any multi-layer sample (e.g. GameStateManagement) if run on Vulkan. |
 | incomplete | **Phase 3 (3D shaders)** — 19 samples blocked on HLSL→GLSL translation. |
 | incomplete | **Phase 4 (Models/Anim)** — 9 samples blocked on model conversion + animation. |
@@ -214,15 +226,15 @@ import -window "$WID" /tmp/shot.png
    - Files: `samples/GameStateManagement/src/InputState.hpp`.
    - Verify: run the binary, navigate Main → Options → Back, Play Game → Esc → Pause → Quit.
 
-2. **Fix Primitives3D DiffuseColor on EasyGL.**
-   - Goal: `EnsureColored3DProgram()` must multiply vertex color by the `uDiffuseColor` uniform.
-   - Files: `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`.
-   - Verify: B key changes the tint in `Primitives3D_cna_samples`.
+2. ~~**Fix Primitives3D DiffuseColor on EasyGL.**~~ ✅ DONE — `EnsureColored3DProgram()`
+   now outputs `vColor * uDiffuseColor` and wires `loc_diffuse`.  Screenshot-verified:
+   the cube renders red (DiffuseColor) instead of white.
 
-3. **Fix Primitives3D wireframe on EasyGL.**
-   - Goal: emulate `FillMode::WireFrame` (emit GL_LINES) since GLES lacks polygon mode.
-   - Files: `cna/.../EasyGL/EasyGLGraphicsBackend.cpp`.
-   - Verify: Y key shows wireframe in `Primitives3D_cna_samples`.
+3. ~~**Fix Primitives3D wireframe on EasyGL.**~~ ✅ DONE — `ApplyRasterizerState` sets a
+   `wireframe_` flag; the 3D draw paths re-expand triangles to `GL_LINES` via the new
+   `DrawWireframe` helper.  Screenshot-verified: the cube renders as an edge-only wireframe.
+   (Also fixed: Primitives3D `CMakeLists.txt` was missing `CONTENT_DIR`, so `Content/help.png`
+   was never copied and the sample aborted at startup.)
 
 4. **Investigate CameraShake near-plane clipping in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank render.

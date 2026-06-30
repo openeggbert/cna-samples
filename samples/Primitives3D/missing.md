@@ -1,45 +1,39 @@
 # Missing / Differences from XNA 4.0 original
 
-## Color change (B key) has no visual effect
+## Color change (B key) has no visual effect — RESOLVED
 
-**XNA behaviour:** Pressing B cycles the tint color through Red → Green → Blue →
-White → Black.  The selected color is passed to `BasicEffect.DiffuseColor` and the
-`BasicEffect` lit shader multiplies fragment output by the diffuse color, so the
-spinning primitive visibly changes color.
+**Status:** Fixed in CNA (EasyGL backend).  Pressing B now visibly cycles the tint
+Red → Green → Blue → White → Black, matching XNA.
 
-**CNA port behaviour:** Pressing B increments `currentColorIndex` correctly, and
-`setDiffuseColorProperty()` is called on the `BasicEffect`.  However the rendered
-primitive always appears white regardless of the selected color.
+**Was:** The colored 3D shader selected for `VertexPositionColor` (stride 16) output
+`FragColor = vColor` with no `uDiffuseColor` uniform, so `BindDrawParams` never
+uploaded `DiffuseColor`; every vertex carries `Color::White`, so the primitive always
+rendered white.
 
-**Root cause:** CNA's EasyGL backend selects the GLSL shader program purely by
-vertex stride.  `VertexPositionColor` has stride 16 → `prog_colored_` shader
-(`FragColor = vColor`).  This shader has **no `uDiffuseColor` uniform**, so
-`loc_diffuse = -1` and `BindDrawParams` never uploads `DiffuseColor` to the GPU.
-All vertices carry `Color::White` (set in `GeometricPrimitive::InitializePrimitive`)
-and the shader outputs white for every primitive.
+**Fix:** `EnsureColored3DProgram()` now declares `uniform vec4 uDiffuseColor` and the
+fragment shader outputs `vColor * uDiffuseColor`; `prog_colored_.loc_diffuse` is wired
+to the uniform.  Default `diffuseColor` is `{1,1,1,1}`, so callers that set no diffuse
+are unaffected.  (`cna/.../EasyGL/EasyGLGraphicsBackend.cpp`.)
 
-**Tracked in:** DEFERRED.md item 3 — fix requires adding `uDiffuseColor` to the
-colored 3D GLSL shader in `EasyGLGraphicsBackend.cpp::EnsureColored3DProgram()`.
+**Tracked in:** DEFERRED.md item 3 (resolved).
 
 ---
 
-## Wireframe toggle (Y key) has no visual effect
+## Wireframe toggle (Y key) has no visual effect — RESOLVED
 
-**XNA behaviour:** Pressing Y switches between solid and wireframe rendering by
-setting `GraphicsDevice.RasterizerState` to a state with `FillMode.WireFrame` /
-`CullMode.None`.  The mesh is drawn as an edge-only outline.
+**Status:** Fixed in CNA (EasyGL backend).  Pressing Y now switches the primitive
+between solid and an edge-only wireframe, matching XNA `FillMode.WireFrame`.
 
-**CNA port behaviour:** Pressing Y toggles `isWireframe` and calls
-`device.setRasterizerStateProperty(wireFrameState)`, but the primitive continues
-to render solid — there is no visible difference.
+**Was:** OpenGL ES 3.x has no `glPolygonMode`, so the EasyGL backend silently ignored
+`FillMode::WireFrame` and always drew solid.
 
-**Root cause:** OpenGL ES 3.x does not expose `glPolygonMode`, which is the only
-standard way to enable wireframe rendering in OpenGL.  The EasyGL backend explicitly
-ignores `FillMode::WireFrame` with a comment
-`// FillMode::WireFrame not supported in OpenGL ES — silently ignored`.
+**Fix:** `ApplyRasterizerState` records a `wireframe_` flag when `FillMode::WireFrame`
+is set; the 3D draw paths then re-expand each triangle into `GL_LINES` (via the new
+`DrawWireframe` helper) instead of `GL_TRIANGLES`, drawn through a scratch 32-bit line
+index buffer.  Covers both indexed and non-indexed triangle list/strip draws.
+(`cna/.../EasyGL/EasyGLGraphicsBackend.cpp`.)
 
-**Tracked in:** DEFERRED.md item 4 — workaround would require emulating wireframe
-by rewriting triangle indices as line segments at draw time in the EasyGL backend.
+**Tracked in:** DEFERRED.md item 4 (resolved).
 
 ---
 

@@ -59,50 +59,41 @@ names, player labels, drop-shadow DrawString).
 
 ---
 
-## 3. EasyGL: DiffuseColor ignored for VertexPositionColor meshes
+## 3. EasyGL: DiffuseColor ignored for VertexPositionColor meshes ✅ RESOLVED
 
-**What is missing:**
-`EasyGLGraphicsBackend::SelectProgram` selects the GLSL shader program purely by
-vertex **stride** (byte size).  `VertexPositionColor` has stride 16 → falls into
-`default: EnsureColored3DProgram()`.  That shader has only `FragColor = vColor`
-(vertex color) and **no `uDiffuseColor` uniform** — so `loc_diffuse = -1` and
-`BindDrawParams` never uploads `BasicEffect.DiffuseColor` to the GPU.
+**Was:** `EasyGLGraphicsBackend::SelectProgram` selects the GLSL shader program purely
+by vertex **stride**.  `VertexPositionColor` (stride 16) → `EnsureColored3DProgram()`,
+whose shader was `FragColor = vColor` with **no `uDiffuseColor` uniform**, so
+`loc_diffuse = -1` and `BindDrawParams` never uploaded `BasicEffect.DiffuseColor`.
+The mesh always rendered white.
 
-Consequence: `BasicEffect.DiffuseColor` (and the `setDiffuseColorProperty()` setter)
-is silently ignored for any geometry stored in a `VertexPositionColor` vertex buffer.
-In practice the mesh always renders in white.
+**Fix:** `EnsureColored3DProgram()` now declares `uniform vec4 uDiffuseColor` and the
+fragment shader outputs `FragColor = vColor * uDiffuseColor`; `prog_colored_.loc_diffuse`
+is wired to it.  `GpuDrawParams.diffuseColor` defaults to `{1,1,1,1}`, so BasicEffect Ex
+draws that set no diffuse are unaffected.  The non-Ex user-primitive paths
+(`DrawColoredPrimitives` / `DrawIndexedColoredPrimitives`) explicitly upload white,
+since they carry no diffuse and the uniform would otherwise default to 0 (black).
+(`cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`.)
 
-**Where to implement:** `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`,
-`EnsureColored3DProgram()` — add `uDiffuseColor` uniform and multiply:
-`FragColor = vColor * uDiffuseColor`.  When `params.vertexColorEnabled == false`,
-the vertex color should be treated as `vec4(1.0)` so only `uDiffuseColor` tints the
-output (needed for `BasicEffect` without `VertexColorEnabled`).
-
-**Blocked samples:** Primitives3D (color change via B key produces no visible effect).
+**Verified:** Primitives3D B-key cycles the tint; the cube renders red (was white).
 
 **Effort:** S
 
 ---
 
-## 4. EasyGL: Wireframe rendering not possible on OpenGL ES
+## 4. EasyGL: Wireframe rendering not possible on OpenGL ES ✅ RESOLVED
 
-**What is missing:**
-`FillMode::WireFrame` in `RasterizerState` is silently ignored by the EasyGL backend
-(see `EasyGLGraphicsBackend.cpp` line with comment
-`// FillMode::WireFrame not supported in OpenGL ES — silently ignored`).
+**Was:** `FillMode::WireFrame` in `RasterizerState` was silently ignored — OpenGL ES 3.x
+has no `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)`.
 
-Desktop OpenGL has `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)`, but **OpenGL ES 3.x
-does not expose this function at all** — it is a fundamental API omission, not a
-driver bug.
+**Fix:** `ApplyRasterizerState` records a `wireframe_` flag when `FillMode::WireFrame`
+is set.  The 3D draw paths then call the new `DrawWireframe` helper, which re-expands
+each triangle into three `GL_LINES` edges (`(a,b),(b,c),(c,a)`) through a scratch
+32-bit line index buffer and draws `GL_LINES` instead of `GL_TRIANGLES`.  Covers both
+indexed and non-indexed triangle list / strip draws (honouring `startIndex` /
+`baseVertex` / `vertexStart`).  (`cna/.../EasyGL/EasyGLGraphicsBackend.cpp`.)
 
-**Where to implement (workaround in CNA):**
-When `fillMode == WireFrame`, `DrawIndexedPrimitivesEx` could emit each triangle
-as three `GL_LINES` instead of one `GL_TRIANGLES`, effectively emulating wireframe.
-This requires rewriting index data on the fly (or maintaining a line-index buffer).
-Alternatively target OpenGL ES 3.2+ which exposes `GL_OES_polygon_mode` on some
-drivers, but that is not universally available.
-
-**Blocked samples:** Primitives3D (Y key wireframe toggle has no visual effect).
+**Verified:** Primitives3D Y-key shows the cube as an edge-only wireframe.
 
 **Effort:** M
 
@@ -233,8 +224,8 @@ support in both EasyGL and Vulkan backends).
 |---|---|---|---|---|
 | 1 | XNB → open format pipeline | all | M/sample | all |
 | 2 | SpriteFont loading | cna | L | many | ✅ done |
-| 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D |
-| 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D |
+| 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D | ✅ done |
+| 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D | ✅ done |
 | 5 | VertexPositionNormal + lit shader | cna | L | many |
 | 6 | Model asset conversion (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
 | 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
