@@ -35,7 +35,7 @@ backend.
 No automated test suite in this repo — the samples themselves are the manual/visual
 integration tests. Verification is by running a sample and inspecting it (screenshots).
 
-### Enabled samples (29)
+### Enabled samples (30)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
@@ -66,6 +66,7 @@ integration tests. Verification is by running a sample and inspecting it (screen
 | 030 | CameraShake          | ⚠️ runs | 3D scene renders as a white stripe (see blocker) |
 | 059 | Audio3D              | ✅ runs | 3D positional audio; alpha-test billboards |
 | 060 | SoundAndMusic        | ✅ runs | portrait 480×800; SoundEffect + Song; mouse sliders |
+| 067 | CatapultWars         | ✅ runs | full 2D game: menus, AI, sprite-sheet animation, SoundEffect, HUD |
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
 
 ### Deferred (not built)
@@ -85,6 +86,15 @@ integration tests. Verification is by running a sample and inspecting it (screen
 
 ## 3. Recent Changes
 
+- **samples/CatapultWars/** (new, #067) — Full port of the XNA "Catapult Wars Lab"
+  Windows Phone game (EX2/End). 14 header-only files + Program.cpp: the ScreenManager
+  framework (reused from GameStateManagement), `Animation` (sprite-sheet), `AudioManager`
+  (SoundEffect bank), `Projectile`/`Catapult` (bit-flag state machine, BoundingSphere/Box
+  collision), `Player`/`Human`/`AI`, and 5 screens (Background, MainMenu, Instructions,
+  Pause, Gameplay). Touch gestures adapted to mouse drag/click; fixed 30fps timestep;
+  animation defs inlined from AnimationsDef.xml. Fonts MenuFont/HUDFont generated from
+  DejaVuSans-Bold. Screenshot-verified: main menu + full gameplay (HUD, wind, both
+  catapults, parallax clouds). Authored CatapultWars.htm (training kit has no .htm).
 - **cna repo (EasyGL backend)** — Two Primitives3D bugs fixed + verified (screenshots):
   (1) **DiffuseColor** — `EnsureColored3DProgram()` now outputs `vColor * uDiffuseColor`
   and wires `loc_diffuse`; the non-Ex user-primitive paths upload white explicitly so the
@@ -241,10 +251,11 @@ import -window "$WID" /tmp/shot.png
    - Files: `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path).
    - Verify: white stripe disappears in `CameraShake_cna_samples`.
 
-5. **Port the next 2D Phase 6/7 sample (e.g. CatapultWars #067 or Yacht #071).**
-   - Goal: keep extending coverage with proven-feature (2D/SpriteFont) samples.
-   - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
-   - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
+5. ~~**Port the next 2D Phase 6/7 sample.**~~ ✅ DONE — CatapultWars #067 ported and
+   screenshot-verified (menu + gameplay). **Yacht #071** is the next 2D candidate, but it
+   is MODERATE: touch-only gameplay (more remapping) plus an accelerometer and a WCF
+   online-multiplayer server to drop (the local vs-AI mode ports cleanly). Other proven-
+   feature 2D/SpriteFont samples are also fair game.
 
 ---
 

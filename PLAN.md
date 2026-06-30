@@ -293,7 +293,7 @@ Complete games and starter kits — the most demanding ports.
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
 | 065 | NinjAcademy | `NinjAcademy_4_0` | ⬜ Todo |
 | 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
-| 067 | CatapultWars | `CatapultWars_4_0` | ⬜ Todo |
+| 067 | CatapultWars | `CatapultWars_4_0` | ✅ Done |
 | 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
 | 069 | CardsStarterKit | `CardsStarterKit_4_0` | ⬜ Todo |
 | 070 | RolePlayingGame (Win+Xbox) | `RolePlayingGame_4_0_Win_Xbox` | ⬜ Todo |
@@ -503,7 +503,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
-| Phase 6 — Full Games | 14 | 1 | 13 | 0 |
+| Phase 6 — Full Games | 14 | 2 | 12 | 0 |
 | Phase 7 — Advanced / Misc | 9 | 0 | 9 | 0 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
 | XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **29** | **50** | **74** |
+| **Total** | **153** | **30** | **49** | **74** |
 
 ---
 
