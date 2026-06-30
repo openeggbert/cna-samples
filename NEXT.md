@@ -3,43 +3,45 @@
 ## 1. Project Summary
 
 **What:** C++ ports of the official Microsoft XNA Game Studio 4.0 sample collection,
-running on CNA — a C++ reimplementation of the XNA 4.0 API built on SDL3.
+running on **CNA** — a C++ reimplementation of the XNA 4.0 API built on SDL3.
 
 **Main goal:** Port all ~83 applicable XNA 4.0 desktop samples to CNA C++, preserving
 the original class hierarchy and naming (`Microsoft::Xna::Framework::*`), serving as
 living integration tests for the CNA framework and as a migration reference.
 
-**Current phase:** Phase 1 (Foundation) and Phase 2 (2D Games) complete except items
-deferred on missing CNA features. Phase 5 (Audio) complete (2/2). Phase 6 just started
-(GameStateManagement / #072 done). Phases 3, 4, and most of 7 untouched.
+**Current phase:** Phases 1 (Foundation), 2 (2D Games) and 5 (Audio) are complete except
+items deferred on missing CNA features. Phase 6 (Full games) is in progress
+(GameStateManagement #072 and CatapultWars #067 done). Phases 3 (3D shaders) and 4
+(models/animation) are untouched and blocked on missing asset pipelines.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample is self-contained.
-- All sample code is header-only (except `Program.cpp`).
-- Assets: `Load<Texture2D>()` → PNG; `Load<SpriteFont>()` → `.font.json` + PNG atlas
-  (via `tools/make_font.py`); `Load<SoundEffect>()` → WAV; `Load<Song>()` → OGG/WAV/MP3/FLAC.
+- All sample code is header-only except `Program.cpp`.
+- Assets: `Load<Texture2D>` → PNG; `Load<SpriteFont>` → `.font.json` + PNG atlas (via
+  `tools/make_font.py`); `Load<SoundEffect>` → WAV; `Load<Song>` → OGG/WAV/MP3/FLAC.
   XNA `.xnb` is never supported.
-- `CONTENT_DIR` argument to `cna_add_sample()` is mandatory for any sample loading assets.
-- Default graphics backend is now **EasyGL** (OpenGL ES); a Vulkan backend also exists.
+- `CONTENT_DIR` in `cna_add_sample()` is **mandatory** for any sample that loads assets
+  (including the F1 `help.png` overlay) — otherwise the binary aborts at startup.
+- Default graphics backend is **EasyGL** (OpenGL ES); a Vulkan backend also exists.
+- CNA is consumed via `add_subdirectory(../cna)`, so building a sample rebuilds CNA.
 
 ---
 
 ## 2. Current Status
 
 ### Build
-All enabled samples compile and link cleanly (`cmake --build cmake-build-debug` → 57
-targets green). The active build tree `cmake-build-debug` currently runs the **EasyGL**
-backend.
+All enabled samples compile and link cleanly with the default **EasyGL** backend:
+`cmake --build cmake-build-debug` → green. The active build tree is `cmake-build-debug`.
 
 ### Tests
 No automated test suite in this repo — the samples themselves are the manual/visual
-integration tests. Verification is by running a sample and inspecting it (screenshots).
+integration tests. Verification is by running a sample and inspecting a screenshot.
 
 ### Enabled samples (30)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
-| 002 | Primitives3D         | ✅ runs | DiffuseColor (B) and wireframe (Y) now work on EasyGL |
+| 002 | Primitives3D         | ✅ runs | DiffuseColor (B) + wireframe (Y) now work on EasyGL |
 | 003 | TexturesAndColors    | ✅ runs | |
 | 006 | SpriteEffects        | ✅ runs | |
 | 007 | SpriteSheet          | ✅ runs | |
@@ -50,7 +52,7 @@ integration tests. Verification is by running a sample and inspecting it (screen
 | 012 | GeneratedGeometry    | ✅ runs | |
 | 013 | Platformer           | ✅ runs | full game: 3 levels, player, enemies, gems, HUD |
 | 015 | TicTacToe            | ✅ runs | |
-| 016 | Bounce               | ✅ runs | |
+| 016 | Bounce               | ✅ runs | lit 3D spheres |
 | 017 | CollisionSample      | ✅ runs | |
 | 018 | PerPixelCollision    | ✅ runs | |
 | 019 | RectangleCollision   | ✅ runs | |
@@ -69,81 +71,72 @@ integration tests. Verification is by running a sample and inspecting it (screen
 | 067 | CatapultWars         | ✅ runs | full 2D game: menus, AI, sprite-sheet animation, SoundEffect, HUD |
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
 
-### Deferred (not built)
-| #   | Sample           | Blocker |
-|-----|------------------|---------|
+### Deferred (not built — no CMakeLists yet)
+| #   | Sample            | Blocker |
+|-----|-------------------|---------|
 | 005 | ReachGraphicsDemo | Model + SkinnedAnimation + SpriteFont menus |
-| 014 | Spacewar         | Model + custom shaders + XACT |
-| 028 | ColorReplacement | Model + custom Effect |
-| 031 | BloomSample      | custom Effect (3 shaders) + RenderTarget2D + Model |
+| 014 | Spacewar          | Model + custom shaders + XACT |
+| 028 | ColorReplacement  | Model + custom Effect |
+| 031 | BloomSample       | custom Effect (3 shaders) + RenderTarget2D + Model |
 
 ### What does not work yet
 - **CameraShake 3D scene**: white stripe on all backends (near-plane clipping of w<0).
 - **Phases 3 & 4** (3D shaders / models + animation): no sample ported; need an
-  HLSL→GLSL workflow and a model-conversion pipeline (neither exists yet).
+  HLSL→GLSL shader workflow and a model-conversion pipeline (neither exists in this repo).
+- **Vulkan backend**: multiple `SpriteBatch.Begin/End` per frame discards the first (EasyGL,
+  the default, is fine).
 
 ---
 
 ## 3. Recent Changes
 
-- **samples/CatapultWars/** (new, #067) — Full port of the XNA "Catapult Wars Lab"
-  Windows Phone game (EX2/End). 14 header-only files + Program.cpp: the ScreenManager
-  framework (reused from GameStateManagement), `Animation` (sprite-sheet), `AudioManager`
-  (SoundEffect bank), `Projectile`/`Catapult` (bit-flag state machine, BoundingSphere/Box
-  collision), `Player`/`Human`/`AI`, and 5 screens (Background, MainMenu, Instructions,
-  Pause, Gameplay). Touch gestures adapted to mouse drag/click; fixed 30fps timestep;
-  animation defs inlined from AnimationsDef.xml. Fonts MenuFont/HUDFont generated from
-  DejaVuSans-Bold. Screenshot-verified: main menu + full gameplay (HUD, wind, both
-  catapults, parallax clouds). Authored CatapultWars.htm (training kit has no .htm).
-- **cna repo (EasyGL backend)** — Two Primitives3D bugs fixed + verified (screenshots):
-  (1) **DiffuseColor** — `EnsureColored3DProgram()` now outputs `vColor * uDiffuseColor`
-  and wires `loc_diffuse`; the non-Ex user-primitive paths upload white explicitly so the
-  uniform never defaults to 0/black. (2) **Wireframe** — `ApplyRasterizerState` sets a
-  `wireframe_` flag and the 3D draw paths re-expand triangles to `GL_LINES` via the new
-  `DrawWireframe` helper (scratch 32-bit line index buffer; indexed + non-indexed list/strip).
-  DEFERRED.md items 3 & 4 closed.
-- **samples (CONTENT_DIR audit)** — Several enabled samples had `Content/help.png` but no
-  `CONTENT_DIR` in their `CMakeLists.txt`, so the F1 overlay asset was never copied next to
-  the binary and the sample **aborted at startup** (only "ran" when launched from the source
-  dir). Added `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content` to **Primitives3D,
-  PrimitivesSample, ShapeRendering, Bounce, CollisionSample** (all re-verified running).
-  The 4 deferred samples with the same gap (BloomSample, ColorReplacement, ReachGraphicsDemo,
-  Spacewar) have no `CMakeLists.txt` yet — fix when they are enabled.
-- **samples/GameStateManagement/** (new, #072) — Full port of the canonical XNA GSMSample
-  (Win+Xbox): `ScreenManager` (DrawableGameComponent), `GameScreen` transition state
-  machine, `InputState`, `MenuScreen`/`MenuEntry`, and all screens (Background, MainMenu,
-  Options, Pause, MessageBox, Loading, Gameplay). Screens owned via `std::shared_ptr` to
-  mirror C# GC semantics. Screenshot-verified (Main Menu, Options with working toggles,
-  Gameplay). Confirms multiple SpriteBatch Begin/End per frame work on EasyGL.
-- **cna repo (GraphicsDeviceManager.cpp)** — Fixed portrait-orientation bug FNA-faithfully:
-  `supportsOrientations_` is now platform-gated via `SDL_GetPlatform()` (true only on
-  iOS/Android, matching FNA). Desktop now honors `PreferredBackBufferWidth × Height`
-  verbatim (480×800 → portrait). Committed + pushed to `openeggbert/cna` develop.
-- **samples/SoundAndMusic/** (#060) — SoundEffect fire-and-forget, looped
-  SoundEffectInstance with pan/pitch/volume sliders, Song play/pause/stop. Portrait
-  480×800; touch adapted to mouse.
-- **PLAN.md** — status table corrected (Phase 2: 16, Phase 5: 2, Phase 6: 1; total 29 done).
+- **samples/CatapultWars/** (new, #067) — Full port of the XNA "Catapult Wars Lab" Windows
+  Phone game (EX2/End). 14 header-only files + `Program.cpp`: reuses the
+  GameStateManagement ScreenManager framework; adds `Animation` (sprite-sheet),
+  `AudioManager` (SoundEffect bank), `Projectile`/`Catapult` (bit-flag state machine,
+  BoundingSphere/Box collision), `Player`/`Human`/`AI`, and 5 screens. Touch gestures
+  mapped to mouse drag/click; fixed 30 fps timestep; animation defs inlined from
+  `AnimationsDef.xml`. Fonts from DejaVuSans-Bold. Authored `CatapultWars.htm` (the training
+  kit ships a `.doc`, not a `.htm`). **No CNA or sharp-runtime changes were needed** —
+  this sample is a pure consumer of existing API. Screenshot-verified (menu + gameplay).
+- **cna repo (EasyGL backend)** — Fixed two Primitives3D bugs (committed + pushed to
+  `openeggbert/cna`): (1) **DiffuseColor** — `EnsureColored3DProgram()` now outputs
+  `vColor * uDiffuseColor` and wires `loc_diffuse`; the non-Ex user-primitive paths upload
+  white so the uniform never defaults to 0/black. (2) **Wireframe** — `ApplyRasterizerState`
+  sets a `wireframe_` flag and the 3D draw paths re-expand triangles into `GL_LINES` via a
+  new `DrawWireframe` helper. DEFERRED.md items 3 & 4 closed.
+- **samples (CONTENT_DIR audit)** — Several enabled samples shipped `Content/help.png` but
+  lacked `CONTENT_DIR`, so the F1 overlay asset was never copied next to the binary and the
+  sample aborted at startup. Added `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content` to
+  **Primitives3D, PrimitivesSample, ShapeRendering, Bounce, CollisionSample** (all
+  re-verified running). The 4 deferred samples with the same gap have no `CMakeLists.txt`
+  yet — fix when they are enabled.
+- **Docs** — NEXT.md, PLAN.md (Phase 6: 2 done, total 30), DEFERRED.md, and the affected
+  `missing.md` files updated.
 
 ---
 
 ## 4. Current Blocker / Main Problem
 
-There is **no hard blocker** stopping all progress — portable 2D samples remain in
-Phase 6/7. The most important *standing bug* and the main *capability gap* are:
+There is **no hard blocker** stopping all progress — portable 2D samples remain in Phase
+6/7. The most important *standing bug* and the main *capability gap* are:
 
 ### A. CameraShake 3D white stripe (confirmed bug, all backends)
 - **Symptom:** The 3D scene renders as a thin bright bar; tank and ground invisible.
 - **Reproduce:** `./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples`
 - **Affected:** `samples/CameraShake/src/CameraShakeGame.hpp` (camera at (1000,1000,1000),
-  ground scale 0.1 → vertices at ±6554); CNA near-plane clipping of w<0 vertices.
-- **Tried:** Removed an incorrect z-remap from the Vulkan 3D vertex shaders (correct but no
-  visual change); tested a scale-0.02 workaround (reverted to keep XNA values); EasyGL shows
-  the same stripe. Fix belongs in CNA's shared clipping logic, not the sample.
+  ground scale 0.1 → vertices at ±6554); CNA near-plane clipping of w<0 vertices in the
+  EasyGL/Vulkan backends.
+- **Suspected cause:** CNA does not clip primitives against the near plane the way DirectX
+  does, so vertices with w<0 are projected incorrectly.
+- **Tried:** Removed an incorrect z-remap from the Vulkan 3D vertex shaders (correct, but no
+  visual change); a scale-0.02 workaround was rejected (do not hide the bug in the sample);
+  EasyGL shows the same stripe. Fix belongs in CNA's shared clipping logic.
 
 ### B. Phase 3/4 pipeline gap (capability gap, blocks ~28 samples)
-- Phase 3 samples need custom HLSL effects translated to GLSL `.shader.json`; Phase 4 needs
-  `.fbx/.x` model conversion to `.model.json` plus (for several) skeletal animation. No
-  proven workflow for either exists in this repo yet.
+- Phase 3 needs custom HLSL effects translated to GLSL `.shader.json`; Phase 4 needs
+  model conversion to `.model.json` plus (for several) skeletal animation. No proven
+  workflow for either exists in this repo yet.
 
 ---
 
@@ -152,12 +145,13 @@ Phase 6/7. The most important *standing bug* and the main *capability gap* are:
 | Label | Description |
 |-------|-------------|
 | confirmed bug | **CameraShake white stripe (all backends).** CNA near-plane clipping of w<0 vertices differs from DirectX. |
-| fixed | **Primitives3D DiffuseColor (EasyGL).** `prog_colored_` now multiplies `vColor * uDiffuseColor`. |
-| fixed | **Primitives3D wireframe (EasyGL).** `FillMode::WireFrame` emulated by re-expanding triangles to `GL_LINES` (`DrawWireframe`). |
-| confirmed bug | **Multiple SpriteBatch/frame on Vulkan.** Second `Begin/End` discards the first. Works on EasyGL (default). Affects any multi-layer sample (e.g. GameStateManagement) if run on Vulkan. |
+| confirmed bug | **Multiple SpriteBatch/frame on Vulkan.** Second `Begin/End` discards the first. Works on EasyGL (default). Affects multi-layer samples (e.g. GameStateManagement, CatapultWars) if run on Vulkan. |
 | incomplete | **Phase 3 (3D shaders)** — 19 samples blocked on HLSL→GLSL translation. |
-| incomplete | **Phase 4 (Models/Anim)** — 9 samples blocked on model conversion + animation. |
-| needs verification | **GameStateManagement interactive input.** Headless x11 testing injected synthetic key events that auto-navigated menus; verify real keyboard/gamepad navigation on a desktop session. |
+| incomplete | **Phase 4 (Models/Anim)** — 9 samples blocked on a model-conversion + animation pipeline. |
+| incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
+| needs verification | **GameStateManagement + CatapultWars interactive input.** Headless screenshots used a temporary auto-advance / synthetic events; verify real keyboard/mouse/gamepad navigation on a desktop session. |
+| limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
+| limitation | **No touch input.** Windows Phone touch samples are remapped to mouse/keyboard (documented per-sample in `missing.md`). |
 
 ---
 
@@ -168,31 +162,50 @@ Phase 6/7. The most important *standing bug* and the main *capability gap* are:
 samples/SampleName/
   src/Program.cpp        # int main(){ NS::GameClass g; g.Run(); return 0; }
   src/*.hpp              # all logic inline (header-only)
-  Content/               # copied next to the binary via CONTENT_DIR
-  CMakeLists.txt         # cna_add_sample(name SOURCES src/Program.cpp CONTENT_DIR ...)
+  Content/               # copied next to the binary via CONTENT_DIR (POST_BUILD)
+  CMakeLists.txt         # cna_add_sample(name SOURCES src/Program.cpp CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content)
   missing.md             # required: differences vs the XNA original
-  SampleName.htm         # required: verbatim MS documentation
+  SampleName.htm         # required: MS documentation (authored if the kit lacks one)
 ```
 
 ### CNA API rules — must not break
-- All XNA properties: `getXxxProperty()` / `setXxxProperty()` — never raw member access.
-- Every `Game` subclass implements `const std::string& GetTypeName() const override`.
-- `Content.Load<T>()` returns **T by value** — store in `std::optional<T>`.
+- All XNA properties use `getXxxProperty()` / `setXxxProperty()` — never raw member access.
+- Every `Game` **and** `DrawableGameComponent` subclass implements
+  `const std::string& GetTypeName() const override`.
+- `Content.Load<T>()` returns **T by value** — store in `std::optional<T>`. Textures keeping
+  a pointer (e.g. an `Animation` referencing a sheet) must store the texture somewhere with
+  a **stable address** (`std::map` node / `std::optional`, not a reallocating `std::vector`).
 - Virtual overrides: `void Update(GameTime&)` (non-const) and `void Draw(const GameTime&)`
   (const). `DrawableGameComponent::Initialize()` calls `LoadContent()` once.
-- No `operator+=` for `Vector2`/`TimeSpan` — write `v = v + expr`. `Color` has no
-  `operator*` — multiply channels manually (see GameStateManagement `mul()` helper).
-- `GraphicsDeviceManager.SupportedOrientations`/portrait now honored on desktop (FNA-style).
+- No `operator+=` for `Vector2`/`TimeSpan` — write `v = v + expr`. `Color` has no `operator*`
+  — multiply channels manually (see the `mul()` helper in GameScreen.hpp).
+- `Rectangle` exposes public `X/Y/Width/Height` and `Contains(x, y)` (no `getXProperty`).
+- `Point` exposes public `X/Y`. `Vector2` exposes public `X/Y`.
+- `CONTENT_DIR` must be `${CMAKE_CURRENT_SOURCE_DIR}/Content` (the POST_BUILD copy runs from
+  the binary dir, so a bare relative path fails).
 - SpriteFont atlases must be generated with `--content-root samples/X/Content` so the
   `.font.json` `texture` path is relative to the Content root.
 
-### GameStateManagement (most complex sample) data flow
-- `Game` → owns a `ScreenManager` (DrawableGameComponent, added to `Components`).
+### ScreenManager framework (shared shape of GameStateManagement & CatapultWars)
+- `Game` owns a `ScreenManager` (DrawableGameComponent, added to `Components`).
 - `ScreenManager` holds a stack of `std::shared_ptr<GameScreen>`; `Update` copies the stack,
   routes input to the topmost active screen, and lets each screen transition.
 - **Invariant:** a screen may remove itself during its own `Update` (via `ExitScreen` →
   `RemoveScreen(this)`); the `shared_ptr` copy in the update loop keeps it alive until the
-  iteration ends. Do not switch screens to raw owning pointers — that reintroduces UAF.
+  iteration ends. Do **not** switch screen ownership to raw owning pointers — that
+  reintroduces use-after-free.
+- Cross-referencing screens (screen A creates screen B which creates A) are resolved with
+  forward declarations + out-of-line inline definitions at the bottom of `Screens.hpp`.
+
+### CatapultWars specifics
+- `Catapult` ↔ `Player` is a cycle: `Catapult` holds non-owning `Player*` back-pointers and
+  declares the Player-dependent methods (`CheckHit`, `getEnemyScore`), which are **defined
+  out-of-line in `Player.hpp`** after `Player` is complete. `Player` owns its `Catapult` via
+  `std::shared_ptr`.
+- `CatapultState` is a bit-flag `enum class` with `constexpr operator|`/`operator&`; the
+  combined `Firing | ProjectileFlying` state is a real switch case.
+- Animations advance one frame per `Update`; the game runs at a **fixed 30 fps timestep**
+  (`setTargetElapsedTimeProperty(FromSeconds(1.0/30.0))`) or they play twice as fast.
 
 ---
 
@@ -202,25 +215,26 @@ samples/SampleName/
 # Configure (first time)
 cmake --preset debug            # or: cmake --preset debug-easygl
 
-# Build everything / one sample
+# Build everything / one sample (rebuilds CNA as needed)
 cmake --build cmake-build-debug
-cmake --build cmake-build-debug --target GameStateManagement_cna_samples
+cmake --build cmake-build-debug --target CatapultWars_cna_samples
 
-# Run the newest sample
-./cmake-build-debug/samples/GameStateManagement/GameStateManagement_cna_samples
+# Run the newest sample (run from its own dir so Content/ is found)
+cd cmake-build-debug/samples/CatapultWars && ./CatapultWars_cna_samples
 
 # Reproduce the main bug (CameraShake white stripe)
 ./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples
 
 # Generate a SpriteFont atlas (ALWAYS pass --content-root)
-python3 tools/make_font.py /usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf 23 \
-    samples/X/Content/menufont --content-root samples/X/Content
+python3 tools/make_font.py /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf 24 \
+    samples/X/Content/Fonts/MenuFont --content-root samples/X/Content
 
-# Generate the F1 help overlay
+# Generate the F1 help overlay PNG from the sample .htm
 python3 tools/gen_help_png.py samples/X/X.htm samples/X/Content/help.png
 
-# Headless screenshot of an SDL3 app (native-Wayland windows are invisible to X11 tools):
-#   run with the X11 driver, find the window id, capture with ImageMagick
+# Headless screenshot of an SDL3 app (native-Wayland windows are invisible to X11 tools).
+# NOTE: there is no input-injection tool installed (no xdotool/xte); to screenshot a
+# non-initial screen, temporarily auto-advance in code, capture, then revert.
 SDL_VIDEODRIVER=x11 ./cmake-build-debug/samples/X/X_cna_samples &
 WID=$(xwininfo -root -tree | grep -i X_cna_samples | grep -oE '0x[0-9a-f]+' | head -1)
 import -window "$WID" /tmp/shot.png
@@ -230,32 +244,36 @@ import -window "$WID" /tmp/shot.png
 
 ## 8. Next Smallest Tasks
 
-1. **Verify GameStateManagement interactive input on a real desktop session.**
-   - Goal: confirm Up/Down/Enter/Esc (and gamepad) navigate menus correctly; the headless
-     harness injected synthetic events, so this is unverified with real input.
-   - Files: `samples/GameStateManagement/src/InputState.hpp`.
-   - Verify: run the binary, navigate Main → Options → Back, Play Game → Esc → Pause → Quit.
+1. **Verify CatapultWars + GameStateManagement interactive input on a real desktop session.**
+   - Goal: confirm menu navigation (Up/Down/Enter/Esc, mouse click) and CatapultWars firing
+     (mouse press-drag-release) work with real input; the screenshots used a temporary
+     auto-advance, so live input is unverified.
+   - Files: `samples/CatapultWars/src/{InputState,Human,MenuScreen}.hpp`,
+     `samples/GameStateManagement/src/InputState.hpp`.
+   - Verify: run the binary; navigate menus; play a full CatapultWars turn.
 
-2. ~~**Fix Primitives3D DiffuseColor on EasyGL.**~~ ✅ DONE — `EnsureColored3DProgram()`
-   now outputs `vColor * uDiffuseColor` and wires `loc_diffuse`.  Screenshot-verified:
-   the cube renders red (DiffuseColor) instead of white.
+2. **Port the next portable 2D sample.**
+   - Goal: keep extending coverage with proven-feature (2D/SpriteFont/audio) samples.
+     Yacht #071 is a candidate but MODERATE (touch-only + accelerometer + a WCF server to
+     drop; local vs-AI ports cleanly). Pick a lighter pure-2D sample if available.
+   - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
+   - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
-3. ~~**Fix Primitives3D wireframe on EasyGL.**~~ ✅ DONE — `ApplyRasterizerState` sets a
-   `wireframe_` flag; the 3D draw paths re-expand triangles to `GL_LINES` via the new
-   `DrawWireframe` helper.  Screenshot-verified: the cube renders as an edge-only wireframe.
-   (Also fixed: Primitives3D `CMakeLists.txt` was missing `CONTENT_DIR`, so `Content/help.png`
-   was never copied and the sample aborted at startup.)
-
-4. **Investigate CameraShake near-plane clipping in the EasyGL backend.**
+3. **Investigate CameraShake near-plane clipping in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank render.
    - Files: `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path).
-   - Verify: white stripe disappears in `CameraShake_cna_samples`.
+   - Verify: the white stripe disappears in `CameraShake_cna_samples`.
 
-5. ~~**Port the next 2D Phase 6/7 sample.**~~ ✅ DONE — CatapultWars #067 ported and
-   screenshot-verified (menu + gameplay). **Yacht #071** is the next 2D candidate, but it
-   is MODERATE: touch-only gameplay (more remapping) plus an accelerometer and a WCF
-   online-multiplayer server to drop (the local vs-AI mode ports cleanly). Other proven-
-   feature 2D/SpriteFont samples are also fair game.
+4. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+   - Goal: a second `Begin/End` in the same frame must not discard the first.
+   - Files: `cna/.../Vulkan/VulkanGraphicsBackend.cpp`.
+   - Verify: run GameStateManagement/CatapultWars on the Vulkan backend; all layers draw.
+
+5. **Add CMakeLists + CONTENT_DIR to a deferred sample when its blocker is lifted.**
+   - Goal: when a Model/Effect pipeline exists, enable one of BloomSample / ColorReplacement
+     / ReachGraphicsDemo / Spacewar with `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
+   - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
+   - Verify: build target + run from the binary dir (must not abort on `help`).
 
 ---
 
@@ -263,15 +281,16 @@ import -window "$WID" /tmp/shot.png
 
 - **Do not start Phase 3 samples** without first establishing an HLSL→GLSL `.shader.json`
   workflow — no HLSL runtime compiler exists in CNA.
-- **Do not start Phase 4 samples** without a proven `.fbx/.x` → `.model.json` conversion path.
+- **Do not start Phase 4 samples** without a proven model-conversion path to `.model.json`.
 - **Do not add a shared `samples/common/` library** — each sample stays self-contained.
 - **Do not change the CameraShake ground scale / camera** to hide the white stripe — fix the
   CNA clipping bug instead.
 - **Do not work around CNA bugs inside samples** (no per-control scaling, sample-side
   letterboxing, etc.). If CNA diverges from XNA 4.0, check FNA
   (`/rv/data/library/github.com/FNA-XNA/FNA`) and fix it in CNA.
-- **Do not switch GameStateManagement screen ownership** from `shared_ptr` to raw pointers.
+- **Do not switch ScreenManager screen ownership** from `shared_ptr` to raw pointers.
 - **Do not re-generate existing font atlases** unless there is a confirmed rendering bug.
+- **No broad refactors or unrelated cleanup** while the CameraShake clipping bug is open.
 
 ---
 
@@ -281,8 +300,7 @@ import -window "$WID" /tmp/shot.png
 Read NEXT.md first to understand current project state.
 Then inspect only the files needed for the first task in section 8.
 Do not refactor unrelated code and do not start any task not listed in section 8.
-Make one small, verifiable improvement.
-Run the relevant build/run command from section 7 and confirm it works
-(screenshot-verify UI changes; native-Wayland windows need the SDL_VIDEODRIVER=x11 trick).
-Update NEXT.md after finishing to reflect what changed.
+Make one small, verified improvement, then run the relevant build/screenshot command
+(e.g. cmake --build cmake-build-debug --target <Name>_cna_samples) to confirm it.
+After finishing, update NEXT.md (status, recent changes, next tasks) to match reality.
 ```
