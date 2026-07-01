@@ -110,3 +110,4 @@ add_subdirectory(samples/CameraShake)
 # Phase 6/7 — Game frameworks & UI
 add_subdirectory(samples/GameStateManagement)
 add_subdirectory(samples/CatapultWars)
+add_subdirectory(samples/Yacht)

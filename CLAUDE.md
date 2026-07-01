@@ -92,8 +92,11 @@ When porting a sample that loads assets via `Content.Load<T>()`:
 - **Textures** (`.xnb` → `Texture2D`): convert the source art to PNG and place in `Content/`.
 - **Audio** (`.xnb` → `SoundEffect`/`Song`): convert to OGG or WAV and place in `Content/`.
 - **Models** (`.xnb` → `Model`): convert to glTF and place in `Content/`.
-- **SpriteFont** (`.xnb` → `SpriteFont`): deferred — CNA has no SpriteFont yet (see `DEFERRED.md`).
-  Omit `DrawString` calls and the `Content.Load<SpriteFont>` call from the port.
+- **SpriteFont** (`.xnb` → `SpriteFont`): supported — CNA has a real `SpriteFont`
+  (`.font.json` + PNG atlas, `SpriteBatch.DrawString` fully implemented; see
+  DEFERRED.md item 2, ✅ resolved). Generate atlases with `tools/make_font.py`
+  (substitute a DejaVu font for whatever TrueType font the original used) —
+  do **not** omit `DrawString` calls or `Content.Load<SpriteFont>`.
 - **Effects** (`.xnb` → custom `Effect`): deferred until CNA supports user shaders.
 
 Source art is usually in the XNA sample's `*Content/` directory or next to the `.xnb` files.

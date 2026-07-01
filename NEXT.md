@@ -11,8 +11,8 @@ living integration tests for the CNA framework and as a migration reference.
 
 **Current phase:** Phases 1 (Foundation), 2 (2D Games) and 5 (Audio) are complete except
 items deferred on missing CNA features. Phase 6 (Full games) is in progress
-(GameStateManagement #072 and CatapultWars #067 done). Phases 3 (3D shaders) and 4
-(models/animation) are untouched and blocked on missing asset pipelines.
+(GameStateManagement #072, CatapultWars #067, and Yacht #071 done). Phases 3 (3D shaders)
+and 4 (models/animation) are untouched and blocked on missing asset pipelines.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample is self-contained.
@@ -37,7 +37,7 @@ All enabled samples compile and link cleanly with the default **EasyGL** backend
 No automated test suite in this repo — the samples themselves are the manual/visual
 integration tests. Verification is by running a sample and inspecting a screenshot.
 
-### Enabled samples (30)
+### Enabled samples (31)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
@@ -69,6 +69,7 @@ integration tests. Verification is by running a sample and inspecting a screensh
 | 059 | Audio3D              | ✅ runs | 3D positional audio; alpha-test billboards |
 | 060 | SoundAndMusic        | ✅ runs | portrait 480×800; SoundEffect + Song; mouse sliders |
 | 067 | CatapultWars         | ✅ runs | full 2D game: menus, AI, sprite-sheet animation, SoundEffect, HUD |
+| 071 | Yacht                | ✅ runs | full dice game: real TouchPanel gestures + real Accelerometer (SDL3-backed) + mouse; portrait 480×800; online multiplayer (WCF) dropped |
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
 
 ### Deferred (not built — no CMakeLists yet)
@@ -90,6 +91,33 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
+- **samples/Yacht/** (new, #071) — Full port of the XNA "Yacht Starter Kit" Windows
+  Phone dice game. 17 header-only files + `Program.cpp`. Unlike CatapultWars/
+  GameStateManagement (which remapped touch to mouse only), this port uses CNA's
+  **real** `TouchPanel`/`GestureDetector` (SDL3 finger events, all `GestureType`
+  values actually detected) and CNA's **real** `Microsoft::Devices::Sensors::Accelerometer`
+  (SDL3 `SDL_Sensor`) for shake-to-roll, with mouse added as an explicit parallel
+  path everywhere the original was touch-only (Roll/Score buttons, dice pick-up,
+  scorecard tap/scroll). A pre-existing `NEXT.md`/`CLAUDE.md` claim that CNA lacked
+  touch input and SpriteFont was **stale** — both are fully implemented; both docs
+  corrected. Dice roll animation ports the original's shared-RNG/timed-reroll
+  behaviour from a background `System.Threading.Timer` to a per-die elapsed-time
+  accumulator (no threads). Online multiplayer (WCF service + Windows Phone push
+  notifications) and the tombstoning save/load lifecycle are dropped entirely —
+  local Human-vs-3-AI play is fully self-contained and was confirmed faithful to
+  the original (same player names "Josh"/"Charles"/"Alex", same 12-category
+  scorecard, same turn/scoring rules). One deliberate behavioural improvement: the
+  original's keyboard-arrow accelerometer fallback was dead code off-device (nothing
+  ever polled `Accelerometer.GetState()` outside the real-hardware event handler) —
+  the port polls it every frame so shake-to-roll actually works on a desktop with
+  no accelerometer. Screenshot- and human-input-verified: main menu (no "Online
+  Game" entry), offline game start (correct 4 players), a real dice roll, holding
+  dice (tap/click), the scorecard's live per-category score preview, and the
+  keyboard-arrow shake-to-roll fallback. See `samples/Yacht/missing.md` for the
+  full list of differences from the original, including two assets (`button.png`,
+  `Dot.png`) an initial pass wrongly flagged as unused due to a grep bug (missed
+  a forward-slash path style and a case difference in the original's own source)
+  — caught and fixed before commit.
 - **Interactive input verification (GameStateManagement + CatapultWars)** — launched both
   binaries under `SDL_VIDEODRIVER=x11` (XWayland) on a real desktop session and drove them
   with genuine human keyboard/mouse input (not the auto-advance hack used for earlier
@@ -162,8 +190,10 @@ There is **no hard blocker** stopping all progress — portable 2D samples remai
 | incomplete | **Phase 4 (Models/Anim)** — 9 samples blocked on a model-conversion + animation pipeline. |
 | incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
-| limitation | **No touch input.** Windows Phone touch samples are remapped to mouse/keyboard (documented per-sample in `missing.md`). |
+| corrected | ~~No touch input~~ — **stale.** CNA has a real `Microsoft::Xna::Framework::Input::Touch::TouchPanel` (all `GestureType` values actually detected by `CNA::Internal::Input::GestureDetector`, SDL3 finger events wired in `SdlInputBridge.cpp`) and a real `Microsoft::Devices::Sensors::Accelerometer` (SDL3 `SDL_Sensor`-backed). Earlier ports (CatapultWars, GameStateManagement) predated this and chose to remap touch to mouse instead of using it; that was a per-sample choice, not a CNA limitation. Now proven end-to-end by Yacht #071 (real gestures + real accelerometer, keyboard-fallback path verified). Gotcha: a sample must call `TouchPanel::setDisplayWidthProperty/setDisplayHeightProperty` itself (no auto-wiring from the backbuffer size) or touch coordinates come out wrong. |
+| corrected | ~~SpriteFont deferred, omit DrawString~~ — **stale**, was in `CLAUDE.md` (fixed). SpriteFont has been ✅ resolved for a while (DEFERRED.md item 2) — `.font.json` + PNG atlas via `tools/make_font.py`, `SpriteBatch.DrawString` fully implemented. Don't omit text in new ports. |
 | verified | **GameStateManagement + CatapultWars interactive input** — confirmed on a real desktop session (SDL_VIDEODRIVER=x11/XWayland + human-driven keyboard/mouse, screenshots between steps). See Recent Changes. |
+| verified | **Yacht real touch/gesture + real accelerometer input** — confirmed via screenshots + human-driven interaction: main menu, offline game start, dice roll, dice hold, scorecard preview, keyboard-arrow shake-to-roll fallback. Real hardware accelerometer not tested (no sensor on this desktop). |
 
 ---
 
@@ -257,9 +287,10 @@ import -window "$WID" /tmp/shot.png
 ## 8. Next Smallest Tasks
 
 1. **Port the next portable 2D sample.**
-   - Goal: keep extending coverage with proven-feature (2D/SpriteFont/audio) samples.
-     Yacht #071 is a candidate but MODERATE (touch-only + accelerometer + a WCF server to
-     drop; local vs-AI ports cleanly). Pick a lighter pure-2D sample if available.
+   - Goal: keep extending coverage. Now that real `TouchPanel`/`Accelerometer` are
+     confirmed working end-to-end (see Yacht #071), touch/accelerometer samples are
+     no longer a reason to deprioritize a candidate — pick based on remaining asset
+     needs (SpriteFont/audio proven; 3D shaders/models still blocked, see below).
    - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
@@ -278,6 +309,14 @@ import -window "$WID" /tmp/shot.png
      / ReachGraphicsDemo / Spacewar with `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
    - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
    - Verify: build target + run from the binary dir (must not abort on `help`).
+
+5. **Verify real hardware accelerometer shake on a device that has one.**
+   - Goal: Yacht's shake-to-roll was only verified via the keyboard-arrow fallback
+     on this desktop (no physical accelerometer). The real-sensor code path
+     (`Accelerometer::getIsSupportedProperty()` true branch) is implemented but
+     untested end-to-end.
+   - Files: `samples/Yacht/src/Accelerometer.hpp`.
+   - Verify: run on a machine/device with a real accelerometer; shake it.
 
 ---
 
