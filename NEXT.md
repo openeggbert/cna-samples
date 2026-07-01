@@ -91,68 +91,22 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
-- **samples/Yacht/** (new, #071) — Full port of the XNA "Yacht Starter Kit" Windows
-  Phone dice game. 17 header-only files + `Program.cpp`. Unlike CatapultWars/
-  GameStateManagement (which remapped touch to mouse only), this port uses CNA's
-  **real** `TouchPanel`/`GestureDetector` (SDL3 finger events, all `GestureType`
-  values actually detected) and CNA's **real** `Microsoft::Devices::Sensors::Accelerometer`
-  (SDL3 `SDL_Sensor`) for shake-to-roll, with mouse added as an explicit parallel
-  path everywhere the original was touch-only (Roll/Score buttons, dice pick-up,
-  scorecard tap/scroll). A pre-existing `NEXT.md`/`CLAUDE.md` claim that CNA lacked
-  touch input and SpriteFont was **stale** — both are fully implemented; both docs
-  corrected. Dice roll animation ports the original's shared-RNG/timed-reroll
-  behaviour from a background `System.Threading.Timer` to a per-die elapsed-time
-  accumulator (no threads). Online multiplayer (WCF service + Windows Phone push
-  notifications) and the tombstoning save/load lifecycle are dropped entirely —
-  local Human-vs-3-AI play is fully self-contained and was confirmed faithful to
-  the original (same player names "Josh"/"Charles"/"Alex", same 12-category
-  scorecard, same turn/scoring rules). One deliberate behavioural improvement: the
-  original's keyboard-arrow accelerometer fallback was dead code off-device (nothing
-  ever polled `Accelerometer.GetState()` outside the real-hardware event handler) —
-  the port polls it every frame so shake-to-roll actually works on a desktop with
-  no accelerometer. Screenshot- and human-input-verified: main menu (no "Online
-  Game" entry), offline game start (correct 4 players), a real dice roll, holding
-  dice (tap/click), the scorecard's live per-category score preview, and the
-  keyboard-arrow shake-to-roll fallback. See `samples/Yacht/missing.md` for the
-  full list of differences from the original, including two assets (`button.png`,
-  `Dot.png`) an initial pass wrongly flagged as unused due to a grep bug (missed
-  a forward-slash path style and a case difference in the original's own source)
-  — caught and fixed before commit.
-- **Interactive input verification (GameStateManagement + CatapultWars)** — launched both
-  binaries under `SDL_VIDEODRIVER=x11` (XWayland) on a real desktop session and drove them
-  with genuine human keyboard/mouse input (not the auto-advance hack used for earlier
-  screenshots), confirming via screenshots between steps: **GameStateManagement** — Down
-  arrow moves the Main Menu highlight, Enter selects "Play Game" into the GameplayScreen,
-  Escape opens the PauseMenuScreen ("Resume Game"/"Quit Game"), and a mouse click on a menu
-  entry ("Options") navigates correctly; **CatapultWars** — the title screen's "Play" button
-  leads through InstructionsScreen into a level, and a real mouse press-drag-release fires
-  the catapult per the "Drag Anywhere to Fire" prompt. No regressions found. (Tooling note:
-  `xdotool` had to be installed for window activation; real synchronized-frame screenshots
-  of a human-driven session are inherently racy over chat round-trips, so a couple of
-  transitions were confirmed by direct user report rather than a mid-transition screenshot.)
-- **samples/CatapultWars/** (new, #067) — Full port of the XNA "Catapult Wars Lab" Windows
-  Phone game (EX2/End). 14 header-only files + `Program.cpp`: reuses the
-  GameStateManagement ScreenManager framework; adds `Animation` (sprite-sheet),
-  `AudioManager` (SoundEffect bank), `Projectile`/`Catapult` (bit-flag state machine,
-  BoundingSphere/Box collision), `Player`/`Human`/`AI`, and 5 screens. Touch gestures
-  mapped to mouse drag/click; fixed 30 fps timestep; animation defs inlined from
-  `AnimationsDef.xml`. Fonts from DejaVuSans-Bold. Authored `CatapultWars.htm` (the training
-  kit ships a `.doc`, not a `.htm`). **No CNA or sharp-runtime changes were needed** —
-  this sample is a pure consumer of existing API. Screenshot-verified (menu + gameplay).
-- **cna repo (EasyGL backend)** — Fixed two Primitives3D bugs (committed + pushed to
-  `openeggbert/cna`): (1) **DiffuseColor** — `EnsureColored3DProgram()` now outputs
-  `vColor * uDiffuseColor` and wires `loc_diffuse`; the non-Ex user-primitive paths upload
-  white so the uniform never defaults to 0/black. (2) **Wireframe** — `ApplyRasterizerState`
-  sets a `wireframe_` flag and the 3D draw paths re-expand triangles into `GL_LINES` via a
-  new `DrawWireframe` helper. DEFERRED.md items 3 & 4 closed.
-- **samples (CONTENT_DIR audit)** — Several enabled samples shipped `Content/help.png` but
-  lacked `CONTENT_DIR`, so the F1 overlay asset was never copied next to the binary and the
-  sample aborted at startup. Added `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content` to
-  **Primitives3D, PrimitivesSample, ShapeRendering, Bounce, CollisionSample** (all
-  re-verified running). The 4 deferred samples with the same gap have no `CMakeLists.txt`
-  yet — fix when they are enabled.
-- **Docs** — NEXT.md, PLAN.md (Phase 6: 2 done, total 30), DEFERRED.md, and the affected
-  `missing.md` files updated.
+- **Added samples/Yacht/** (#071) — full dice-game port. First sample to use CNA's
+  **real** `TouchPanel`/`GestureDetector` and **real** `Accelerometer` (SDL3-backed)
+  instead of remapping touch to mouse only; mouse added as a parallel input path.
+  Online multiplayer (WCF + push notifications) and tombstoning save/load dropped;
+  local Human-vs-3-AI is faithful to the original. Dice-roll timing moved from a
+  background `System.Threading.Timer` to a per-frame accumulator (no threads).
+  Screenshot- and human-input-verified (menu, offline game start, roll, hold,
+  score preview, keyboard-arrow shake fallback — real hardware accelerometer not
+  tested, no sensor on this machine). Details in `samples/Yacht/missing.md`.
+- **Corrected two stale doc claims** found while scoping Yacht: `NEXT.md` said CNA
+  had no touch input, `CLAUDE.md` said to omit SpriteFont/`DrawString` — both were
+  wrong (both features are fully implemented in CNA); both docs fixed.
+- **Verified GameStateManagement + CatapultWars interactive input** on a real
+  desktop session (human-driven keyboard/mouse via `xdotool`, not the auto-advance
+  hack used for earlier screenshots) — menu nav, pause menu, mouse click, and
+  CatapultWars' mouse drag-to-fire all confirmed working. No regressions found.
 
 ---
 
