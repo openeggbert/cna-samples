@@ -90,6 +90,18 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
+- **Interactive input verification (GameStateManagement + CatapultWars)** — launched both
+  binaries under `SDL_VIDEODRIVER=x11` (XWayland) on a real desktop session and drove them
+  with genuine human keyboard/mouse input (not the auto-advance hack used for earlier
+  screenshots), confirming via screenshots between steps: **GameStateManagement** — Down
+  arrow moves the Main Menu highlight, Enter selects "Play Game" into the GameplayScreen,
+  Escape opens the PauseMenuScreen ("Resume Game"/"Quit Game"), and a mouse click on a menu
+  entry ("Options") navigates correctly; **CatapultWars** — the title screen's "Play" button
+  leads through InstructionsScreen into a level, and a real mouse press-drag-release fires
+  the catapult per the "Drag Anywhere to Fire" prompt. No regressions found. (Tooling note:
+  `xdotool` had to be installed for window activation; real synchronized-frame screenshots
+  of a human-driven session are inherently racy over chat round-trips, so a couple of
+  transitions were confirmed by direct user report rather than a mid-transition screenshot.)
 - **samples/CatapultWars/** (new, #067) — Full port of the XNA "Catapult Wars Lab" Windows
   Phone game (EX2/End). 14 header-only files + `Program.cpp`: reuses the
   GameStateManagement ScreenManager framework; adds `Animation` (sprite-sheet),
@@ -149,9 +161,9 @@ There is **no hard blocker** stopping all progress — portable 2D samples remai
 | incomplete | **Phase 3 (3D shaders)** — 19 samples blocked on HLSL→GLSL translation. |
 | incomplete | **Phase 4 (Models/Anim)** — 9 samples blocked on a model-conversion + animation pipeline. |
 | incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
-| needs verification | **GameStateManagement + CatapultWars interactive input.** Headless screenshots used a temporary auto-advance / synthetic events; verify real keyboard/mouse/gamepad navigation on a desktop session. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
 | limitation | **No touch input.** Windows Phone touch samples are remapped to mouse/keyboard (documented per-sample in `missing.md`). |
+| verified | **GameStateManagement + CatapultWars interactive input** — confirmed on a real desktop session (SDL_VIDEODRIVER=x11/XWayland + human-driven keyboard/mouse, screenshots between steps). See Recent Changes. |
 
 ---
 
@@ -244,32 +256,24 @@ import -window "$WID" /tmp/shot.png
 
 ## 8. Next Smallest Tasks
 
-1. **Verify CatapultWars + GameStateManagement interactive input on a real desktop session.**
-   - Goal: confirm menu navigation (Up/Down/Enter/Esc, mouse click) and CatapultWars firing
-     (mouse press-drag-release) work with real input; the screenshots used a temporary
-     auto-advance, so live input is unverified.
-   - Files: `samples/CatapultWars/src/{InputState,Human,MenuScreen}.hpp`,
-     `samples/GameStateManagement/src/InputState.hpp`.
-   - Verify: run the binary; navigate menus; play a full CatapultWars turn.
-
-2. **Port the next portable 2D sample.**
+1. **Port the next portable 2D sample.**
    - Goal: keep extending coverage with proven-feature (2D/SpriteFont/audio) samples.
      Yacht #071 is a candidate but MODERATE (touch-only + accelerometer + a WCF server to
      drop; local vs-AI ports cleanly). Pick a lighter pure-2D sample if available.
    - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
-3. **Investigate CameraShake near-plane clipping in the EasyGL backend.**
+2. **Investigate CameraShake near-plane clipping in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank render.
    - Files: `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path).
    - Verify: the white stripe disappears in `CameraShake_cna_samples`.
 
-4. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+3. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin/End` in the same frame must not discard the first.
    - Files: `cna/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement/CatapultWars on the Vulkan backend; all layers draw.
 
-5. **Add CMakeLists + CONTENT_DIR to a deferred sample when its blocker is lifted.**
+4. **Add CMakeLists + CONTENT_DIR to a deferred sample when its blocker is lifted.**
    - Goal: when a Model/Effect pipeline exists, enable one of BloomSample / ColorReplacement
      / ReachGraphicsDemo / Spacewar with `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
    - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
