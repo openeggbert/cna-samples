@@ -12,9 +12,9 @@ living integration tests for the CNA framework and as a migration reference.
 **Current phase:** Phases 1 (Foundation), 2 (2D Games) and 5 (Audio) are complete except
 items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, and Yacht #071 done). Phase 7
-(Advanced/UI/Misc) is underway (GesturesSample #079, TouchThumbsticks #080 done).
-Phases 3 (3D shaders) and 4 (models/animation) are untouched and blocked on
-missing asset pipelines.
+(Advanced/UI/Misc) is underway (GesturesSample #079, TouchThumbsticks #080,
+LocalizationSample #078 done). Phases 3 (3D shaders) and 4 (models/animation)
+are untouched and blocked on missing asset pipelines.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample is self-contained.
@@ -39,7 +39,7 @@ All enabled samples compile and link cleanly with the default **EasyGL** backend
 No automated test suite in this repo — the samples themselves are the manual/visual
 integration tests. Verification is by running a sample and inspecting a screenshot.
 
-### Enabled samples (33)
+### Enabled samples (34)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
@@ -75,6 +75,7 @@ integration tests. Verification is by running a sample and inspecting a screensh
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
 | 079 | GesturesSample       | ✅ runs | real TouchPanel gestures (Hold/Tap/Drag/Flick/Pinch) + parallel mouse fallback |
 | 080 | TouchThumbsticks     | ✅ runs | twin-stick space shooter; real dual-touch thumbsticks + WASD/mouse-aim fallback |
+| 078 | LocalizationSample   | ✅ runs | 5-language string/flag localization demo; SPACE cycles language (CultureInfo stub) |
 
 ### Deferred (not built — no CMakeLists yet)
 | #   | Sample            | Blocker |
@@ -95,17 +96,28 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
+- **Added samples/LocalizationSample/** (#078) — port of the "Localization" sample
+  (English/Danish/French/Japanese/Korean strings + flag, via a `LoadLocalizedAsset<T>`
+  fallback: try full culture name, then language-only, then default). sharp-runtime's
+  `CultureInfo.CurrentCulture` is a stub (always invariant culture, no OS locale
+  detection), so SPACE manually cycles the 5 languages instead of auto-detecting one.
+  **Surfaced and fixed two real CNA bugs** (confirmed with the maintainer before fixing,
+  neither specific to this sample — see `samples/LocalizationSample/missing.md` for
+  full detail): (1) `ContentManager::ResolveAssetPath` used
+  `std::filesystem::path::has_extension()` to decide whether to try appending a reader
+  extension, which misfires on any asset name with a non-extension dot (e.g.
+  `"Flag.en-US"` was mistaken for already having a `.en-US` extension) — fixed to check
+  literal-path existence first. (2) `SpriteFont::MeasureString` / `SpriteBatch::DrawString`
+  had **no UTF-8 decoding** — they iterated the string one raw byte at a time, so *any*
+  non-ASCII character (accented Latin, CJK, anything) split into 2-4 bytes that each
+  missed the glyph lookup and rendered as `?` — fixed with a shared
+  `CNA::Internal::DecodeUtf8CodePoint()` helper. Both fixes are in the `cna` repo, not
+  worked around here. Verified all 5 languages render correctly; full rebuild of all 33
+  samples plus an ASCII-text regression spot-check (InputReporter) showed no side effects.
 - **Added samples/TouchThumbsticks/** (#080) — twin-stick space-shooter port of the WP7
-  "TouchThumbSticks" sample. Left virtual thumbstick flies the ship (with drag physics),
-  right aims and auto-fires at homing aliens spawned off-screen; camera follows the ship
-  over a starfield + rectangular world border. Real dual-touch `TouchPanel` is the primary
-  path (ported faithfully in `VirtualThumbsticks::Update()`); since this needs *two
-  simultaneous* contacts (unlike a single-pointer gesture sample), added a keyboard+mouse
-  fallback instead of a mouse-only one — WASD/arrows drive the left stick, mouse position
-  relative to screen-center drives the right (aim + auto-fire), each falling back
-  independently only when its half isn't touched. Verified via `xdotool` + screenshots:
-  keyboard movement, mouse-aim rotation + auto-fire, enemy spawn/homing, world border, F1
-  help. Details in `samples/TouchThumbsticks/missing.md`.
+  "TouchThumbSticks" sample; real dual-touch `TouchPanel` sticks + a WASD/mouse-aim
+  fallback (two *simultaneous* contacts can't be emulated with one mouse pointer). Details
+  in `samples/TouchThumbsticks/missing.md`.
 - **Added samples/GesturesSample/** (#079) — small port of the WP7 "TouchGestureSample"
   (hold/tap/drag/flick/pinch a cat sprite); real `TouchPanel` gestures + a parallel mouse
   fallback, same pattern as Yacht #071. Details in `samples/GesturesSample/missing.md`.
@@ -147,8 +159,10 @@ There is **no hard blocker** stopping all progress — portable 2D samples remai
 | incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
 | corrected | ~~No touch input~~ — **stale.** CNA has a real `Microsoft::Xna::Framework::Input::Touch::TouchPanel` (all `GestureType` values actually detected by `CNA::Internal::Input::GestureDetector`, SDL3 finger events wired in `SdlInputBridge.cpp`) and a real `Microsoft::Devices::Sensors::Accelerometer` (SDL3 `SDL_Sensor`-backed). Earlier ports (CatapultWars, GameStateManagement) predated this and chose to remap touch to mouse instead of using it; that was a per-sample choice, not a CNA limitation. Now proven end-to-end by Yacht #071 (real gestures + real accelerometer, keyboard-fallback path verified). Gotcha: a sample must call `TouchPanel::setDisplayWidthProperty/setDisplayHeightProperty` itself (no auto-wiring from the backbuffer size) or touch coordinates come out wrong. |
-| verified | **GesturesSample and TouchThumbsticks** (real `TouchPanel` gestures / dual-touch sticks + their keyboard/mouse fallbacks) and **Yacht** (real gestures + real accelerometer) all confirmed working via `xdotool` + screenshots. Real hardware accelerometer still untested (no sensor on this desktop). See Recent Changes and each sample's `missing.md`. |
+| verified | **GesturesSample, TouchThumbsticks, and LocalizationSample** (real `TouchPanel` gestures / dual-touch sticks / 5-language text+flag switching, plus their keyboard/mouse fallbacks) and **Yacht** (real gestures + real accelerometer) all confirmed working via `xdotool` + screenshots. Real hardware accelerometer still untested (no sensor on this desktop). See Recent Changes and each sample's `missing.md`. |
 | gotcha | **Desktop input testing via `xdotool` can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error. Always `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. |
+| fixed (CNA) | **`ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot** (e.g. `"Flag.en-US"`), because it used `std::filesystem::path::has_extension()` instead of checking real file existence. Fixed in `cna/include/.../ContentManager.hpp` while porting LocalizationSample #078 — see Recent Changes. |
+| fixed (CNA) | **`SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding** — iterated the string one raw byte at a time, so any non-ASCII character (accented Latin, CJK, ...) rendered as `?` placeholders. Fixed with `CNA::Internal::DecodeUtf8CodePoint()` (`cna/include/CNA/Internal/Utf8Decode.hpp`) while porting LocalizationSample #078 — see Recent Changes. Any earlier CNA-samples doc or code that assumed non-ASCII `DrawString` text doesn't render is now stale. |
 
 ---
 
@@ -258,11 +272,11 @@ xdotool key F1
      confirmed working end-to-end (see Yacht #071, GesturesSample #079,
      TouchThumbsticks #080), touch/accelerometer samples are no longer a reason to
      deprioritize a candidate — pick based on remaining asset needs (SpriteFont/audio
-     proven; 3D shaders/models still blocked, see below). Remaining Phase 7 candidates,
-     smallest first (by original C# line count): LocalizationSample #078,
-     SnowShovel #083, SplitScreen #076, DynamicMenu #077, PerformanceMeasuring #081,
-     UISample #082, NGSMSample #075. Phase 6 (full games) also has Todo items (see
-     PLAN.md) if a bigger port is preferred.
+     proven, including non-ASCII text now that UTF-8 decoding is fixed; 3D shaders/models
+     still blocked, see below). Remaining Phase 7 candidates, smallest first (by original
+     C# line count): SnowShovel #083, SplitScreen #076, DynamicMenu #077,
+     PerformanceMeasuring #081, UISample #082, NGSMSample #075. Phase 6 (full games) also
+     has Todo items (see PLAN.md) if a bigger port is preferred.
    - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
