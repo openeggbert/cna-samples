@@ -315,7 +315,7 @@ UI navigation, localization, performance measurement, touch/gesture, networking.
 | 077 | DynamicMenu | `DynamicMenu_4_0` | ⬜ Todo |
 | 078 | LocalizationSample | `LocalizationSample_4_0` | ⬜ Todo |
 | 079 | GesturesSample | `GesturesSample_4_0` | ✅ Done |
-| 080 | TouchThumbsticks | `TouchThumbsticksSample_4_0` | ⬜ Todo |
+| 080 | TouchThumbsticks | `TouchThumbsticksSample_4_0` | ✅ Done |
 | 081 | PerformanceMeasuring | `PerformanceMeasuringSample_4_0` | ⬜ Todo |
 | 082 | UISample | `UISample_4_0` | ⬜ Todo |
 | 083 | SnowShovel | `SnowShovelSample_4_0` | ⬜ Todo |
@@ -504,7 +504,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
 | Phase 6 — Full Games | 14 | 2 | 12 | 0 |
-| Phase 7 — Advanced / Misc | 9 | 1 | 8 | 0 |
+| Phase 7 — Advanced / Misc | 9 | 2 | 7 | 0 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
 | XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
 | Avatar asset packs | 4 | 0 | 0 | 4 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **31** | **48** | **74** |
+| **Total** | **153** | **32** | **47** | **74** |
 
 ---
 

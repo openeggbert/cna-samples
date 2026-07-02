@@ -12,8 +12,9 @@ living integration tests for the CNA framework and as a migration reference.
 **Current phase:** Phases 1 (Foundation), 2 (2D Games) and 5 (Audio) are complete except
 items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, and Yacht #071 done). Phase 7
-(Advanced/UI/Misc) has begun (GesturesSample #079 done). Phases 3 (3D shaders)
-and 4 (models/animation) are untouched and blocked on missing asset pipelines.
+(Advanced/UI/Misc) is underway (GesturesSample #079, TouchThumbsticks #080 done).
+Phases 3 (3D shaders) and 4 (models/animation) are untouched and blocked on
+missing asset pipelines.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample is self-contained.
@@ -38,7 +39,7 @@ All enabled samples compile and link cleanly with the default **EasyGL** backend
 No automated test suite in this repo — the samples themselves are the manual/visual
 integration tests. Verification is by running a sample and inspecting a screenshot.
 
-### Enabled samples (32)
+### Enabled samples (33)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
@@ -73,6 +74,7 @@ integration tests. Verification is by running a sample and inspecting a screensh
 | 071 | Yacht                | ✅ runs | full dice game: real TouchPanel gestures + real Accelerometer (SDL3-backed) + mouse; portrait 480×800; online multiplayer (WCF) dropped |
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
 | 079 | GesturesSample       | ✅ runs | real TouchPanel gestures (Hold/Tap/Drag/Flick/Pinch) + parallel mouse fallback |
+| 080 | TouchThumbsticks     | ✅ runs | twin-stick space shooter; real dual-touch thumbsticks + WASD/mouse-aim fallback |
 
 ### Deferred (not built — no CMakeLists yet)
 | #   | Sample            | Blocker |
@@ -93,20 +95,20 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
-- **Added samples/GesturesSample/** (#079) — first Phase 7 sample. Small, self-contained
-  port of the WP7 "TouchGestureSample": hold empty space to create a cat sprite, hold a
-  sprite to remove it, tap to change color, drag to move, flick to throw (with
-  wall-bounce/friction physics), pinch to scale. Real `TouchPanel` gestures are the
-  primary path; added a parallel mouse fallback (drag/click/hold-timer/scroll-wheel) for
-  desktop testing, same pattern as Yacht #071. Verified interactively via `xdotool` +
-  screenshots: hold-create, tap-color-cycle, drag-move, flick physics, scroll-to-scale,
-  hold-to-remove, and the F1 help overlay all confirmed working. One bug caught and fixed
-  during testing: holding the mouse button while scrolling could cross the Hold-timer
-  threshold and delete the sprite mid-scale — scroll input now also suppresses the Hold
-  timer, the same way dragging does. Details in `samples/GesturesSample/missing.md`.
-- **Added samples/Yacht/** (#071) — full dice-game port; first sample to use CNA's real
-  `TouchPanel`/`GestureDetector` and real `Accelerometer` (SDL3-backed) instead of
-  remapping touch to mouse. Details in `samples/Yacht/missing.md`.
+- **Added samples/TouchThumbsticks/** (#080) — twin-stick space-shooter port of the WP7
+  "TouchThumbSticks" sample. Left virtual thumbstick flies the ship (with drag physics),
+  right aims and auto-fires at homing aliens spawned off-screen; camera follows the ship
+  over a starfield + rectangular world border. Real dual-touch `TouchPanel` is the primary
+  path (ported faithfully in `VirtualThumbsticks::Update()`); since this needs *two
+  simultaneous* contacts (unlike a single-pointer gesture sample), added a keyboard+mouse
+  fallback instead of a mouse-only one — WASD/arrows drive the left stick, mouse position
+  relative to screen-center drives the right (aim + auto-fire), each falling back
+  independently only when its half isn't touched. Verified via `xdotool` + screenshots:
+  keyboard movement, mouse-aim rotation + auto-fire, enemy spawn/homing, world border, F1
+  help. Details in `samples/TouchThumbsticks/missing.md`.
+- **Added samples/GesturesSample/** (#079) — small port of the WP7 "TouchGestureSample"
+  (hold/tap/drag/flick/pinch a cat sprite); real `TouchPanel` gestures + a parallel mouse
+  fallback, same pattern as Yacht #071. Details in `samples/GesturesSample/missing.md`.
 
 ---
 
@@ -145,9 +147,8 @@ There is **no hard blocker** stopping all progress — portable 2D samples remai
 | incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
 | corrected | ~~No touch input~~ — **stale.** CNA has a real `Microsoft::Xna::Framework::Input::Touch::TouchPanel` (all `GestureType` values actually detected by `CNA::Internal::Input::GestureDetector`, SDL3 finger events wired in `SdlInputBridge.cpp`) and a real `Microsoft::Devices::Sensors::Accelerometer` (SDL3 `SDL_Sensor`-backed). Earlier ports (CatapultWars, GameStateManagement) predated this and chose to remap touch to mouse instead of using it; that was a per-sample choice, not a CNA limitation. Now proven end-to-end by Yacht #071 (real gestures + real accelerometer, keyboard-fallback path verified). Gotcha: a sample must call `TouchPanel::setDisplayWidthProperty/setDisplayHeightProperty` itself (no auto-wiring from the backbuffer size) or touch coordinates come out wrong. |
-| verified | **GesturesSample real gestures + mouse fallback** — confirmed via `xdotool` + screenshots: hold-create/remove, tap-color-cycle, drag-move, flick physics, scroll-to-scale, F1 help. See Recent Changes. |
+| verified | **GesturesSample and TouchThumbsticks** (real `TouchPanel` gestures / dual-touch sticks + their keyboard/mouse fallbacks) and **Yacht** (real gestures + real accelerometer) all confirmed working via `xdotool` + screenshots. Real hardware accelerometer still untested (no sensor on this desktop). See Recent Changes and each sample's `missing.md`. |
 | gotcha | **Desktop input testing via `xdotool` can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error. Always `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. |
-| verified | **Yacht real touch/gesture + real accelerometer input** — confirmed via screenshots + human-driven interaction: main menu, offline game start, dice roll, dice hold, scorecard preview, keyboard-arrow shake-to-roll fallback. Real hardware accelerometer not tested (no sensor on this desktop). |
 
 ---
 
@@ -254,14 +255,14 @@ xdotool key F1
 
 1. **Port the next portable 2D sample.**
    - Goal: keep extending coverage. Now that real `TouchPanel`/`Accelerometer` are
-     confirmed working end-to-end (see Yacht #071, GesturesSample #079), touch/
-     accelerometer samples are no longer a reason to deprioritize a candidate — pick
-     based on remaining asset needs (SpriteFont/audio proven; 3D shaders/models still
-     blocked, see below). Remaining Phase 7 candidates, smallest first (by original C#
-     line count): TouchThumbsticks #080, LocalizationSample #078, SnowShovel #083,
-     SplitScreen #076, DynamicMenu #077, PerformanceMeasuring #081, UISample #082,
-     NGSMSample #075. Phase 6 (full games) also has Todo items (see PLAN.md) if a
-     bigger port is preferred.
+     confirmed working end-to-end (see Yacht #071, GesturesSample #079,
+     TouchThumbsticks #080), touch/accelerometer samples are no longer a reason to
+     deprioritize a candidate — pick based on remaining asset needs (SpriteFont/audio
+     proven; 3D shaders/models still blocked, see below). Remaining Phase 7 candidates,
+     smallest first (by original C# line count): LocalizationSample #078,
+     SnowShovel #083, SplitScreen #076, DynamicMenu #077, PerformanceMeasuring #081,
+     UISample #082, NGSMSample #075. Phase 6 (full games) also has Todo items (see
+     PLAN.md) if a bigger port is preferred.
    - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
