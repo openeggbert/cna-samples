@@ -11,7 +11,8 @@ living integration tests for the CNA framework and as a migration reference.
 
 **Current phase:** Phases 1 (Foundation), 2 (2D Games) and 5 (Audio) are complete except
 items deferred on missing CNA features. Phase 6 (Full games) is in progress
-(GameStateManagement #072, CatapultWars #067, and Yacht #071 done). Phases 3 (3D shaders)
+(GameStateManagement #072, CatapultWars #067, and Yacht #071 done). Phase 7
+(Advanced/UI/Misc) has begun (GesturesSample #079 done). Phases 3 (3D shaders)
 and 4 (models/animation) are untouched and blocked on missing asset pipelines.
 
 **Key architectural decisions:**
@@ -37,7 +38,7 @@ All enabled samples compile and link cleanly with the default **EasyGL** backend
 No automated test suite in this repo — the samples themselves are the manual/visual
 integration tests. Verification is by running a sample and inspecting a screenshot.
 
-### Enabled samples (31)
+### Enabled samples (32)
 | #   | Sample               | Status  | Notes |
 |-----|----------------------|---------|-------|
 | 001 | PrimitivesSample     | ✅ runs | 2D DrawUserPrimitives |
@@ -71,6 +72,7 @@ integration tests. Verification is by running a sample and inspecting a screensh
 | 067 | CatapultWars         | ✅ runs | full 2D game: menus, AI, sprite-sheet animation, SoundEffect, HUD |
 | 071 | Yacht                | ✅ runs | full dice game: real TouchPanel gestures + real Accelerometer (SDL3-backed) + mouse; portrait 480×800; online multiplayer (WCF) dropped |
 | 072 | GameStateManagement  | ✅ runs | menu/screen framework; multiple SpriteBatch/frame OK on EasyGL |
+| 079 | GesturesSample       | ✅ runs | real TouchPanel gestures (Hold/Tap/Drag/Flick/Pinch) + parallel mouse fallback |
 
 ### Deferred (not built — no CMakeLists yet)
 | #   | Sample            | Blocker |
@@ -91,22 +93,20 @@ integration tests. Verification is by running a sample and inspecting a screensh
 
 ## 3. Recent Changes
 
-- **Added samples/Yacht/** (#071) — full dice-game port. First sample to use CNA's
-  **real** `TouchPanel`/`GestureDetector` and **real** `Accelerometer` (SDL3-backed)
-  instead of remapping touch to mouse only; mouse added as a parallel input path.
-  Online multiplayer (WCF + push notifications) and tombstoning save/load dropped;
-  local Human-vs-3-AI is faithful to the original. Dice-roll timing moved from a
-  background `System.Threading.Timer` to a per-frame accumulator (no threads).
-  Screenshot- and human-input-verified (menu, offline game start, roll, hold,
-  score preview, keyboard-arrow shake fallback — real hardware accelerometer not
-  tested, no sensor on this machine). Details in `samples/Yacht/missing.md`.
-- **Corrected two stale doc claims** found while scoping Yacht: `NEXT.md` said CNA
-  had no touch input, `CLAUDE.md` said to omit SpriteFont/`DrawString` — both were
-  wrong (both features are fully implemented in CNA); both docs fixed.
-- **Verified GameStateManagement + CatapultWars interactive input** on a real
-  desktop session (human-driven keyboard/mouse via `xdotool`, not the auto-advance
-  hack used for earlier screenshots) — menu nav, pause menu, mouse click, and
-  CatapultWars' mouse drag-to-fire all confirmed working. No regressions found.
+- **Added samples/GesturesSample/** (#079) — first Phase 7 sample. Small, self-contained
+  port of the WP7 "TouchGestureSample": hold empty space to create a cat sprite, hold a
+  sprite to remove it, tap to change color, drag to move, flick to throw (with
+  wall-bounce/friction physics), pinch to scale. Real `TouchPanel` gestures are the
+  primary path; added a parallel mouse fallback (drag/click/hold-timer/scroll-wheel) for
+  desktop testing, same pattern as Yacht #071. Verified interactively via `xdotool` +
+  screenshots: hold-create, tap-color-cycle, drag-move, flick physics, scroll-to-scale,
+  hold-to-remove, and the F1 help overlay all confirmed working. One bug caught and fixed
+  during testing: holding the mouse button while scrolling could cross the Hold-timer
+  threshold and delete the sprite mid-scale — scroll input now also suppresses the Hold
+  timer, the same way dragging does. Details in `samples/GesturesSample/missing.md`.
+- **Added samples/Yacht/** (#071) — full dice-game port; first sample to use CNA's real
+  `TouchPanel`/`GestureDetector` and real `Accelerometer` (SDL3-backed) instead of
+  remapping touch to mouse. Details in `samples/Yacht/missing.md`.
 
 ---
 
@@ -145,8 +145,8 @@ There is **no hard blocker** stopping all progress — portable 2D samples remai
 | incomplete | **4 deferred samples have no CMakeLists.txt** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar) and ship `help.png` without `CONTENT_DIR` — add both when enabling them. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py` (and `"Moire ExtraBold"` etc. are substituted with DejaVu fonts). |
 | corrected | ~~No touch input~~ — **stale.** CNA has a real `Microsoft::Xna::Framework::Input::Touch::TouchPanel` (all `GestureType` values actually detected by `CNA::Internal::Input::GestureDetector`, SDL3 finger events wired in `SdlInputBridge.cpp`) and a real `Microsoft::Devices::Sensors::Accelerometer` (SDL3 `SDL_Sensor`-backed). Earlier ports (CatapultWars, GameStateManagement) predated this and chose to remap touch to mouse instead of using it; that was a per-sample choice, not a CNA limitation. Now proven end-to-end by Yacht #071 (real gestures + real accelerometer, keyboard-fallback path verified). Gotcha: a sample must call `TouchPanel::setDisplayWidthProperty/setDisplayHeightProperty` itself (no auto-wiring from the backbuffer size) or touch coordinates come out wrong. |
-| corrected | ~~SpriteFont deferred, omit DrawString~~ — **stale**, was in `CLAUDE.md` (fixed). SpriteFont has been ✅ resolved for a while (DEFERRED.md item 2) — `.font.json` + PNG atlas via `tools/make_font.py`, `SpriteBatch.DrawString` fully implemented. Don't omit text in new ports. |
-| verified | **GameStateManagement + CatapultWars interactive input** — confirmed on a real desktop session (SDL_VIDEODRIVER=x11/XWayland + human-driven keyboard/mouse, screenshots between steps). See Recent Changes. |
+| verified | **GesturesSample real gestures + mouse fallback** — confirmed via `xdotool` + screenshots: hold-create/remove, tap-color-cycle, drag-move, flick physics, scroll-to-scale, F1 help. See Recent Changes. |
+| gotcha | **Desktop input testing via `xdotool` can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error. Always `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. |
 | verified | **Yacht real touch/gesture + real accelerometer input** — confirmed via screenshots + human-driven interaction: main menu, offline game start, dice roll, dice hold, scorecard preview, keyboard-arrow shake-to-roll fallback. Real hardware accelerometer not tested (no sensor on this desktop). |
 
 ---
@@ -229,11 +229,23 @@ python3 tools/make_font.py /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf 
 python3 tools/gen_help_png.py samples/X/X.htm samples/X/Content/help.png
 
 # Headless screenshot of an SDL3 app (native-Wayland windows are invisible to X11 tools).
-# NOTE: there is no input-injection tool installed (no xdotool/xte); to screenshot a
-# non-initial screen, temporarily auto-advance in code, capture, then revert.
 SDL_VIDEODRIVER=x11 ./cmake-build-debug/samples/X/X_cna_samples &
 WID=$(xwininfo -root -tree | grep -i X_cna_samples | grep -oE '0x[0-9a-f]+' | head -1)
 import -window "$WID" /tmp/shot.png
+
+# xdotool IS installed (corrected stale claim — verified while testing GesturesSample
+# #079) and can drive real mouse/keyboard input into the window for interactive
+# verification. Always refocus immediately before each input burst — a focus-losing
+# tool call in between (e.g. another screenshot) makes xdotool silently no-op:
+xdotool windowactivate --sync "$WID"
+xdotool windowfocus --sync "$WID"
+xdotool mousemove --window "$WID" 200 200
+xdotool mousedown 1; sleep 0.5; xdotool mouseup 1   # explicit down/sleep/up beats `click`
+                                                     # for anything the app must observe
+                                                     # as held (a plain `click`'s down+up
+                                                     # can land inside one game-loop frame
+                                                     # and never be seen as a discrete edge)
+xdotool key F1
 ```
 
 ---
@@ -242,9 +254,14 @@ import -window "$WID" /tmp/shot.png
 
 1. **Port the next portable 2D sample.**
    - Goal: keep extending coverage. Now that real `TouchPanel`/`Accelerometer` are
-     confirmed working end-to-end (see Yacht #071), touch/accelerometer samples are
-     no longer a reason to deprioritize a candidate — pick based on remaining asset
-     needs (SpriteFont/audio proven; 3D shaders/models still blocked, see below).
+     confirmed working end-to-end (see Yacht #071, GesturesSample #079), touch/
+     accelerometer samples are no longer a reason to deprioritize a candidate — pick
+     based on remaining asset needs (SpriteFont/audio proven; 3D shaders/models still
+     blocked, see below). Remaining Phase 7 candidates, smallest first (by original C#
+     line count): TouchThumbsticks #080, LocalizationSample #078, SnowShovel #083,
+     SplitScreen #076, DynamicMenu #077, PerformanceMeasuring #081, UISample #082,
+     NGSMSample #075. Phase 6 (full games) also has Todo items (see PLAN.md) if a
+     bigger port is preferred.
    - Files: new `samples/<Name>/`; root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples` + screenshot.
 
