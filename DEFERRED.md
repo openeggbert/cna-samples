@@ -117,21 +117,32 @@ HeightmapCollision, BillboardSample, and all samples using `BasicEffect` with li
 
 ---
 
-## 6. Model Asset Conversion (FBX/X → .model.json) ✅ CNA SUPPORTS MODELS
+## 6. Model Asset Conversion (FBX/X → .model.json) ✅ CNA SUPPORTS STATIC MODELS
 
 **What is missing:**
 `Content.Load<Model>()` IS implemented in CNA via `.model.json` descriptor +
-binary vertex/index files.  The gap is **asset conversion**: XNA samples ship
-`.x` and `.fbx` model files that must be converted to CNA's `.model.json` format.
+binary vertex/index files, and `Model`/`ModelMesh`/`ModelBone`/`ModelMeshPart` all
+work end-to-end for a **static, rigid bone hierarchy** — proven by
+`examples/easygl_model_draw_test.cpp` (2-bone model, `CopyAbsoluteBoneTransformsTo`,
+full `Model::Draw` chain). For any sample whose model is static (or only needs rigid
+parent-child bone transforms, not skeletal animation playback), the gap is purely
+**asset conversion**: XNA samples ship `.x` and `.fbx` model files that must be
+converted to CNA's `.model.json` format.
+
+**This item covers static models only.** If a sample needs to *play* a skeletal
+animation (walk cycles, skinned character rigs, etc. — not just render a rigid
+multi-part mesh), see item 13 below instead — that capability does not exist in CNA
+yet, regardless of asset conversion.
 
 **What needs to happen:**
 - Convert source `.x`/`.fbx` files to `.model.json` + binary buffers
 - Tools: Blender export script, `assimp` CLI, or custom converter
 - One conversion per model file per sample
 
-**Blocked samples:** CameraShake, BloomSample (tank), Spacewar (Evolved ships/asteroids),
-ChaseCamera, HeightmapCollision, SkinningSample, MarbleMaze, ShipGame, RolePlayingGame,
-and many more.
+**Blocked samples (static geometry only):** CameraShake, BloomSample (tank),
+Spacewar (Evolved ships/asteroids), ChaseCamera, HeightmapCollision, MarbleMaze,
+ShipGame, and similar. (SkinningSample, RolePlayingGame, and other *animated*-model
+samples are additionally blocked on item 13.)
 
 **Effort:** M per model (conversion) — no CNA code changes needed
 
@@ -218,6 +229,55 @@ support in both EasyGL and Vulkan backends).
 
 ---
 
+## 13. Skeletal Animation Playback (AnimationClip / Keyframe / AnimationPlayer)
+
+**What is missing:**
+Unlike items 6 and 11 (which are pure asset-conversion gaps — CNA's own runtime
+already works), this is a **real, unimplemented CNA capability**. `Model`/`ModelBone`
+support a static or rigid bone *hierarchy* (proven working, see item 6), but there is
+no equivalent of the standard XNA "Skinned Model Sample" pipeline types:
+`AnimationClip`, `Keyframe`, `AnimationPlayer` (interpolates/advances a clip's
+keyframes and produces a bone-transform array per frame) do not exist anywhere in
+`cna/include` or `cna/src` (confirmed by grep — zero matches). There is also no
+skeletal/skinning data in the `.model.json` format itself (no bone-weight-per-vertex,
+no keyframe/clip section) — `ModelTypeReader` in `ContentManager.cpp` only parses a
+static `"bones"` hierarchy, not animation data.
+
+Note this is a different problem from `SkinnedEffect`'s GLSL shader
+(`src/CNA/Internal/Backends/Vulkan/shaders/skinned3d.{vert,frag}.glsl`), which already
+exists and can render a skinned mesh *given* a bone-transform array — the missing
+piece is producing that per-frame bone-transform array from animation data in the
+first place, plus the `.model.json` schema extension to carry vertex bone
+weights/indices and keyframe data.
+
+**What needs to happen:**
+- Extend the `.model.json` schema (and `ModelTypeReader`) to carry per-vertex bone
+  weights/indices and a keyframe/clip section (or a sibling `.animation.json`).
+- Add `AnimationClip`/`Keyframe`/`AnimationPlayer` classes (or CNA-native
+  equivalents) under `cna/include/Microsoft/Xna/Framework/` mirroring the XNA
+  Skinned Model Sample's own helper types, since ported samples that use skeletal
+  animation generally include copies of those exact helper classes and call into
+  them the same way.
+- Wire `AnimationPlayer`'s output bone-transform array into `Model::Draw`'s existing
+  `boneTransform` parameter (already proven working for the static case in
+  `examples/easygl_model_draw_test.cpp`) — this final wiring step may be small once
+  the data model and player exist.
+- A conversion tool step is also needed (FBX/X skeletal animation → the extended
+  `.model.json`/`.animation.json`), same class of tooling work as item 6, but cannot
+  be usefully built before the runtime side above exists to consume its output.
+
+**Blocked samples:** SkinningSample, RolePlayingGame, and any other Phase 4 sample
+whose model needs to *play* an animation rather than just render a static/rigid mesh
+(most of Phase 4's remaining 9 samples — check each one individually, since some may
+only need static geometry and are actually blocked on item 6 alone).
+
+**Effort:** L/XL — real engine-level feature work in `cna`, not just content
+conversion. Recommend prototyping the data model + player against one sample
+(SkinningSample is the XNA reference sample this pipeline is named after) before
+attempting the rest.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -227,10 +287,11 @@ support in both EasyGL and Vulkan backends).
 | 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D | ✅ done |
 | 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D | ✅ done |
 | 5 | VertexPositionNormal + lit shader | cna | L | many |
-| 6 | Model asset conversion (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
+| 6 | Model asset conversion, static geometry (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
 | 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
 | 9 | Viewport.AspectRatio | cna | S | 0 (workaround) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
 | 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
+| 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, RolePlayingGame, other animated Phase 4 samples | not started |
