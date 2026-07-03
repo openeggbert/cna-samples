@@ -15,9 +15,9 @@ anyone porting XNA/MonoGame code to CNA.
 **Current phase:** Phases 1 (Foundation), 2 (2D Games), and 5 (Audio) are complete except
 for items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, Yacht #071 done). Phase 7 (Advanced/UI/Misc)
-is underway (GesturesSample #079, TouchThumbsticks #080, LocalizationSample #078 done).
-Phases 3 (3D shaders) and 4 (models/animation) are untouched, blocked on missing asset
-pipelines (see section 4B).
+is underway (GesturesSample #079, TouchThumbsticks #080, LocalizationSample #078, SnowShovel
+#083 done). Phases 3 (3D shaders) and 4 (models/animation) are untouched, blocked on missing
+asset pipelines (see section 4B).
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -42,11 +42,11 @@ pipelines (see section 4B).
 ## 2. Current status
 
 ### Build
-All 34 enabled samples compiled and linked cleanly with the default **EasyGL** backend as
-of the last full build in this session (`cmake --build cmake-build-debug`, 0 errors). The
-active configured build tree is `cmake-build-debug`. This has not been re-verified since
-the last commit in section 3 below — treat as "known good as of that commit," not as a
-live guarantee.
+35 enabled samples compile and link cleanly with the default **EasyGL** backend as of this
+session (`cmake --build cmake-build-debug --target SnowShovel_cna_samples`, 0 errors; the
+other 34 were last confirmed in the prior session's full build). The active configured
+build tree is `cmake-build-debug`. A full rebuild of all 35 has not been re-run since
+SnowShovel was added — treat as "known good as of that commit," not as a live guarantee.
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -62,6 +62,9 @@ driving it interactively with `xdotool`.
 - No linter/formatter is configured in this repo.
 
 ### Recently implemented features
+- SnowShovel (#083): portrait (480x800) accelerometer/tilt game — scoop snowflakes with a
+  shovel before a shrinking-per-wave timer runs out; real accelerometer with
+  gamepad/touch/keyboard fallback (same pattern as Bounce/Yacht).
 - LocalizationSample (#078): 5-language (en/da/fr/ja/ko) string + flag switching, SPACE
   cycles language.
 - TouchThumbsticks (#080): twin-stick space shooter with real dual-touch virtual
@@ -70,9 +73,13 @@ driving it interactively with `xdotool`.
 - Two CNA framework fixes (asset path resolution; UTF-8 text decoding) — see section 3.
 
 ### Known working examples / demos
-34 samples run end-to-end; see the full table in the previous version of this file's
+35 samples run end-to-end; see the full table in the previous version of this file's
 git history, or run `cmake --build cmake-build-debug` and look under `samples/*/` for the
 current set. Representative, recently-verified ones:
+- `SnowShovel_cna_samples` — pre-game screen, SPACE-to-start, scoring, countdown timer
+  color-shift, automatic game-over transition, and the F1 help overlay all confirmed by
+  screenshot; see that sample's `missing.md` for one transition (game-over-to-restart) not
+  independently re-confirmed this session.
 - `GesturesSample_cna_samples` — touch/mouse sprite manipulation.
 - `TouchThumbsticks_cna_samples` — twin-stick shooter, keyboard+mouse fallback.
 - `LocalizationSample_cna_samples` — language cycling with SPACE, all 5 languages render
@@ -95,6 +102,15 @@ current set. Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
+- **(uncommitted)** — Added `samples/SnowShovel/` (#083): portrait accelerometer/tilt game,
+  real `Microsoft::Devices::Sensors::Accelerometer` with gamepad/touch/keyboard fallback
+  (`Accelerometer.hpp`, same pattern as Bounce/Yacht). Found and worked around (at the
+  sample level, not in CNA) a viewport-timing quirk: `getViewportProperty()` returns a
+  stale/wrong size when queried from `Initialize()`, even though the SDL window is already
+  correctly sized by then — see `samples/SnowShovel/missing.md` for the full writeup and
+  section 5/6 below. New files: `samples/SnowShovel/{CMakeLists.txt,missing.md,
+  SnowShovel.htm,src/{Program.cpp,SnowShovelGame.hpp,Snowflake.hpp,Accelerometer.hpp},
+  Content/...}`.
 - **`d90ec24`** — Added `samples/LocalizationSample/` (#078): English/Danish/French/
   Japanese/Korean welcome text + flag, switched via a `LoadLocalizedAsset<T>` fallback
   (try full culture name, then language-only, then default). sharp-runtime's
@@ -174,8 +190,10 @@ samples can still be ported freely. The two most significant *open* problems are
 | incomplete | **4 samples have source but no `CMakeLists.txt`** (BloomSample, ColorReplacement, ReachGraphicsDemo, Spacewar); their `help.png` was generated without a `CONTENT_DIR` wired up — add both when enabling them. |
 | limitation | **No SpriteFont `.xnb` pipeline.** Atlases must be generated with `tools/make_font.py`; the original samples' actual font families (e.g. "Segoe UI", "Moire ExtraBold") are substituted with DejaVu (Latin) or Noto Sans CJK (when a sample needs non-Latin text). |
 | limitation | **`sharp-runtime`'s `CultureInfo.CurrentCulture` is a stub** — always returns the invariant culture; there is no real OS locale detection. LocalizationSample works around this by manual language cycling (SPACE key) instead of auto-detecting the OS locale. |
-| needs verification | **Real hardware accelerometer** — Yacht's shake-to-roll is only verified via the keyboard-arrow fallback on this desktop (no physical accelerometer available). The real-sensor code path (`Accelerometer::getIsSupportedProperty()` true branch) is implemented but untested end-to-end on real hardware. |
+| needs verification | **Real hardware accelerometer** — Yacht's shake-to-roll and SnowShovel's tilt are only verified via the keyboard/gamepad/touch fallback on this desktop (no physical accelerometer available). The real-sensor code path (`Accelerometer::getIsSupportedProperty()` true branch) is implemented but untested end-to-end on real hardware. |
+| needs verification | **`GraphicsDevice.Viewport` is stale when queried from `Game::Initialize()`.** Observed while porting SnowShovel: `getViewportProperty().getWidthProperty()/getHeightProperty()` returned `1333x800` instead of the requested `480x800` even though the SDL window was already correctly sized (confirmed via `xwininfo`) and `GraphicsDeviceManager::CreateDevice()` runs before `Initialize()` per `Game::DoInitialize()`. Worked around in the sample (use the known preferred-back-buffer constants instead of re-querying); not root-caused inside CNA. Existing samples that call `getViewportProperty()` all do so later, from `Update()`/`Draw()` (e.g. Yacht's `ScreenManager::SafeArea()`), so this may be a wider latent issue worth a real CNA-side fix if a future sample needs viewport sizing genuinely inside `Initialize()`. |
 | gotcha | **`xdotool` input can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error message. Always run `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. A plain `xdotool click`/`key` can also complete faster than one game-loop frame (~33ms at the sample's 30fps) and be missed entirely by a naive down/up edge check — prefer explicit `keydown`/`sleep 0.15`/`keyup` over `click`/`key` when the app must observe a discrete press. |
+| gotcha | **This is a shared, actively-used desktop session, not an isolated headless sandbox.** Observed while porting SnowShovel: `xdotool getactivewindow` returned an unrelated window (a git history browser the human user had open) instead of the sample under test, and `windowactivate`/`windowfocus` on the sample's window repeatedly failed to take real effect (confirmed via a 1x1 `mutter-x11-frames` proxy window absorbing X input focus) even though `getactivewindow` claimed success right after the call. If input stops reaching a sample mid-session for no code-related reason, check `xdotool getactivewindow` + `getwindowname`/`xwininfo -tree` for what's *actually* focused before assuming a CNA/sample bug — and stop sending synthetic keys/clicks rather than risk them landing on the user's own foreground application. |
 | fixed (in `cna`, not this repo) | `ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot (e.g. `"Flag.en-US"`). See section 3, commit `80757b1` in the `cna` repo. |
 | fixed (in `cna`, not this repo) | `SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding, so any non-ASCII text rendered as `?`. See section 3, commit `41a4766` in the `cna` repo. |
 
@@ -251,14 +269,17 @@ samples/SampleName/
   timestep** (`setTargetElapsedTimeProperty(FromSeconds(1.0/30.0))`), or they play twice
   as fast.
 
-### Touch/gesture/thumbstick input (Yacht, GesturesSample, TouchThumbsticks)
+### Touch/gesture/thumbstick input (Yacht, GesturesSample, TouchThumbsticks, SnowShovel)
 - CNA has a real `Microsoft::Xna::Framework::Input::Touch::TouchPanel` (gestures
   detected by `CNA::Internal::Input::GestureDetector`, real SDL3 finger events wired in
   `SdlInputBridge.cpp`) and a real `Microsoft::Devices::Sensors::Accelerometer`
-  (SDL3 `SDL_Sensor`-backed). Both are proven end-to-end by these three samples.
+  (SDL3 `SDL_Sensor`-backed). Both are proven end-to-end by these four samples.
 - **Gotcha:** a sample must call `TouchPanel::setDisplayWidthProperty` /
   `setDisplayHeightProperty` itself in `Initialize()` — there is no auto-wiring from the
   backbuffer size — or gesture positions come out at (0, 0).
+- SnowShovel's `Accelerometer.hpp` is the minimal version of this pattern (no shake
+  detection, just `Initialize()` + `GetTilt() -> std::optional<Vector3>`) — start there,
+  not Yacht's fuller wrapper, if a future sample only needs raw tilt.
 - Since this desktop has no touchscreen and CNA does not synthesize touch from mouse
   input, every touch-driven sample in this repo adds a parallel keyboard/mouse fallback
   for desktop testing. Where the original mechanic needs only one contact point
@@ -317,10 +338,10 @@ There is no lint/format command configured in this repo, and no automated test c
    - Goal: extend sample coverage. Real `TouchPanel`/`Accelerometer` and non-ASCII
      `SpriteFont` text are all confirmed working end-to-end now, so no remaining Phase 7
      candidate should be deprioritized for those reasons.
-   - Candidates, smallest first by original C# line count: SnowShovel #083,
-     SplitScreen #076, DynamicMenu #077, PerformanceMeasuring #081, UISample #082,
-     NGSMSample #075. (Phase 6 full games also have open items — see `PLAN.md` — if a
-     bigger port is preferred instead.)
+   - Candidates, smallest first by original C# line count: SplitScreen #076,
+     DynamicMenu #077, PerformanceMeasuring #081, UISample #082, NGSMSample #075.
+     (Phase 6 full games also have open items — see `PLAN.md` — if a bigger port is
+     preferred instead.)
    - Files: new `samples/<Name>/` directory; one line added to root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples`, then run and
      screenshot it (see section 7).
