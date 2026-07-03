@@ -82,13 +82,16 @@ positioned after the viewport-timing fix above), SPACE starting the game from th
 screen, score increasing as snowflakes are caught, the countdown timer turning progressively
 more red, automatic transition to the "GAME OVER" screen when the timer runs out, and the F1
 help overlay. The symmetric SPACE-to-restart transition from "GAME OVER" back to the
-pre-game screen (`UpdatePostGame`, using the identical `keyboardState.IsKeyDown(Keys::Space)`
-check as the already-verified pre-game-to-game transition) was not independently confirmed
-by screenshot in this session — mid-session, keyboard/mouse input intermittently stopped
-reaching the sample's window for reasons unrelated to this code (the desktop session had
-other windows actively in use, and further synthetic input was intentionally stopped rather
-than risk sending keystrokes to the wrong window). Worth a quick follow-up screenshot check
-next session.
+pre-game screen was not independently re-confirmed by `xdotool` screenshot in the same
+session — mid-session, synthetic keyboard/mouse input intermittently stopped reaching the
+sample's window because the desktop session had other windows actively in use (see the
+`xdotool`/shared-desktop gotcha in NEXT.md section 5), and further synthetic input was
+intentionally stopped rather than risk sending keystrokes to the wrong window. The user then
+manually tested the mouse fallback themselves on real hardware and confirmed it works
+("funguje" — works) after the mouse click-and-drag/click-to-start/click-to-restart fallback
+(see the section above) was added; the keyboard/gamepad/touch paths (including the restart
+transition) were not separately called out in that manual pass but share the exact same
+code path already verified above for the analogous start transition.
 
 ## No known differences beyond the above
 Snowflake spawning/bouncing physics, wave escalation (more snowflakes, shorter bonus time
