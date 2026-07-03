@@ -109,12 +109,10 @@ public:
         (void)gameTime;
         Texture2D* currTexture = GetCurrTexture();
         if (currTexture != nullptr) {
-            // The original's call also passes rotation=0, origin=(0,0),
-            // effects=None, depth=0 -- all no-ops for an axis-aligned,
-            // unflipped background sprite -- and CNA has no destRect+rotation
-            // overload, so this drops straight to the destRect+source+color one.
             Rectangle rect = GetAbsoluteRect();
-            spriteBatch.Draw(*currTexture, rect, std::nullopt, Hue);
+            Rectangle sourceRect(0, 0, currTexture->getWidthProperty(), currTexture->getHeightProperty());
+            spriteBatch.Draw(*currTexture, rect, sourceRect, Hue, 0.0f, Vector2(),
+                              SpriteEffects::None, 0.0f);
         }
     }
 

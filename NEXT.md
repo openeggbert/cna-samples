@@ -16,9 +16,9 @@ anyone porting XNA/MonoGame code to CNA.
 for items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, Yacht #071 done). Phase 7 (Advanced/UI/Misc)
 is underway (GesturesSample #079, TouchThumbsticks #080, LocalizationSample #078, SnowShovel
-#083, DynamicMenu #077 done; SplitScreen #076 is blocked -- needs the Phase 3/4 model
-pipeline for its tank.fbx, see section 4B). Phases 3 (3D shaders) and 4 (models/animation)
-are untouched, blocked on missing asset pipelines.
+#083, DynamicMenu #077, UISample #082 done; SplitScreen #076 is blocked -- needs the Phase
+3/4 model pipeline for its tank.fbx, see section 4B). Phases 3 (3D shaders) and 4
+(models/animation) are untouched, blocked on missing asset pipelines.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -43,12 +43,10 @@ are untouched, blocked on missing asset pipelines.
 ## 2. Current status
 
 ### Build
-36 enabled samples compile and link cleanly with the default **EasyGL** backend as of this
-session (`cmake --build cmake-build-debug --target DynamicMenu_cna_samples`, 0 errors; the
-other 35 were last confirmed earlier in this session or the prior one). The active
-configured build tree is `cmake-build-debug`. A full rebuild of all 36 has not been re-run
-since DynamicMenu was added — treat as "known good as of that commit," not as a live
-guarantee.
+37 enabled samples compile and link cleanly with the default **EasyGL** backend as of this
+session — confirmed via a full `cmake --build cmake-build-debug` (all targets, 0 errors)
+run right after UISample was added, so this one is a live guarantee as of that build, not
+just "known good as of a commit."
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -64,6 +62,16 @@ driving it interactively with `xdotool`.
 - No linter/formatter is configured in this repo.
 
 ### Recently implemented features
+- UISample (#082): builds on GameStateManagement, adding a second, independent UI control
+  library (Control/TextControl/ImageControl/PanelControl/ScrollingPanelControl/
+  PageFlipControl + ScrollTracker/PageFlipTracker) with Silverlight-Panorama-style page
+  flipping (drag/flick through level-select pages) and Silverlight-ListBox-style scrolling
+  (drag through a fake high-score list). All touch/gesture input (Tap for menu selection,
+  HorizontalDrag/VerticalDrag/Flick/DragComplete for flip/scroll) is synthesized from mouse
+  input in one place (`InputState::UpdateMouseFallback()`), so none of the ported control/
+  tracker code needed CNA-specific changes. Found and fixed a real bug during interactive
+  verification: `TouchPanel::DisplayWidth/Height` were never set, so
+  `PageFlipTracker`'s drag-to-flip threshold computed against 0 (see missing.md).
 - DynamicMenu (#077): a small reusable UI control library (Control/Container/Button/Label/
   TextControl/MultilineTextControl/Image/ProgressBar/PhoneScreen) plus a 3-page demo --
   Page 1's controls and Transition-based animations are laid out in code; Page 2/3's
@@ -83,9 +91,13 @@ driving it interactively with `xdotool`.
 - Two CNA framework fixes (asset path resolution; UTF-8 text decoding) — see section 3.
 
 ### Known working examples / demos
-36 samples run end-to-end; see the full table in the previous version of this file's
+37 samples run end-to-end; see the full table in the previous version of this file's
 git history, or run `cmake --build cmake-build-debug` and look under `samples/*/` for the
 current set. Representative, recently-verified ones:
+- `UISample_cna_samples` — Main Menu, mouse-tap navigation into Level Select via
+  LoadingScreen, and mouse-drag page-flipping (House → Pasture) all confirmed by
+  screenshot. HighScoreScreen's vertical scroll (same ScrollTracker mouse-fallback code
+  path) was not independently re-confirmed — see that sample's `missing.md`.
 - `DynamicMenu_cna_samples` — Page 1 confirmed correct by screenshot (page-select
   highlighting, checkerboard background, all four buttons correctly colored/sized/
   centered-text). Page 2/3, the progress bar, and the O orientation toggle were not
@@ -119,7 +131,25 @@ current set. Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
-- **(uncommitted)** — Added `samples/DynamicMenu/` (#077): a reusable UI control library
+- **(uncommitted)** — Added `samples/UISample/` (#082): a second, independent UI control
+  library (`Controls/{Control,TextControl,ImageControl,PanelControl,ScrollingPanelControl,
+  PageFlipControl,ScrollTracker,PageFlipTracker,HighScorePanel}.hpp`) plus the
+  GameStateManagement-derived screen framework (`GameScreen.hpp`, `ScreenManager.hpp`,
+  `MenuScreen.hpp`, `MenuEntry.hpp`, `InputState.hpp`, `Screens.hpp`), extended with
+  per-screen `EnabledGestures` routing (not present in the existing GameStateManagement
+  port, which doesn't need touch). All touch/gesture input synthesized from mouse in one
+  place, `InputState::UpdateMouseFallback()` -- see missing.md. Found and fixed a real bug
+  during interactive verification: `TouchPanel::DisplayWidth`/`Height` were never set in
+  `UISampleGame::Initialize()`, so `PageFlipTracker`'s drag-to-flip threshold computed
+  against 0 and no drag could ever cross it. Also fixed, in `DynamicMenu/Control.hpp`
+  (uncommitted alongside this): a wrong claim that CNA's `SpriteBatch::Draw` has no
+  destRect+rotation+origin+effects+depth overload -- it does (the user caught this); the
+  actual bug was passing `std::nullopt` to a parameter typed `const Rectangle&`, not
+  `std::optional<Rectangle>`. New files: `samples/UISample/{CMakeLists.txt,missing.md,
+  UISample.htm,src/{Program.cpp,UISampleGame.hpp,CommonGraphics.hpp,GameScreen.hpp,
+  ScreenManager.hpp,MenuScreen.hpp,MenuEntry.hpp,InputState.hpp,Screens.hpp,
+  Controls/*.hpp},Content/...}`.
+- **`1ebeff3`** — Added `samples/DynamicMenu/` (#077): a reusable UI control library
   (`Controls/{Control,Container,Button,Label,TextControl,MultilineTextControl,Image,
   ProgressBar,PhoneScreen}.hpp`, `Transitions/Transition.hpp`) plus a 3-page demo.
   Page 2/3's control trees were originally XML content-pipeline assets; hand-built as
@@ -226,9 +256,11 @@ samples can still be ported freely. The two most significant *open* problems are
 | limitation | **`sharp-runtime`'s `CultureInfo.CurrentCulture` is a stub** — always returns the invariant culture; there is no real OS locale detection. LocalizationSample works around this by manual language cycling (SPACE key) instead of auto-detecting the OS locale. |
 | needs verification | **Real hardware accelerometer** — Yacht's shake-to-roll and SnowShovel's tilt are only verified via the keyboard/gamepad/touch fallback on this desktop (no physical accelerometer available). The real-sensor code path (`Accelerometer::getIsSupportedProperty()` true branch) is implemented but untested end-to-end on real hardware. |
 | needs verification | **DynamicMenu Page 2/3, the progress bar, and the `O` orientation toggle.** Only Page 1 was confirmed by screenshot this session — see task 1 in section 8. The code was carefully static-reviewed (and one real bug fixed — see the Transition/`shared_ptr` note in section 6), but not live-tested. |
+| needs verification | **UISample's HighScoreScreen (`ScrollTracker` vertical scroll).** Main Menu, tap-to-navigate, and mouse-drag page-flipping were all confirmed by screenshot; the scroll screen was not, cut short by the focus-flakiness gotcha below getting worse mid-session (see that row). Shares the same mouse-fallback code path as the confirmed page-flip, so expected to work — see task 1 in section 8. |
 | needs verification | **`GraphicsDevice.Viewport` is stale when queried from `Game::Initialize()`.** Observed while porting SnowShovel: `getViewportProperty().getWidthProperty()/getHeightProperty()` returned `1333x800` instead of the requested `480x800` even though the SDL window was already correctly sized (confirmed via `xwininfo`) and `GraphicsDeviceManager::CreateDevice()` runs before `Initialize()` per `Game::DoInitialize()`. Worked around in the sample (use the known preferred-back-buffer constants instead of re-querying); not root-caused inside CNA. Existing samples that call `getViewportProperty()` all do so later, from `Update()`/`Draw()` (e.g. Yacht's `ScreenManager::SafeArea()`), so this may be a wider latent issue worth a real CNA-side fix if a future sample needs viewport sizing genuinely inside `Initialize()`. |
 | gotcha | **`xdotool` input can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error message. Always run `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. A plain `xdotool click`/`key` can also complete faster than one game-loop frame (~33ms at the sample's 30fps) and be missed entirely by a naive down/up edge check — prefer explicit `keydown`/`sleep 0.15`/`keyup` over `click`/`key` when the app must observe a discrete press. |
-| gotcha | **This is a shared, actively-used desktop session, not an isolated headless sandbox.** Observed while porting SnowShovel: `xdotool getactivewindow` returned an unrelated window (a git history browser the human user had open) instead of the sample under test, and `windowactivate`/`windowfocus` on the sample's window repeatedly failed to take real effect (confirmed via a 1x1 `mutter-x11-frames` proxy window absorbing X input focus) even though `getactivewindow` claimed success right after the call. If input stops reaching a sample mid-session for no code-related reason, check `xdotool getactivewindow` + `getwindowname`/`xwininfo -tree` for what's *actually* focused before assuming a CNA/sample bug — and stop sending synthetic keys/clicks rather than risk them landing on the user's own foreground application. |
+| gotcha | **This is a shared, actively-used desktop session, not an isolated headless sandbox.** Observed while porting SnowShovel: `xdotool getactivewindow` returned an unrelated window (a git history browser the human user had open) instead of the sample under test, and `windowactivate`/`windowfocus` on the sample's window repeatedly failed to take real effect (confirmed via a 1x1 `mutter-x11-frames` proxy window absorbing X input focus) even though `getactivewindow` claimed success right after the call. Recurred while porting UISample: `xdotool windowactivate --sync $WID` followed immediately by `getactivewindow` sometimes still reports the mutter proxy window, meaning the activate call itself silently failed, not just "focus was lost since the last check" — always re-verify with `getactivewindow` *immediately before* every input burst, not just once at the start of a test sequence. If input stops reaching a sample mid-session for no code-related reason, check `xdotool getactivewindow` + `getwindowname`/`xwininfo -tree` for what's *actually* focused before assuming a CNA/sample bug — and stop sending synthetic keys/clicks rather than risk them landing on the user's own foreground application. |
+| gotcha | **A multi-line `xdotool ...` string with literal newlines between sub-commands can get concatenated into one chained invocation** (xdotool supports `mousemove X Y mousedown 1 sleep 0.1 mousemove ...` as a single chained command). Observed while porting UISample: a shell block with several intended-to-be-sequential lines (`xdotool mousemove ...`, `sleep`, `xdotool mousedown 1`, ...) got joined by the shell tool into arguments of a single `xdotool` call, which then ran detached in the background indefinitely, replaying/holding mouse state and flooding the app with far more input than intended — eventually crashing it. This was a test-harness mistake, not an app bug. Always issue one xdotool action per shell invocation (or join intentionally with `;`/`&&`), and check `jobs -l`/`ps aux \| grep xdotool` if a sample behaves as though it's receiving phantom input. |
 | fixed (in `cna`, not this repo) | `ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot (e.g. `"Flag.en-US"`). See section 3, commit `80757b1` in the `cna` repo. |
 | fixed (in `cna`, not this repo) | `SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding, so any non-ASCII text rendered as `?`. See section 3, commit `41a4766` in the `cna` repo. |
 
@@ -350,6 +382,35 @@ samples/SampleName/
   XML-authored content-pipeline assets, this same "hand-translate once" approach is the
   established precedent — don't write a general XML deserializer for one sample's sake.
 
+### UISample control library (Controls/*.hpp) and screen framework
+- This is a **second, independent** UI control library, unrelated to DynamicMenu's — no
+  code sharing (matching "no shared sample library"), and its `Control`/`TextControl` etc.
+  happen to look structurally similar but are separately ported from a different original.
+- The screen framework (`GameScreen`/`ScreenManager`/`MenuScreen`/`MenuEntry`/`InputState`)
+  is derived from the same GameStateManagement starter kit already ported for the
+  GameStateManagement/CatapultWars/Yacht samples, extended here with per-screen
+  `GameScreen::EnabledGestures()`/`setEnabledGestures()` (those samples don't need it, since
+  none of them are touch/gesture-driven) and `InputState::TouchState`/`Gestures` (also
+  absent from the existing GameStateManagement port — see that sample's own missing.md,
+  which explicitly dropped touch/gestures as out of scope at the time).
+- **Invariant — keep calling `TouchPanel::setDisplayWidthProperty`/`HeightProperty` in
+  `Game::Initialize()`.** `PageFlipTracker`/`ScrollTracker` both read
+  `TouchPanel::DisplayWidth`/`DisplayHeight` directly; forgetting this call (as the first
+  draft of this sample did) makes every drag-to-flip/scroll threshold compute against 0.
+  Same root cause as the SnowShovel `Viewport`-at-`Initialize()` gotcha in this section —
+  use the known back-buffer constants/values directly rather than querying the viewport
+  this early.
+- Tombstoning (`SerializeState`/`DeserializeState`/`IsSerializable`) and the debug
+  `TraceScreens()` helper are dropped from `ScreenManager`, matching the same simplification
+  already applied when GameStateManagement itself was ported.
+- All touch/gesture mouse-fallback synthesis lives in one place,
+  `InputState::UpdateMouseFallback()` — a raw `TouchLocation(..., Pressed, ...)` plus a
+  `Tap` gesture on click, `HorizontalDrag`/`VerticalDrag` while held, `DragComplete` on
+  release. This is the pattern to reach for whenever a sample's interactions are
+  continuous-drag-shaped rather than single-tap-shaped (contrast with DynamicMenu's
+  Game-level Tap-only synthesis, or SnowShovel/TouchThumbsticks' per-sample keyboard+mouse
+  fallback structs) — put it in the shared input-reading class, not scattered per-control.
+
 ---
 
 ## 7. Useful commands
@@ -396,22 +457,28 @@ There is no lint/format command configured in this repo, and no automated test c
 
 ## 8. Next smallest tasks
 
-1. **Interactively re-verify DynamicMenu (#077) once the desktop is free.**
-   - Goal: confirm Page 2/3, the progress bar advance, and the O orientation toggle all
-     work by screenshot -- only Page 1 was screenshot-confirmed this session (the desktop
-     was in active use by the human user; see section 5's shared-desktop gotcha).
+1. **Interactively re-verify DynamicMenu (#077) and UISample's HighScoreScreen (#082)
+   once the desktop is free.**
+   - Goal: confirm DynamicMenu's Page 2/3 + progress bar advance + O orientation toggle,
+     and UISample's HighScoreScreen vertical-scroll (drag through the fake leaderboard),
+     all work by screenshot -- neither was screenshot-confirmed this session (the desktop
+     was in active use by the human user; see section 5's shared-desktop gotcha, which got
+     worse mid-session: `windowactivate` sometimes silently fails to shift real focus at
+     all, not just "loses it between calls" -- re-verify with `getactivewindow`
+     *immediately before* every input burst, not just once).
    - Files: none expected; this is verification only, not development.
    - Verify: launch `DynamicMenu_cna_samples`, tap/click "Page 2" and "Page 3", click
-     "Advance" a few times on Page 3, press `O` to toggle orientation.
+     "Advance" a few times on Page 3, press `O` to toggle orientation. Launch
+     `UISample_cna_samples`, click "High scores", drag vertically to scroll the list.
 
 2. **Port the next portable Phase 7 sample.**
    - Goal: extend sample coverage. Real `TouchPanel`/`Accelerometer` and non-ASCII
      `SpriteFont` text are all confirmed working end-to-end now, so no remaining Phase 7
      candidate should be deprioritized for those reasons.
    - Candidates, smallest first by original C# line count: PerformanceMeasuring #081,
-     UISample #082, NGSMSample #075. (SplitScreen #076 is blocked on the Phase 3/4 model
-     pipeline -- see section 1/4B. Phase 6 full games also have open items — see
-     `PLAN.md` — if a bigger port is preferred instead.)
+     NGSMSample #075. (SplitScreen #076 is blocked on the Phase 3/4 model pipeline -- see
+     section 1/4B. Phase 6 full games also have open items — see `PLAN.md` — if a bigger
+     port is preferred instead.)
    - Files: new `samples/<Name>/` directory; one line added to root `CMakeLists.txt`.
    - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples`, then run and
      screenshot it (see section 7).
