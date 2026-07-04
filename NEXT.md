@@ -14,7 +14,9 @@ anyone porting XNA/MonoGame code to CNA.
 
 **Current phase:** Phases 1 (Foundation), 2 (2D Games), and 5 (Audio) are complete except
 for items deferred on missing CNA features. Phase 6 (Full games) is in progress
-(GameStateManagement #072, CatapultWars #067, Yacht #071 done; 11 of 14 still open). Phase
+(GameStateManagement #072, CatapultWars #067, Yacht #071, SoccerPitch #073 done; 9 of 14
+still open, TankOnHeightmap #074 additionally deferred — same CNA gap as SplitScreen, see
+below). Phase
 7 (Advanced/UI/Misc) is well underway (GesturesSample #079, TouchThumbsticks #080,
 LocalizationSample #078, SnowShovel #083, DynamicMenu #077, UISample #082,
 PerformanceMeasuring #081 done — 7 of 9; the remaining 2 are both effectively deferred,
@@ -44,7 +46,15 @@ rigid multi-part bone animation is "just asset conversion" — it also needs thi
 change. Phases 3 (3D shaders) and 4 (models/animation) themselves are still untouched
 as dedicated phases — no sample ported yet whose whole point is a custom HLSL→GLSL
 effect or skeletal animation — but basic single-bone static-model loading is proven
-twice (CameraShake, PerformanceMeasuring).
+twice (CameraShake, PerformanceMeasuring). All 11 then-open Phase 6 samples were also
+surveyed this session for blockers before picking SoccerPitch: NetRumble (core Xbox
+LIVE/System Link multiplayer + bloom shader, double-blocked), MarbleMaze and
+CatapultWarsTrainingKit (multi-exercise training-kit structures, not one clean sample;
+the latter is also just redundant re-implementations of the already-ported
+CatapultWars), and RolePlayingGame (not technically blocked — 2D tile-based, no
+models/shaders — but ~32,700 lines, a multi-session undertaking on its own) were set
+aside. HoneycombRush #063, NinjAcademy #065, and CardsStarterKit #069 were found to
+have no blockers and remain good candidates for a future "next sample" pick.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -80,10 +90,10 @@ twice (CameraShake, PerformanceMeasuring).
 ## 2. Current status
 
 ### Build
-38 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
+39 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
 `cmake --build cmake-build-debug` (all targets, 0 errors) was run in the same session
-PerformanceMeasuring was added, so this is a live-confirmed guarantee, not just "known
-good as of a commit." The active configured build tree is `cmake-build-debug`.
+SoccerPitch was added, so this is a live-confirmed guarantee, not just "known good as of
+a commit." The active configured build tree is `cmake-build-debug`.
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -108,6 +118,25 @@ driving it interactively with `xdotool`.
 - No linter/formatter is configured in this repo.
 
 ### Recently implemented features
+- SoccerPitch (#073): procedurally-generated 3D pitch demo showing
+  `DualTextureEffect`/`AlphaTestEffect`/`BasicEffect` multipass rendering, a
+  depth-biased flattened-sphere shadow, and a camera fly-over. `ProceduralPrimitive<T>`
+  ported as a C++ template (only ever instantiated with the built-in
+  `VertexPositionNormalTexture` — see missing.md for why the original's second,
+  dual-UV vertex type isn't used). One real gap found and worked around with a
+  documented visual simplification (user-approved): CNA's `DualTextureEffect` EasyGL
+  shader has only one shared UV for both textures, not the original's two independent
+  UV channels needed for base/detail textures to tile at different rates — the pitch
+  now tiles both at the same rate instead of blocking on a CNA shader change. Also hit
+  and fixed a real startup crash: `FrameRateCounter`'s own second `ContentManager`
+  needs an explicit `setGraphicsDevice()` call before its first `Load<T>()` (XNA wires
+  this automatically; CNA doesn't for a manually-constructed `ContentManager`).
+  Interactively confirmed by screenshot: the dual-textured pitch, alpha-blend/
+  alpha-test line-rendering toggle (via mouse click, since there's no touchscreen),
+  the ball + shadow, camera fly-over, FPS counter, and F1 help overlay (hand-authored,
+  same reason as PerformanceMeasuring — no "Sample Controls" table in this kit's
+  `.htm`, which is also named `SoccerPitchOverview.htm` rather than the usual
+  `SampleName.htm`).
 - PerformanceMeasuring (#081): a full port of the GameDebugTools mini-library
   (DebugManager/DebugCommandUI/FpsCounter/TimeRuler/Layout/KeyboardUtils/
   IDebugCommandHost — `RemoteDebugCommand` omitted, Xbox 360 SystemLink-only, see
@@ -156,9 +185,12 @@ driving it interactively with `xdotool`.
   this session while reconciling PLAN.md's done-count against the actual built binaries.
 
 ### Known working examples / demos
-38 samples run end-to-end; see the full table in `PLAN.md` or run
+39 samples run end-to-end; see the full table in `PLAN.md` or run
 `cmake --build cmake-build-debug` and look under `samples/*/` for the current set.
 Representative, recently-verified ones:
+- `SoccerPitch_cna_samples` — dual-textured pitch (single shared UV, see missing.md),
+  alpha-blend/alpha-test line toggle (mouse click), ball + depth-biased shadow, camera
+  fly-over, FPS counter, and F1 help overlay all confirmed by screenshot.
 - `PerformanceMeasuring_cna_samples` — FPS counter, TimeRuler bars, 200-sphere
   bounce/collide physics, collision toggle (X), debug console (Tab/typing/Backspace/
   `help`), and F1 help overlay all confirmed by screenshot. `Tab`-to-close and
@@ -203,7 +235,30 @@ Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
-- **(uncommitted)** — Added `samples/PerformanceMeasuring/` (#081): a full port of the
+- **(uncommitted)** — Added `samples/SoccerPitch/` (#073): procedurally-generated 3D
+  pitch demo (`DualTextureEffect`/`AlphaTestEffect`/`BasicEffect` multipass rendering,
+  depth-biased shadow, camera fly-over). `ProceduralPrimitive<T>` ported as a C++
+  template, only ever instantiated with the built-in `VertexPositionNormalTexture`.
+  Found a real, narrow CNA gap: `DualTextureEffect`'s EasyGL shader has one shared UV
+  for both textures, not the original's two independent UV channels for
+  differently-tiled base/detail textures — ported with a user-approved, documented
+  visual simplification (single shared tiling factor) instead of blocking on a CNA
+  shader change. Also found and fixed a real startup crash: `FrameRateCounter`'s own
+  second `ContentManager` needs an explicit `setGraphicsDevice()` call before its
+  first `Load<T>()`, which XNA wires automatically but CNA doesn't for a
+  manually-constructed `ContentManager`. This kit's `.htm` is named
+  `SoccerPitchOverview.htm` (not `SampleName.htm`) and has no "Sample Controls" table,
+  so F1's text was hand-authored, same approach as PerformanceMeasuring. Interactively
+  confirmed by screenshot: the pitch, alpha-blend/alpha-test toggle (mouse click), ball
+  + shadow, camera fly-over, FPS counter, and F1. Also surveyed all 11 then-open
+  Phase 6 samples for blockers before picking this one — see section 1.
+- **`7b36712`**, **`5d4ff9e`**, **`f1c2874`** — Investigated NGSMSample (#075) and
+  SplitScreen (#076); both marked Deferred in PLAN.md (also TankOnHeightmap #074, same
+  root cause as SplitScreen) rather than ported thin/blocked — see section 1 for the
+  detailed reasoning and `samples/SplitScreen/missing.md` for the CNA-side technical
+  write-up (per-mesh `ModelBone` support, to be implemented by the user directly in
+  `cna`, not attempted in this repo).
+- **`fa07b7a`** — Added `samples/PerformanceMeasuring/` (#081): a full port of the
   GameDebugTools mini-library (`DebugManager`/`DebugCommandUI`/`FpsCounter`/`TimeRuler`/
   `Layout`/`KeyboardUtils`/`IDebugCommandHost` — `RemoteDebugCommand` omitted, Xbox 360
   SystemLink-only, no CNA equivalent, see missing.md) plus a 200-sphere bouncing/
@@ -610,14 +665,17 @@ There is no lint/format command configured in this repo, and no automated test c
 
 2. **(done this session)** ~~Port the next portable Phase 7 sample.~~ PerformanceMeasuring
    #081 is done (section 3). NGSMSample #075 and SplitScreen #076, the two remaining
-   Phase 7 samples, were both investigated this session and are now marked Deferred in
-   PLAN.md with precise reasons (section 1, section 4D, `samples/SplitScreen/missing.md`)
-   — **Phase 7 has no more candidates at all**, easy or otherwise, until either CNA gains
-   networking (#075) or gains per-mesh `ModelBone` support in the `.model.json` reader
-   (#076 — the user is handling that fix directly in `cna`, not this repo). The next
-   new-sample port should come from one of the 11 open Phase 6 full games instead (see
-   `PLAN.md`'s Phase 6 table) — these don't have Phase 7's networking/model-pipeline
-   entanglements.
+   Phase 7 samples, were both investigated and marked Deferred in PLAN.md with precise
+   reasons (section 1, section 4D, `samples/SplitScreen/missing.md`) — Phase 7 has no
+   more candidates until CNA gains networking (#075) or per-mesh `ModelBone` support
+   (#076, TankOnHeightmap #074 same gap — the user is handling that fix directly in
+   `cna`, not this repo).
+
+3. **(done this session)** ~~Port a Phase 6 full game.~~ SoccerPitch #073 is done
+   (section 3) — surveyed all 11 then-open Phase 6 samples for blockers first (section 1).
+   Good remaining candidates with no found blockers: **HoneycombRush #063** (port just
+   the `EX2_PolishAndMenus` stage, the more complete of its two training-kit stages),
+   **NinjAcademy #065**, **CardsStarterKit #069**.
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).
@@ -625,30 +683,30 @@ There is no lint/format command configured in this repo, and no automated test c
      `samples/SplitScreen/missing.md`: come back and actually port SplitScreen (copy
      `tank.model.json`+bins straight from `samples/CameraShake/Content/`, no new asset
      conversion needed) — it's otherwise a ~450-line, 3-file sample, one of the smallest
-     remaining.
+     remaining. TankOnHeightmap #074 would then also be unblocked.
 
-3. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
+4. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank actually render.
    - Files: likely `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path)
      — exact location not yet confirmed, this needs investigation first.
    - Verify: the white stripe disappears when running
      `./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples`.
 
-4. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+5. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin/End` in the same frame must not discard the first.
    - Files: `cna/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend; confirm all
      layers draw (currently only the last `Begin/End` block's sprites appear).
 
-5. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
-   - Goal: when a Model/Effect pipeline exists (task 3/4 area, not yet started), enable
+6. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
+   - Goal: when a Model/Effect pipeline exists (task 4/5 area, not yet started), enable
      one of BloomSample / ColorReplacement / ReachGraphicsDemo / Spacewar with
      `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
    - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
    - Verify: the target builds and the binary does not abort on `help.png` load at
      startup.
 
-6. **Verify real hardware accelerometer shake/tilt on a device that has one.**
+7. **Verify real hardware accelerometer shake/tilt on a device that has one.**
    - Goal: confirm Yacht's and SnowShovel's real-sensor code path
      (`Accelerometer::getIsSupportedProperty()` true branch), only exercised via the
      keyboard-arrow/gamepad/touch fallback so far.
