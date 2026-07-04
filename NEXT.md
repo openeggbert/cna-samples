@@ -16,10 +16,16 @@ anyone porting XNA/MonoGame code to CNA.
 for items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, Yacht #071 done; 11 of 14 still open). Phase
 7 (Advanced/UI/Misc) is well underway (GesturesSample #079, TouchThumbsticks #080,
-LocalizationSample #078, SnowShovel #083, DynamicMenu #077, UISample #082 done — 6 of 9;
+LocalizationSample #078, SnowShovel #083, DynamicMenu #077, UISample #082,
+PerformanceMeasuring #081 done — 7 of 9; only NGSMSample #075 left unblocked).
 SplitScreen #076 is blocked, needs the Phase 3/4 model pipeline for its `tank.fbx`, see
-section 4B). Phases 3 (3D shaders) and 4 (models/animation) are untouched, blocked on
-missing asset pipelines.
+section 4B — note that a `.model.json` conversion pipeline (`tools/obj2model.py` +
+`tools/fbx_ascii2model.py`) already exists and is proven working (CameraShake,
+PerformanceMeasuring's `Ground.x`), so SplitScreen may be less blocked than previously
+assumed; not yet investigated whether it needs more than static model loading (e.g.
+animation). Phases 3 (3D shaders) and 4 (models/animation) themselves are still
+untouched as dedicated phases — no sample ported yet whose whole point is a custom
+HLSL→GLSL effect or skeletal animation — but basic static-model loading is proven.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -55,10 +61,10 @@ missing asset pipelines.
 ## 2. Current status
 
 ### Build
-37 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
+38 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
 `cmake --build cmake-build-debug` (all targets, 0 errors) was run in the same session
-UISample was added, so this is a live-confirmed guarantee, not just "known good as of a
-commit." The active configured build tree is `cmake-build-debug`.
+PerformanceMeasuring was added, so this is a live-confirmed guarantee, not just "known
+good as of a commit." The active configured build tree is `cmake-build-debug`.
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -70,10 +76,35 @@ driving it interactively with `xdotool`.
 - `tools/make_font.py` — generates a CNA `.font.json` + PNG glyph atlas from a TTF/TTC
   file and an explicit or default character set.
 - `tools/gen_help_png.py` — extracts a sample's "Sample Controls" table from its `.htm`
-  doc and renders the F1 help-overlay PNG.
+  doc and renders the F1 help-overlay PNG; also exposes `build_text`/`render_png` as
+  importable helpers for samples whose `.htm` lacks that table (see PerformanceMeasuring's
+  missing.md for an example of authoring the control text manually with the same helpers).
+- `tools/obj2model.py` — converts a Wavefront OBJ to CNA's `.model.json` +
+  `_verts.bin`/`_idx.bin`. For FBX/`.x` source meshes, first run
+  `assimp export source.fbx-or-.x out.obj`, then feed the resulting `.obj` to this script
+  (established in CameraShake, reused as-is for PerformanceMeasuring's `Ground.x`).
+- `tools/fbx_ascii2model.py` — an alternate FBX (ASCII 6.1) → `.model.json` converter,
+  used for CameraShake's `tank.fbx` (mesh with many parts) instead of the assimp+obj2model
+  route.
 - No linter/formatter is configured in this repo.
 
 ### Recently implemented features
+- PerformanceMeasuring (#081): a full port of the GameDebugTools mini-library
+  (DebugManager/DebugCommandUI/FpsCounter/TimeRuler/Layout/KeyboardUtils/
+  IDebugCommandHost — `RemoteDebugCommand` omitted, Xbox 360 SystemLink-only, see
+  missing.md) plus a 200-sphere bouncing/colliding 3D physics demo (spheres are a fresh
+  copy of Primitives3D's flat-shaded `GeometricPrimitive`/`SpherePrimitive` per the
+  "no shared library" rule) and a `Ground.x` model converted to `.model.json` via
+  `assimp export` + `tools/obj2model.py` (same pipeline as CameraShake's tank/ground).
+  Interactively confirmed by screenshot: FPS counter, TimeRuler profiling bars, sphere
+  physics/collision toggle (`X`), the in-game debug console (`Tab` to open, typing +
+  Backspace, `help` echoing all 5 registered commands including `TimeRuler`'s `tr` and
+  `FpsCounter`'s `fps`), and the F1 help overlay (hand-authored, since this sample's
+  `.htm` has no "Sample Controls" table to extract — see missing.md). `Tab` to close the
+  console and `Up`/`Down` sphere-count adjustment were not independently re-confirmed —
+  cut short when the shared desktop's real keyboard input momentarily crossed into the
+  test window (see section 5's gotchas; not a code issue, both paths mirror
+  already-confirmed logic).
 - UISample (#082): builds on GameStateManagement, adding a second, independent UI control
   library (Control/TextControl/ImageControl/PanelControl/ScrollingPanelControl/
   PageFlipControl + ScrollTracker/PageFlipTracker) with Silverlight-Panorama-style page
@@ -106,20 +137,25 @@ driving it interactively with `xdotool`.
   this session while reconciling PLAN.md's done-count against the actual built binaries.
 
 ### Known working examples / demos
-37 samples run end-to-end; see the full table in `PLAN.md` or run
+38 samples run end-to-end; see the full table in `PLAN.md` or run
 `cmake --build cmake-build-debug` and look under `samples/*/` for the current set.
 Representative, recently-verified ones:
+- `PerformanceMeasuring_cna_samples` — FPS counter, TimeRuler bars, 200-sphere
+  bounce/collide physics, collision toggle (X), debug console (Tab/typing/Backspace/
+  `help`), and F1 help overlay all confirmed by screenshot. `Tab`-to-close and
+  `Up`/`Down` sphere count not independently re-confirmed — see that sample's
+  `missing.md`.
 - `UISample_cna_samples` — Main Menu, mouse-tap navigation into Level Select via
   LoadingScreen, and mouse-drag page-flipping (House → Pasture) all confirmed by
-  screenshot. HighScoreScreen's vertical scroll (same ScrollTracker mouse-fallback code
-  path) was not independently re-confirmed — see that sample's `missing.md`.
-- `DynamicMenu_cna_samples` — Page 1 confirmed correct by screenshot (page-select
-  highlighting, checkerboard background, all four buttons correctly colored/sized/
-  centered-text). Page 2/3, the progress bar, and the O orientation toggle were not
-  interactively re-confirmed -- the desktop was in active use by the human user at the
-  time (see the xdotool/shared-desktop gotcha in section 5); a static line-by-line
-  correctness review did catch and fix one real bug (a transition-list reentrancy issue --
-  see that sample's `missing.md`).
+  screenshot. HighScoreScreen's vertical scroll could not be drag-tested via `xdotool`
+  on this desktop (mouse position freezes while a button is held — see that sample's
+  `missing.md` and section 4C); code-reviewed with no bug found.
+- `DynamicMenu_cna_samples` — Page 1, Page 2 (UFO image + multiline text), Page 3
+  (progress bar advances correctly via the `Advance` button), and the `O` orientation
+  toggle (round-tripped portrait↔landscape twice, no crash) all confirmed by screenshot
+  across two sessions. A static line-by-line correctness review separately caught and
+  fixed one real bug (a transition-list reentrancy issue -- see that sample's
+  `missing.md`).
 - `SnowShovel_cna_samples` — pre-game screen, SPACE-to-start, scoring, countdown timer
   color-shift, automatic game-over transition, and the F1 help overlay all confirmed by
   screenshot; mouse click-and-drag movement and click-to-start/restart confirmed working
@@ -148,11 +184,34 @@ Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
-- **(uncommitted)** — `PLAN.md`: fixed Yacht (#071)'s status row (was "⬜ Todo" despite
-  being done and committed since `87f4111`) and recomputed the Phase 6 / Total done-counts
-  in the Phase Status Overview table to match (Phase 6: 2→3 done; Total: 36→37 done),
-  discovered while cross-checking PLAN.md's "done" count against the actual 37 built
-  sample binaries.
+- **(uncommitted)** — Added `samples/PerformanceMeasuring/` (#081): a full port of the
+  GameDebugTools mini-library (`DebugManager`/`DebugCommandUI`/`FpsCounter`/`TimeRuler`/
+  `Layout`/`KeyboardUtils`/`IDebugCommandHost` — `RemoteDebugCommand` omitted, Xbox 360
+  SystemLink-only, no CNA equivalent, see missing.md) plus a 200-sphere bouncing/
+  colliding 3D physics demo instrumented with `TimeRuler.BeginMark`/`EndMark` around
+  `Update`/`Draw`. `Primitives/GeometricPrimitive.hpp`/`SpherePrimitive.hpp` are a fresh
+  copy of Primitives3D's flat-shaded versions (per "no shared sample library"; CNA still
+  has no `VertexPositionNormal`, so spheres are flat-colored, not lit — DEFERRED.md item
+  5). `Ground.x` was converted via `assimp export Ground.x ground.obj` then
+  `tools/obj2model.py` — the exact same two-step pipeline already proven in CameraShake,
+  reused here for the first time by a *second* sample, confirming it's a repeatable
+  workflow, not a one-off. This sample's `.htm` has no "Sample Controls" table (unlike
+  every other sample so far), so the F1 help overlay's text was hand-authored by
+  importing `gen_help_png.py`'s own `build_text`/`render_png` helpers rather than
+  extracting from the doc — see missing.md. Interactively confirmed by screenshot: FPS
+  counter, TimeRuler bars, sphere physics/collisions, the `X` collision toggle, the
+  debug console (`Tab` open, typing, `Backspace`, `help` executing and echoing all 5
+  registered commands), and F1. `Tab`-to-close and `Up`/`Down` sphere-count were not
+  re-confirmed — testing was cut short when a screenshot showed text in the console this
+  session never typed, i.e. real keyboard input from the desktop's actual user crossed
+  into the test window (the reverse direction of the already-documented shared-desktop
+  focus flakiness — see section 5's new gotcha entry).
+- **`3526b60`** — `NEXT.md`/`DynamicMenu/missing.md`/`UISample/missing.md`: recorded
+  interactive re-verification of DynamicMenu (Page 2/3, progress bar, `O` toggle — all
+  confirmed working, no bugs) and UISample (HighScoreScreen scroll could not be
+  drag-tested — `xdotool`'s mouse-button-held motion freezes to the game's polled
+  `Mouse::GetState()` on this desktop even though the real X11 pointer keeps moving;
+  code-reviewed with no bug found, likely an X11 grab quirk of this desktop, not CNA).
 - **`579a7c8`** — Added `samples/UISample/` (#082): a second, independent UI control
   library (`Controls/{Control,TextControl,ImageControl,PanelControl,ScrollingPanelControl,
   PageFlipControl,ScrollTracker,PageFlipTracker,HighScorePanel}.hpp`) plus the
@@ -296,6 +355,7 @@ samples can still be ported freely. The most significant *open* problems are:
 | gotcha | **`xdotool` input can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error message. Always run `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. A plain `xdotool click`/`key` can also complete faster than one game-loop frame (~33ms at the sample's 30fps) and be missed entirely by a naive down/up edge check — prefer explicit `keydown`/`sleep 0.15`/`keyup` over `click`/`key` when the app must observe a discrete press. |
 | gotcha | **This is a shared, actively-used desktop session, not an isolated headless sandbox.** `xdotool getactivewindow` has returned an unrelated window (e.g. a git history browser the human user had open) instead of the sample under test, and `windowactivate`/`windowfocus` on the sample's window has repeatedly failed to take real effect (confirmed via a 1x1 `mutter-x11-frames` proxy window absorbing X input focus) even though `getactivewindow` claimed success right after the call — sometimes `windowactivate --sync` followed immediately by `getactivewindow` still reports the proxy window, meaning the activate call itself silently failed, not just "focus was lost since the last check." Always re-verify with `getactivewindow` **immediately before** every input burst, not just once at the start of a test sequence. If input stops reaching a sample mid-session for no code-related reason, check `xdotool getactivewindow` + `getwindowname`/`xwininfo -tree` for what's *actually* focused before assuming a CNA/sample bug — and stop sending synthetic keys/clicks rather than risk them landing on the user's own foreground application. |
 | gotcha | **`xdotool mousemove` while a button is held down does not appear to reach a CNA/SDL window's polled mouse state on this desktop**, even though the real X11 pointer position does move (`xdotool getmouselocation` updates live). The frozen position snaps to the correct final value the instant the button is released. This blocks synthetic drag-testing (scroll/page-flip/drag mechanics) via `xdotool` specifically during a held button; motion with no button held is unaffected. Confirmed via temporary `fprintf` instrumentation in `UISample/src/InputState.hpp` (see section 4C) — do not re-add that debug print without removing it again afterward. Likely an X11 grab handoff quirk of this desktop's WM, not a CNA bug (SnowShovel's mouse-drag fallback was already confirmed on real hardware). If a future session needs a definitive drag-mechanic verification, use real hardware, not `xdotool`. |
+| gotcha | **Input can cross in the *other* direction too: the real user's own keystrokes can land in a test window instead of the app they were actually typing into.** While testing PerformanceMeasuring's debug console, a screenshot showed text (`"T zadne_"`) in the console's command line that this session never typed — almost certainly a fragment of the desktop's real user typing something else at the moment focus happened to be on the test window. Confirmed with the user that nothing of theirs appeared to be affected, but treat this as seriously as the reverse case: if unexplained text/input appears in a test window, stop immediately, kill the test process to release focus, and ask the user to check whatever they were doing at the time before resuming. |
 | gotcha | **A multi-line `xdotool ...` shell block can get concatenated into one chained invocation** (xdotool supports `mousemove X Y mousedown 1 sleep 0.1 mousemove ...` as a single chained command). A shell block with several intended-to-be-sequential lines (`xdotool mousemove ...`, `sleep`, `xdotool mousedown 1`, ...) got joined into arguments of a single `xdotool` call, which then ran detached in the background indefinitely, replaying/holding mouse state and flooding an app with far more input than intended — eventually crashing it. This was a test-harness mistake, not an app bug. Always issue one xdotool action per shell invocation (or join intentionally with `;`/`&&`), and check `jobs -l`/`ps aux \| grep xdotool` if a sample behaves as though it's receiving phantom input. |
 | fixed (in `cna`, not this repo) | `ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot (e.g. `"Flag.en-US"`). See section 3, commit `80757b1` in the `cna` repo. |
 | fixed (in `cna`, not this repo) | `SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding, so any non-ASCII text rendered as `?`. See section 3, commit `41a4766` in the `cna` repo. |
@@ -514,17 +574,20 @@ There is no lint/format command configured in this repo, and no automated test c
    4C). If a definitive answer on the scroll is ever needed, retest with real hardware
    input rather than `xdotool`.
 
-2. **Port the next portable Phase 7 sample.**
-   - Goal: extend sample coverage. Real `TouchPanel`/`Accelerometer` and non-ASCII
-     `SpriteFont` text are all confirmed working end-to-end now, so no remaining Phase 7
-     candidate should be deprioritized for those reasons.
-   - Candidates, smallest first by original C# line count: PerformanceMeasuring #081,
-     NGSMSample #075. (SplitScreen #076 is blocked on the Phase 3/4 model pipeline -- see
-     section 1/4B. Phase 6 full games also have open items — see `PLAN.md` — if a bigger
-     port is preferred instead.)
-   - Files: new `samples/<Name>/` directory; one line added to root `CMakeLists.txt`.
-   - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples`, then run and
-     screenshot it (see section 7).
+2. **(done this session)** ~~Port the next portable Phase 7 sample.~~ PerformanceMeasuring
+   #081 is done — see section 3. Only NGSMSample #075 remains as an unblocked Phase 7
+   candidate (SplitScreen #076 is blocked, though possibly less than previously thought —
+   see section 1). Next up:
+   - Goal: extend sample coverage with NGSMSample #075. Real `TouchPanel`/`Accelerometer`,
+     non-ASCII `SpriteFont` text, and now a static-model (`.model.json`) load are all
+     confirmed working end-to-end, so no remaining Phase 7 candidate should be
+     deprioritized for those reasons.
+   - Files: new `samples/NGSMSample/` directory; one line added to root `CMakeLists.txt`.
+   - Verify: `cmake --build cmake-build-debug --target NGSMSample_cna_samples`, then run
+     and screenshot it (see section 7).
+   - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
+     and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
+     crossing into the test window (see section 3/5's newest gotcha).
 
 3. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank actually render.
