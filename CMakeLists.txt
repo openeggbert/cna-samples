@@ -92,7 +92,7 @@ add_subdirectory(samples/ParticleSample)
 # add_subdirectory(samples/MarbleMaze)
 # add_subdirectory(samples/RolePlayingGame)
 # add_subdirectory(samples/NetRumble)
-# add_subdirectory(samples/HoneycombRush)
+add_subdirectory(samples/HoneycombRush)
 # add_subdirectory(samples/NinjAcademy)
 # add_subdirectory(samples/ShipGame)
 

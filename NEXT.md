@@ -14,9 +14,9 @@ anyone porting XNA/MonoGame code to CNA.
 
 **Current phase:** Phases 1 (Foundation), 2 (2D Games), and 5 (Audio) are complete except
 for items deferred on missing CNA features. Phase 6 (Full games) is in progress
-(GameStateManagement #072, CatapultWars #067, Yacht #071, SoccerPitch #073 done; 9 of 14
-still open, TankOnHeightmap #074 additionally deferred — same CNA gap as SplitScreen, see
-below). Phase
+(GameStateManagement #072, CatapultWars #067, Yacht #071, SoccerPitch #073, HoneycombRush
+#063 done; 8 of 14 still open, TankOnHeightmap #074 additionally deferred — same CNA gap
+as SplitScreen, see below). Phase
 7 (Advanced/UI/Misc) is well underway (GesturesSample #079, TouchThumbsticks #080,
 LocalizationSample #078, SnowShovel #083, DynamicMenu #077, UISample #082,
 PerformanceMeasuring #081 done — 7 of 9; the remaining 2 are both effectively deferred,
@@ -53,8 +53,9 @@ CatapultWarsTrainingKit (multi-exercise training-kit structures, not one clean s
 the latter is also just redundant re-implementations of the already-ported
 CatapultWars), and RolePlayingGame (not technically blocked — 2D tile-based, no
 models/shaders — but ~32,700 lines, a multi-session undertaking on its own) were set
-aside. HoneycombRush #063, NinjAcademy #065, and CardsStarterKit #069 were found to
-have no blockers and remain good candidates for a future "next sample" pick.
+aside. HoneycombRush #063 was ported this session (see section 3). NinjAcademy #065
+and CardsStarterKit #069 were found to have no blockers and remain good candidates for
+a future "next sample" pick.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -90,9 +91,9 @@ have no blockers and remain good candidates for a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-39 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
+40 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
 `cmake --build cmake-build-debug` (all targets, 0 errors) was run in the same session
-SoccerPitch was added, so this is a live-confirmed guarantee, not just "known good as of
+HoneycombRush was added, so this is a live-confirmed guarantee, not just "known good as of
 a commit." The active configured build tree is `cmake-build-debug`.
 
 ### Tests
@@ -118,6 +119,50 @@ driving it interactively with `xdotool`.
 - No linter/formatter is configured in this repo.
 
 ### Recently implemented features
+- HoneycombRush (#063): a full Phase 6 game port — a "collect honey from beehives while
+  dodging bees, deposit it in the vat before time runs out" arcade game, from the
+  `EX2_PolishAndMenus` training-kit stage. Largest port to date: ~30 source files
+  (its own `ScreenManager`/`MenuScreen`/`MenuEntry`/`InputState` framework;
+  `Misc/{Animation,AudioManager,ConfigurationManager,ExtensionMethods,
+  VirtualThumbsticks}.hpp`; `Objects/{TexturedDrawableGameComponent,ScoreBar,Beehive,
+  HoneyJar,Vat,SmokePuff,Bee,WorkerBee,SoldierBee,BeeKeeper}.hpp`; 7 `Screens/*.hpp`).
+  Found and fixed **three real, reliably-reproduced C++-porting bugs** (not CNA bugs —
+  see `missing.md` for full writeups):
+  1. `AudioManager::LoadSound()` stored a `SoundEffectInstance` created from a *local*
+     `SoundEffect` — CNA's `SoundEffectInstance` keeps a raw `const SoundEffect*` back
+     to its source (unlike XNA's GC-backed reference), so every cached instance ended
+     up dangling; crashed on the very first `PlaySound()` call in the whole sample.
+  2. `BeeKeeper::Draw()` passed a temporary `Load<Texture2D>("Textures/hit")` straight
+     into `SpriteBatch::Draw()`, whose deferred rendering defers the actual texture
+     bind until `End()` — by which point the temporary was long gone; crashed the
+     first time a bee stung the player.
+  3. A same-frame reentrancy hazard in `ScreenManager`: `GameplayScreen` has
+     `TransitionOffTime=0`, so leaving it (e.g. the pause menu's "Exit") synchronously
+     destroys ~100 owned `Bee`/`Beehive`/`ScoreBar` `GameComponent`s *while*
+     `Game::Update()` is still iterating a same-frame snapshot of `Game.Components`
+     that still points at some of them — `pure virtual method called` /
+     `SIGABRT`, reliably reproduced 2/2 attempts. Fixed by having `ScreenManager`
+     defer the actual `shared_ptr` release to the start of the *next* `Update()` call
+     (a point guaranteed to be outside any component-iteration snapshot). This class
+     of bug (deterministic C++ destruction happening mid-iteration of something the
+     GC-based original never would) is worth watching for in any future sample whose
+     "screen" owns many `GameComponent`s directly.
+  Other adaptations: `System.Threading.Thread`-based background loading became
+  synchronous-with-a-one-frame-delay-flag (same pattern for both
+  `LoadingAndInstructionScreen` and `LevelOverScreen`); `Guide.BeginShowKeyboardInput`
+  (no CNA equivalent) became a fixed `"Player"` placeholder name;
+  `IsolatedStorageFile` high-score persistence became plain file I/O;
+  `AnimationsDefinition.xml`/`Configuration.xml` hand-translated into static C++
+  tables (same "no general XML deserializer" precedent as DynamicMenu); a
+  keyboard-driven virtual-thumbstick fallback (WASD/arrows, anchored at the on-screen
+  joystick widget) stands in for the left touch since this desktop has no
+  touchscreen, without needing any changes to the ported `BeeKeeper` direction logic.
+  Interactively confirmed by screenshot end-to-end: title screen → Start →
+  Instructions → tap-to-load → 3-second countdown → "Go!" → full gameplay (5
+  beehives with swarming worker/soldier bees, honey jar fill UI, keyboard-driven
+  beekeeper movement, Space-triggered smoke gun with a visible smoke-puff cloud, vat
+  fill/timer UI) → Escape pause menu → "Exit" cleanly returns to the main menu with no
+  crash (this exact interaction crashed reliably before bug #3's fix).
 - SoccerPitch (#073): procedurally-generated 3D pitch demo showing
   `DualTextureEffect`/`AlphaTestEffect`/`BasicEffect` multipass rendering, a
   depth-biased flattened-sphere shadow, and a camera fly-over. `ProceduralPrimitive<T>`
@@ -185,9 +230,14 @@ driving it interactively with `xdotool`.
   this session while reconciling PLAN.md's done-count against the actual built binaries.
 
 ### Known working examples / demos
-39 samples run end-to-end; see the full table in `PLAN.md` or run
+40 samples run end-to-end; see the full table in `PLAN.md` or run
 `cmake --build cmake-build-debug` and look under `samples/*/` for the current set.
 Representative, recently-verified ones:
+- `HoneycombRush_cna_samples` — title → Start → Instructions → tap-to-load →
+  countdown → full gameplay (beehives/bees/honey jar/vat/smoke gun, keyboard-driven
+  movement) → Escape pause menu → "Exit" back to main menu, all confirmed by
+  screenshot with no crash. See "Recently implemented features" above and
+  `samples/HoneycombRush/missing.md` for the three real bugs found and fixed.
 - `SoccerPitch_cna_samples` — dual-textured pitch (single shared UV, see missing.md),
   alpha-blend/alpha-test line toggle (mouse click), ball + depth-biased shadow, camera
   fly-over, FPS counter, and F1 help overlay all confirmed by screenshot.
@@ -235,6 +285,40 @@ Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
+- **(uncommitted)** — Added `samples/HoneycombRush/` (#063): the largest port to date
+  (~30 source files) — a "collect honey while dodging bees" arcade game with its own
+  `ScreenManager` framework, `Misc/` helpers, 10 `Objects/*.hpp` gameplay entities, and
+  7 `Screens/*.hpp`. Found and fixed three real, reliably-reproduced C++-porting bugs
+  (not CNA bugs — full writeups in `missing.md`): (1) `AudioManager::LoadSound()`
+  cached a `SoundEffectInstance` whose source `SoundEffect` was a local temporary —
+  CNA's `SoundEffectInstance` holds a raw pointer back to it (unlike XNA's GC-backed
+  reference), so it dangled and crashed on the first `PlaySound()` call in the whole
+  sample; fixed by also caching the `SoundEffect`s themselves. (2) `BeeKeeper::Draw()`
+  passed a temporary `Load<Texture2D>("Textures/hit")` directly into
+  `SpriteBatch::Draw()`, whose deferred rendering doesn't touch the texture until
+  `End()` — by then the temporary was gone; fixed by caching the texture in
+  `LoadContent()`. (3) A same-frame reentrancy hazard in `ScreenManager`:
+  `GameplayScreen` (`TransitionOffTime=0`) synchronously destroys ~100 owned
+  `GameComponent`s when exited (e.g. via the pause menu's "Exit"), while
+  `Game::Update()` is still iterating a same-frame snapshot of `Game.Components` that
+  still points at some of them — `pure virtual method called`, reliably reproduced
+  2/2. Fixed by having `ScreenManager::RemoveScreen()` defer the screen's actual
+  `shared_ptr` release to the start of the *next* frame's `Update()` (guaranteed
+  outside any component-iteration snapshot) instead of letting it drop immediately.
+  This class of bug — deterministic C++ destruction happening mid-iteration of
+  something the GC-based C# original never would — is worth watching for in any
+  future sample whose "screen" owns many `GameComponent`s directly. Other
+  adaptations: background-thread asset loading → synchronous with a one-frame-delay
+  flag; `Guide.BeginShowKeyboardInput` (no CNA equivalent) → fixed `"Player"` name;
+  `IsolatedStorageFile` → plain file I/O; `AnimationsDefinition.xml`/
+  `Configuration.xml` hand-translated into static tables; keyboard (WASD/arrows)
+  fallback for the left virtual thumbstick, anchored at the on-screen joystick
+  widget's center, needing zero changes to the ported `BeeKeeper` direction logic.
+  Interactively confirmed end-to-end by screenshot: title → Start → Instructions →
+  tap-to-load → countdown → "Go!" → full gameplay (5 beehives, swarming bees, honey
+  jar UI, keyboard movement, Space-triggered smoke with visible smoke-puff cloud, vat
+  fill/timer UI) → Escape pause menu → "Exit" cleanly back to the main menu (the exact
+  interaction that crashed reliably before bug #3's fix).
 - **(uncommitted)** — Added `samples/SoccerPitch/` (#073): procedurally-generated 3D
   pitch demo (`DualTextureEffect`/`AlphaTestEffect`/`BasicEffect` multipass rendering,
   depth-biased shadow, camera fly-over). `ProceduralPrimitive<T>` ported as a C++
@@ -448,6 +532,8 @@ samples can still be ported freely. The most significant *open* problems are:
 | gotcha | **A multi-line `xdotool ...` shell block can get concatenated into one chained invocation** (xdotool supports `mousemove X Y mousedown 1 sleep 0.1 mousemove ...` as a single chained command). A shell block with several intended-to-be-sequential lines (`xdotool mousemove ...`, `sleep`, `xdotool mousedown 1`, ...) got joined into arguments of a single `xdotool` call, which then ran detached in the background indefinitely, replaying/holding mouse state and flooding an app with far more input than intended — eventually crashing it. This was a test-harness mistake, not an app bug. Always issue one xdotool action per shell invocation (or join intentionally with `;`/`&&`), and check `jobs -l`/`ps aux \| grep xdotool` if a sample behaves as though it's receiving phantom input. |
 | fixed (in `cna`, not this repo) | `ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot (e.g. `"Flag.en-US"`). See section 3, commit `80757b1` in the `cna` repo. |
 | fixed (in `cna`, not this repo) | `SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding, so any non-ASCII text rendered as `?`. See section 3, commit `41a4766` in the `cna` repo. |
+| pattern to watch for | **A `shared_ptr`-owning "screen"/"parent" object with `TransitionOffTime=0` (or any other synchronous-removal path) that itself owns many `GameComponent`s can crash with `pure virtual method called`/`SIGABRT` if leaving it is triggered from inside `Game::Update()`'s own component iteration.** `Game::Update()`/`Draw()` iterate a snapshot of `Game.Components` taken at the top of the frame; if a same-frame chain of calls destroys the owning object (and cascades into destroying its owned components) before that snapshot's iteration finishes, the remaining snapshot entries are dangling. XNA's GC never frees anything synchronously mid-iteration, so the original C# has no equivalent hazard. Found and fixed in HoneycombRush's `ScreenManager` (deferred the actual `shared_ptr` release to the start of the next frame's `Update()` — see section 3) — check for the same shape of bug in any future sample where a screen/parent directly owns and registers many `GameComponent`s. |
+| pattern to watch for | **A temporary object (e.g. `Content.Load<T>()`'s return value) passed directly into `SpriteBatch::Draw()` can dangle.** `SpriteBatch`'s default (deferred) sort mode stores a raw pointer to the argument and doesn't actually use it until `End()` — if the argument was a temporary, it's already destroyed by then. Found and fixed twice in HoneycombRush (`AudioManager`'s cached `SoundEffectInstance`, and `BeeKeeper::Draw()`'s `"hit"` texture — see section 3/missing.md); always load into a stable member/cache first, never pass a `Load<T>()` call's return value straight into `Draw()`/anything that stores a reference for later use. |
 | fixed (documentation only) | A claim made in chat this session that CNA's `SpriteBatch::Draw` has no destRect+rotation+origin+effects+depth overload was **wrong** — it exists (`SpriteBatch.hpp` around line 185), the user caught it. The actual bug was in `DynamicMenu/Control.hpp`: passing `std::nullopt` to a parameter typed `const Rectangle&` (not `std::optional<Rectangle>`). Before citing a CNA API "gap," grep the actual header first. |
 
 ---
@@ -671,11 +757,10 @@ There is no lint/format command configured in this repo, and no automated test c
    (#076, TankOnHeightmap #074 same gap — the user is handling that fix directly in
    `cna`, not this repo).
 
-3. **(done this session)** ~~Port a Phase 6 full game.~~ SoccerPitch #073 is done
-   (section 3) — surveyed all 11 then-open Phase 6 samples for blockers first (section 1).
-   Good remaining candidates with no found blockers: **HoneycombRush #063** (port just
-   the `EX2_PolishAndMenus` stage, the more complete of its two training-kit stages),
-   **NinjAcademy #065**, **CardsStarterKit #069**.
+3. **(done this session)** ~~Port a Phase 6 full game.~~ SoccerPitch #073 and
+   HoneycombRush #063 are both done (section 3) — surveyed all 11 then-open Phase 6
+   samples for blockers first (section 1). Good remaining candidates with no found
+   blockers: **NinjAcademy #065**, **CardsStarterKit #069**.
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).

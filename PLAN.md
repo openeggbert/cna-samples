@@ -289,7 +289,7 @@ Complete games and starter kits — the most demanding ports.
 |---|---|---|---|
 | 061 | MarbleMaze | `MarbleMaze_4_0` | ⬜ Todo |
 | 062 | NetRumble | `NetRumble_4_0` | ⬜ Todo |
-| 063 | HoneycombRush | `HoneycombRush_4_0` | ⬜ Todo |
+| 063 | HoneycombRush | `HoneycombRush_4_0` | ✅ Done |
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
 | 065 | NinjAcademy | `NinjAcademy_4_0` | ⬜ Todo |
 | 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
@@ -503,7 +503,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
-| Phase 6 — Full Games | 14 | 4 | 9 | 1 |
+| Phase 6 — Full Games | 14 | 5 | 8 | 1 |
 | Phase 7 — Advanced / Misc | 9 | 7 | 0 | 2 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
 | XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **39** | **37** | **77** |
+| **Total** | **153** | **40** | **36** | **77** |
 
 ---
 
