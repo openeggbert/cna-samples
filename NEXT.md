@@ -254,13 +254,26 @@ samples can still be ported freely. The most significant *open* problems are:
   proven workflow for either exists in this repo yet — this is a capability gap, not a
   bug to fix.
 
-### C. Two ported samples' newer interactions await re-verification (minor, not blocking)
-- DynamicMenu's Page 2/3 (XML-equivalent hand-built content, progress bar) and the `O`
-  orientation toggle, plus UISample's HighScoreScreen vertical scroll, were implemented
-  and are believed correct (same code paths as already-confirmed sibling features) but
-  were not independently re-confirmed by screenshot — interactive testing was cut short
-  by the shared-desktop/xdotool focus flakiness documented in section 5. This does not
-  block new work; it's a "next time the desktop is free" verification task (section 8).
+### C. UISample's HighScoreScreen scroll — cannot be synthetically drag-tested on this desktop (minor, not blocking)
+- **(resolved this session)** DynamicMenu's Page 2/3, the progress bar (`Advance` button),
+  and the `O` orientation toggle were all interactively re-verified by screenshot — see
+  section 3. No bugs found; all work as coded.
+- UISample's HighScoreScreen (`ScrollTracker` vertical drag) was code-reviewed line by
+  line (`ScrollTracker.hpp`, `ScrollingPanelControl.hpp`, `HighScorePanel.hpp`,
+  `InputState::UpdateMouseFallback()`) and no logic bug was found, but it could **not** be
+  interactively confirmed: while a mouse button is held down via `xdotool
+  mousedown`/`mousemove`/`mouseup`, the game's polled `Mouse::GetState()` position freezes
+  at the press location for the entire hold — confirmed with temporary debug
+  instrumentation that `xdotool getmouselocation` (the real X11 pointer) keeps updating
+  live while the in-game position does not move until the button is released, at which
+  point it immediately jumps to the correct final position. Mouse motion **without** a
+  button held updates every frame with no issue (confirmed by the same instrumentation).
+  This is very likely an X11 pointer-grab interaction specific to this desktop's
+  WM/compositor setup (see the `mutter-x11-frames`/focus-flakiness gotchas in section 5),
+  not a CNA or sample bug — SnowShovel's analogous mouse-drag fallback was already
+  confirmed working end-to-end on real hardware in an earlier session. Re-attempt this
+  verification with a real mouse/touchscreen rather than `xdotool` if it needs a
+  definitive answer; do not "fix" `InputState`/`ScrollTracker` based on this alone.
 
 ---
 
@@ -277,11 +290,12 @@ samples can still be ported freely. The most significant *open* problems are:
 | limitation | **`sharp-runtime`'s `CultureInfo.CurrentCulture` is a stub** — always returns the invariant culture; there is no real OS locale detection. LocalizationSample works around this by manual language cycling (SPACE key) instead of auto-detecting the OS locale. |
 | limitation | **No content-pipeline XML deserializer.** DynamicMenu's Page 2/3 were originally XML content-pipeline assets; hand-translated once into equivalent C++ construction instead (see section 6). Fine for one-off small pages; would need a real solution if a future sample has a large or frequently-edited XML-driven layout. |
 | needs verification | **Real hardware accelerometer** — Yacht's shake-to-roll and SnowShovel's tilt are only verified via the keyboard/gamepad/touch fallback on this desktop (no physical accelerometer available). The real-sensor code path (`Accelerometer::getIsSupportedProperty()` true branch) is implemented but untested end-to-end on real hardware. |
-| needs verification | **DynamicMenu Page 2/3, the progress bar, and the `O` orientation toggle.** Only Page 1 was confirmed by screenshot. The code was carefully static-reviewed (and one real bug fixed — see the Transition/`shared_ptr` note in section 6), but not live-tested. |
-| needs verification | **UISample's HighScoreScreen (`ScrollTracker` vertical scroll).** Main Menu, tap-to-navigate, and mouse-drag page-flipping were all confirmed by screenshot; the scroll screen was not. Shares the same mouse-fallback code path as the confirmed page-flip, so expected to work — see task 1 in section 8. |
+| fixed (verified, no bug) | **DynamicMenu Page 2/3, the progress bar, and the `O` orientation toggle.** Interactively re-verified this session: Page 2 (UFO image + multiline text), Page 3 (`Advance` button increments the progress bar's arrow fill correctly, 0→100 in steps of 10), and `O` (portrait↔landscape, round-tripped twice with no crash) all work as coded. See section 4A/3. |
+| environment limitation | **UISample's HighScoreScreen (`ScrollTracker` vertical scroll) cannot be drag-tested via `xdotool` on this desktop.** Code-reviewed with no bug found; interactive drag confirmed blocked by the game's `Mouse::GetState()` freezing position while a button is held (real X11 pointer keeps moving per `xdotool getmouselocation`). See section 4C for the full writeup — likely an X11 grab quirk of this desktop, not a CNA/sample bug. |
 | needs verification | **`GraphicsDevice.Viewport` is stale when queried from `Game::Initialize()`.** Observed while porting SnowShovel: `getViewportProperty().getWidthProperty()/getHeightProperty()` returned `1333x800` instead of the requested `480x800` even though the SDL window was already correctly sized (confirmed via `xwininfo`) and `GraphicsDeviceManager::CreateDevice()` runs before `Initialize()` per `Game::DoInitialize()`. Worked around in each affected sample (use the known preferred-back-buffer constants instead of re-querying); not root-caused inside CNA. Existing samples that call `getViewportProperty()` all do so later, from `Update()`/`Draw()` (e.g. Yacht's `ScreenManager::SafeArea()`), so this may be a wider latent issue worth a real CNA-side fix if a future sample needs viewport sizing genuinely inside `Initialize()`. `TouchPanel::DisplayWidth`/`Height` has the same shape of gotcha (see UISample's entry below) but is a distinct property with its own explicit setter, not the same underlying bug. |
 | gotcha | **`xdotool` input can silently no-op if the target window lost X focus** (e.g. after an intervening screenshot/tool call) — clicks/keys are sent but never reach the app, with no error message. Always run `xdotool windowactivate --sync $WID && xdotool windowfocus --sync $WID` immediately before each simulated input burst. A plain `xdotool click`/`key` can also complete faster than one game-loop frame (~33ms at the sample's 30fps) and be missed entirely by a naive down/up edge check — prefer explicit `keydown`/`sleep 0.15`/`keyup` over `click`/`key` when the app must observe a discrete press. |
 | gotcha | **This is a shared, actively-used desktop session, not an isolated headless sandbox.** `xdotool getactivewindow` has returned an unrelated window (e.g. a git history browser the human user had open) instead of the sample under test, and `windowactivate`/`windowfocus` on the sample's window has repeatedly failed to take real effect (confirmed via a 1x1 `mutter-x11-frames` proxy window absorbing X input focus) even though `getactivewindow` claimed success right after the call — sometimes `windowactivate --sync` followed immediately by `getactivewindow` still reports the proxy window, meaning the activate call itself silently failed, not just "focus was lost since the last check." Always re-verify with `getactivewindow` **immediately before** every input burst, not just once at the start of a test sequence. If input stops reaching a sample mid-session for no code-related reason, check `xdotool getactivewindow` + `getwindowname`/`xwininfo -tree` for what's *actually* focused before assuming a CNA/sample bug — and stop sending synthetic keys/clicks rather than risk them landing on the user's own foreground application. |
+| gotcha | **`xdotool mousemove` while a button is held down does not appear to reach a CNA/SDL window's polled mouse state on this desktop**, even though the real X11 pointer position does move (`xdotool getmouselocation` updates live). The frozen position snaps to the correct final value the instant the button is released. This blocks synthetic drag-testing (scroll/page-flip/drag mechanics) via `xdotool` specifically during a held button; motion with no button held is unaffected. Confirmed via temporary `fprintf` instrumentation in `UISample/src/InputState.hpp` (see section 4C) — do not re-add that debug print without removing it again afterward. Likely an X11 grab handoff quirk of this desktop's WM, not a CNA bug (SnowShovel's mouse-drag fallback was already confirmed on real hardware). If a future session needs a definitive drag-mechanic verification, use real hardware, not `xdotool`. |
 | gotcha | **A multi-line `xdotool ...` shell block can get concatenated into one chained invocation** (xdotool supports `mousemove X Y mousedown 1 sleep 0.1 mousemove ...` as a single chained command). A shell block with several intended-to-be-sequential lines (`xdotool mousemove ...`, `sleep`, `xdotool mousedown 1`, ...) got joined into arguments of a single `xdotool` call, which then ran detached in the background indefinitely, replaying/holding mouse state and flooding an app with far more input than intended — eventually crashing it. This was a test-harness mistake, not an app bug. Always issue one xdotool action per shell invocation (or join intentionally with `;`/`&&`), and check `jobs -l`/`ps aux \| grep xdotool` if a sample behaves as though it's receiving phantom input. |
 | fixed (in `cna`, not this repo) | `ContentManager::ResolveAssetPath` misresolved asset names with a non-extension dot (e.g. `"Flag.en-US"`). See section 3, commit `80757b1` in the `cna` repo. |
 | fixed (in `cna`, not this repo) | `SpriteFont`/`SpriteBatch::DrawString` had no UTF-8 decoding, so any non-ASCII text rendered as `?`. See section 3, commit `41a4766` in the `cna` repo. |
@@ -492,17 +506,13 @@ There is no lint/format command configured in this repo, and no automated test c
 
 ## 8. Next smallest tasks
 
-1. **Interactively re-verify DynamicMenu (#077) and UISample's HighScoreScreen (#082)
-   once the desktop is free.**
-   - Goal: confirm DynamicMenu's Page 2/3 + progress bar advance + O orientation toggle,
-     and UISample's HighScoreScreen vertical-scroll (drag through the fake leaderboard),
-     all work by screenshot -- neither was screenshot-confirmed yet (see section 5's
-     shared-desktop gotchas; re-verify `getactivewindow` immediately before every input
-     burst, not just once).
-   - Files: none expected; this is verification only, not development.
-   - Verify: launch `DynamicMenu_cna_samples`, tap/click "Page 2" and "Page 3", click
-     "Advance" a few times on Page 3, press `O` to toggle orientation. Launch
-     `UISample_cna_samples`, click "High scores", drag vertically to scroll the list.
+1. **(done this session)** ~~Interactively re-verify DynamicMenu (#077) and UISample's
+   HighScoreScreen (#082).~~ DynamicMenu's Page 2/3, progress bar `Advance`, and `O`
+   orientation toggle are now screenshot-confirmed working (see section 3/4C/5). UISample's
+   HighScoreScreen scroll could not be drag-tested — blocked by an `xdotool`
+   mouse-button-held position freeze specific to this desktop, not a code bug (see section
+   4C). If a definitive answer on the scroll is ever needed, retest with real hardware
+   input rather than `xdotool`.
 
 2. **Port the next portable Phase 7 sample.**
    - Goal: extend sample coverage. Real `TouchPanel`/`Accelerometer` and non-ASCII

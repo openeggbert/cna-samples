@@ -109,14 +109,22 @@ SnowShovel's `Initialize()`-time viewport workaround, since this sample never
 overrides `PreferredBackBufferWidth`/`Height` (see NEXT.md section 5's
 viewport-timing gotcha for why querying the viewport directly isn't safe
 here either).
-`ScrollTracker`/`HighScoreScreen`'s vertical-scroll behavior was not
-independently re-confirmed by screenshot after that fix — interactive testing
-was cut short mid-session by the same shared-desktop focus flakiness
-documented in NEXT.md section 5 (this session additionally turned up a subtler
-version of it: `xdotool windowactivate` can silently fail to shift real focus
-at all, with `getactivewindow` immediately reporting the mutter proxy window
-again right after the activate call, meaning a click can land on the user's
-own foreground application instead of the target window). Given `ScrollTracker`
-shares essentially identical logic and the same mouse-fallback code path as
-the already-confirmed `PageFlipTracker`, it's expected to work, but this is
-worth a follow-up screenshot check.
+`ScrollTracker`/`HighScoreScreen`'s vertical-scroll behavior still could not be
+interactively confirmed in a follow-up session, despite the Main Menu → "High
+scores" navigation itself working correctly (tap-to-select, confirmed by
+screenshot). The blocker this time was different: temporary debug
+instrumentation in `InputState::UpdateMouseFallback()` showed that while a
+mouse button is held down via `xdotool mousedown`/`mousemove`/`mouseup`, the
+game's polled `Mouse::GetState()` position freezes at the press location for
+the whole hold — `xdotool getmouselocation` confirms the real X11 pointer
+keeps moving the entire time, but the in-game value doesn't change until the
+button is released, at which point it immediately jumps to the correct final
+position. Mouse motion with no button held updates every frame correctly (also
+confirmed with the same instrumentation). This looks like an X11 pointer-grab
+interaction specific to this desktop's window manager/compositor (see NEXT.md
+section 5's `mutter-x11-frames`/focus gotchas), not a bug in `ScrollTracker`,
+`ScrollingPanelControl`, or `InputState` — all three were re-read line by line
+this session with no logic issue found, and SnowShovel's analogous
+click-and-drag fallback was already confirmed working on real hardware in an
+earlier session. Tracked in NEXT.md section 4C/5; a real mouse or touchscreen
+would be needed for a definitive interactive confirmation.

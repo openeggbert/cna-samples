@@ -82,17 +82,17 @@ precedent (no other sample forces fullscreen either).
 **Tracked in:** Not planned.
 
 ## Verification note
-Interactively confirmed by screenshot: Page 1 renders correctly (page-select
-buttons with the active page highlighted yellow, checkerboard background, all
-four buttons -- Change Hue/Index/Bounce/Get big -- correctly colored, sized, and
-centered-text). The build is clean and the control-tree/event-wiring logic was
-carefully re-checked line-by-line against the original (see the transition
-reentrancy note below), but full interactive verification (tapping each button via
-mouse, switching to Page 2/3, the progress bar advancing, and the O orientation
-toggle) was not completed by screenshot in this session -- the desktop was in
-active use by the human user for something unrelated, and per the gotcha in
-NEXT.md section 5, sending synthetic input to the wrong window is worse than not
-testing at all, so it was deliberately deferred rather than risking that.
+Interactively confirmed by screenshot, across two sessions: Page 1 renders
+correctly (page-select buttons with the active page highlighted yellow,
+checkerboard background, all four buttons -- Change Hue/Index/Bounce/Get big --
+correctly colored, sized, and centered-text). A follow-up session confirmed the
+rest by screenshot too: Page 2 (UFO image + `MultilineTextControl` text render
+correctly), Page 3 (the `Advance` button correctly increments the progress
+bar's filled-arrow region in steps of 10, observed 0→1→2→3→4 arrows across
+repeated clicks), and the `O` orientation toggle (portrait 480x800 ↔ landscape
+800x480, round-tripped twice with no crash and the progress bar state
+preserved across the resize). No bugs found in this pass beyond the one
+correctness issue already caught by static review (see below).
 
 One correctness issue *was* caught and fixed during this static review, not by
 live testing: the original's `Control.Update` copies its active-transitions list
