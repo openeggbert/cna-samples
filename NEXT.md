@@ -92,9 +92,10 @@ a future "next sample" pick.
 
 ### Build
 40 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
-`cmake --build cmake-build-debug` (all targets, 0 errors) was run in the same session
-HoneycombRush was added, so this is a live-confirmed guarantee, not just "known good as of
-a commit." The active configured build tree is `cmake-build-debug`.
+`cmake --build cmake-build-debug` (all targets, 0 errors) was run as of commit `27451f1`
+(HoneycombRush, now on `develop` and pushed). No source has changed since that build (only
+`NEXT.md` in this pass), so the guarantee still holds; it has not been re-run in this
+session. The active configured build tree is `cmake-build-debug`.
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -285,7 +286,7 @@ Representative, recently-verified ones:
 
 Most recent first, matching `git log`:
 
-- **(uncommitted)** — Added `samples/HoneycombRush/` (#063): the largest port to date
+- **`27451f1`** — Added `samples/HoneycombRush/` (#063): the largest port to date
   (~30 source files) — a "collect honey while dodging bees" arcade game with its own
   `ScreenManager` framework, `Misc/` helpers, 10 `Objects/*.hpp` gameplay entities, and
   7 `Screens/*.hpp`. Found and fixed three real, reliably-reproduced C++-porting bugs
@@ -319,7 +320,7 @@ Most recent first, matching `git log`:
   jar UI, keyboard movement, Space-triggered smoke with visible smoke-puff cloud, vat
   fill/timer UI) → Escape pause menu → "Exit" cleanly back to the main menu (the exact
   interaction that crashed reliably before bug #3's fix).
-- **(uncommitted)** — Added `samples/SoccerPitch/` (#073): procedurally-generated 3D
+- **`aa7b273`** — Added `samples/SoccerPitch/` (#073): procedurally-generated 3D
   pitch demo (`DualTextureEffect`/`AlphaTestEffect`/`BasicEffect` multipass rendering,
   depth-biased shadow, camera fly-over). `ProceduralPrimitive<T>` ported as a C++
   template, only ever instantiated with the built-in `VertexPositionNormalTexture`.
