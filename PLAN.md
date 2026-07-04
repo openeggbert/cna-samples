@@ -311,7 +311,7 @@ UI navigation, localization, performance measurement, touch/gesture, networking.
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
 | 075 | NGSMSample | `NGSMSample_4_0` | ⚠️ Deferred — Networking/* (~1900 of ~2900 lines) needs `NetworkSession`/`GamerServices`, not in CNA; remaining "Single Player" path is just an empty GameplayScreen stub, not worth porting alone |
-| 076 | SplitScreen | `SplitScreenSample_4_0` | ⬜ Todo |
+| 076 | SplitScreen | `SplitScreenSample_4_0` | ⚠️ Deferred — needs per-mesh `ModelBone` support in CNA's `.model.json` reader (only a single flat Root bone is created today); see `samples/SplitScreen/missing.md` and DEFERRED.md item 6 |
 | 077 | DynamicMenu | `DynamicMenu_4_0` | ✅ Done |
 | 078 | LocalizationSample | `LocalizationSample_4_0` | ✅ Done |
 | 079 | GesturesSample | `GesturesSample_4_0` | ✅ Done |
@@ -504,7 +504,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
 | Phase 6 — Full Games | 14 | 3 | 11 | 0 |
-| Phase 7 — Advanced / Misc | 9 | 7 | 1 | 1 |
+| Phase 7 — Advanced / Misc | 9 | 7 | 0 | 2 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
 | XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
 | Avatar asset packs | 4 | 0 | 0 | 4 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **38** | **40** | **75** |
+| **Total** | **153** | **38** | **39** | **76** |
 
 ---
 

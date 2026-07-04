@@ -26,14 +26,25 @@ omitted `RemoteDebugCommand`); the one path that doesn't need networking ("Singl
 Player") just loads an intentionally-empty `GameplayScreen` stub per the original's own
 doc ("there is no actual game code included here"). User decided (this session) to mark
 it Deferred in PLAN.md rather than port a misleadingly-thin single-player-only skeleton.
-SplitScreen #076 is blocked, needs the Phase 3/4 model pipeline for its `tank.fbx`, see
-section 4B — note that a `.model.json` conversion pipeline (`tools/obj2model.py` +
-`tools/fbx_ascii2model.py`) already exists and is proven working (CameraShake,
-PerformanceMeasuring's `Ground.x`), so SplitScreen may be less blocked than previously
-assumed; not yet investigated whether it needs more than static model loading (e.g.
-animation). Phases 3 (3D shaders) and 4 (models/animation) themselves are still
-untouched as dedicated phases — no sample ported yet whose whole point is a custom
-HLSL→GLSL effect or skeletal animation — but basic static-model loading is proven.
+SplitScreen #076 was also investigated this session (see section 4D and
+`samples/SplitScreen/missing.md`) and found genuinely blocked, but on a precisely
+scoped, real CNA gap rather than the "3D shaders/models untouched" assumption from
+before: it reuses `tank.fbx` (byte-identical to CameraShake's, `.model.json`
+conversion already proven) and needs a settable `GraphicsDevice.Viewport` (already
+supported) — the actual blocker is that `Tank.cs` animates the tank's wheels/turret/
+cannon/hatch independently via named-bone lookups (`Model.Bones["l_back_wheel_geo"]`,
+etc.), and CNA's `.model.json` reader currently only ever creates a single flat "Root"
+bone with no per-mesh assignment (confirmed by reading `ContentManager.cpp`'s
+`ModelTypeReader::Read()` and `ModelMesh`/`Model.cpp`). This is a small, well-scoped,
+backward-compatible CNA fix (add a `ModelMesh` parent-bone setter + have the reader
+create one bone per mesh) that the user will handle directly in the `cna` repo — not
+attempted in this repo; `samples/SplitScreen/` currently has only `missing.md` and the
+verbatim `.htm`, no source yet. DEFERRED.md item 6 was corrected to no longer claim
+rigid multi-part bone animation is "just asset conversion" — it also needs this reader
+change. Phases 3 (3D shaders) and 4 (models/animation) themselves are still untouched
+as dedicated phases — no sample ported yet whose whole point is a custom HLSL→GLSL
+effect or skeletal animation — but basic single-bone static-model loading is proven
+twice (CameraShake, PerformanceMeasuring).
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each sample directory is
@@ -342,6 +353,21 @@ samples can still be ported freely. The most significant *open* problems are:
   verification with a real mouse/touchscreen rather than `xdotool` if it needs a
   definitive answer; do not "fix" `InputState`/`ScrollTracker` based on this alone.
 
+### D. SplitScreen (#076) blocked on CNA `.model.json` per-mesh bone support (capability gap, not attempted here)
+- Investigated this session; not a port attempt, no `samples/SplitScreen/src/` exists
+  yet — only `missing.md` and a verbatim copy of the `.htm`. Full technical write-up in
+  `samples/SplitScreen/missing.md`; the short version: `Tank.cs` needs
+  `Model.Bones["l_back_wheel_geo"]`-style named-bone lookups to animate the tank's
+  wheels/turret/cannon/hatch independently, but CNA's `.model.json` reader
+  (`ContentManager.cpp`'s `ModelTypeReader::Read()`) only ever creates one flat "Root"
+  bone — every mesh's parent bone is null, and `ModelMesh` has no setter to give it one.
+  Everything else the sample needs (settable `GraphicsDevice.Viewport`, `SpriteBatch`
+  divider lines, the `tank.fbx`→`.model.json` conversion itself) is already proven/fine.
+  User decided to fix this directly in the `cna` repo themselves rather than have it
+  done here — do not attempt the CNA-side fix in this repo unless asked again.
+  DEFERRED.md item 6 was corrected accordingly (it previously overclaimed that rigid
+  multi-part bone models were "just asset conversion, no CNA code changes needed").
+
 ---
 
 ## 5. Known bugs and limitations
@@ -583,21 +609,23 @@ There is no lint/format command configured in this repo, and no automated test c
    input rather than `xdotool`.
 
 2. **(done this session)** ~~Port the next portable Phase 7 sample.~~ PerformanceMeasuring
-   #081 is done — see section 3. Both remaining Phase 7 samples are now considered
-   deferred rather than "quick next samples": NGSMSample #075 (investigated and rejected
-   this session — see section 1 and PLAN.md) and SplitScreen #076 (blocked on more than
-   just model loading, not yet fully re-investigated). **Phase 7 has no more easy
-   candidates** — the next new-sample port should come from either:
-   - Re-investigating SplitScreen #076 now that `.model.json` loading is proven twice
-     (CameraShake, PerformanceMeasuring): read `SplitScreenSample_4_0`'s source and
-     determine exactly what else it needs (skinned animation? split-viewport rendering,
-     which CNA should already support?) before deciding if it's actually unblocked.
-   - Picking up one of the 11 open Phase 6 full games instead (see `PLAN.md`'s Phase 6
-     table) — these are bigger but don't have Phase 7's networking/asset-pipeline
-     entanglements.
+   #081 is done (section 3). NGSMSample #075 and SplitScreen #076, the two remaining
+   Phase 7 samples, were both investigated this session and are now marked Deferred in
+   PLAN.md with precise reasons (section 1, section 4D, `samples/SplitScreen/missing.md`)
+   — **Phase 7 has no more candidates at all**, easy or otherwise, until either CNA gains
+   networking (#075) or gains per-mesh `ModelBone` support in the `.model.json` reader
+   (#076 — the user is handling that fix directly in `cna`, not this repo). The next
+   new-sample port should come from one of the 11 open Phase 6 full games instead (see
+   `PLAN.md`'s Phase 6 table) — these don't have Phase 7's networking/model-pipeline
+   entanglements.
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).
+   - And once the `cna` repo gains the per-mesh-bone reader fix described in
+     `samples/SplitScreen/missing.md`: come back and actually port SplitScreen (copy
+     `tank.model.json`+bins straight from `samples/CameraShake/Content/`, no new asset
+     conversion needed) — it's otherwise a ~450-line, 3-file sample, one of the smallest
+     remaining.
 
 3. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank actually render.

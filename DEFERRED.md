@@ -134,17 +134,47 @@ animation (walk cycles, skinned character rigs, etc. — not just render a rigid
 multi-part mesh), see item 13 below instead — that capability does not exist in CNA
 yet, regardless of asset conversion.
 
+**Caveat found while investigating SplitScreen (2026-07-04): the "asset conversion
+only, no CNA code changes needed" claim above only holds for models with a *single*
+bone (the common case so far — Ground, tank-as-rendered-by-CameraShake, etc., which
+never move any part independently).** `examples/easygl_model_draw_test.cpp`'s 2-bone
+proof constructs `ModelBone`s directly in C++ — it does **not** exercise the
+`.model.json` *file format*/reader's ability to build a multi-bone hierarchy from
+JSON. In reality, `ContentManager.cpp`'s `ModelTypeReader::Read()` only ever creates
+one synthetic "Root" bone total; every mesh parsed from `.model.json`'s `"meshes"`
+array is left with a null parent bone (`ModelMesh` doesn't even have a setter for it).
+So any sample needing independently-animated rigid parts (multiple named bones, one
+per moving mesh, XNA's common non-skinned "rig" pattern — e.g. a tank with rotating
+wheels/turret) is blocked on a small CNA *code* change, not just conversion — see
+`samples/SplitScreen/missing.md` for the full write-up (exact files/functions to
+change, and why `samples/CameraShake/Content/tank.model.json` would need zero
+regeneration once the reader supports it, since its mesh names already match the
+bone names a consumer like `Tank.cs` expects).
+
 **What needs to happen:**
-- Convert source `.x`/`.fbx` files to `.model.json` + binary buffers
-- Tools: Blender export script, `assimp` CLI, or custom converter
-- One conversion per model file per sample
+- For single-bone (fully static) models: convert source `.x`/`.fbx` files to
+  `.model.json` + binary buffers. Tools: `assimp export` + `tools/obj2model.py`, or
+  `tools/fbx_ascii2model.py`. One conversion per model file per sample. No CNA code
+  changes needed — proven twice (CameraShake, PerformanceMeasuring).
+- For multi-bone rigid-part models (SplitScreen and similar — see above): also needs
+  a `ModelMesh` parent-bone setter plus a `ModelTypeReader::Read()` change to build one
+  real bone per mesh (or parse an explicit bone hierarchy from the JSON) — a CNA code
+  change, not just conversion.
 
-**Blocked samples (static geometry only):** CameraShake, BloomSample (tank),
-Spacewar (Evolved ships/asteroids), ChaseCamera, HeightmapCollision, MarbleMaze,
-ShipGame, and similar. (SkinningSample, RolePlayingGame, and other *animated*-model
-samples are additionally blocked on item 13.)
+**Blocked samples (static geometry only, conversion-only gap):** CameraShake,
+BloomSample (tank), Spacewar (Evolved ships/asteroids), ChaseCamera,
+HeightmapCollision, MarbleMaze, ShipGame, and similar.
 
-**Effort:** M per model (conversion) — no CNA code changes needed
+**Blocked samples (rigid multi-part bone hierarchy — needs the reader change above,
+not just conversion):** SplitScreen (see its `missing.md`), SimpleAnimation,
+TankOnAHeightMap, CustomModelClassSample, ModelViewerDemo (all animate the same
+`tank.fbx`'s wheels/turret/cannon/hatch independently). (SkinningSample,
+RolePlayingGame, and other *skinned*-animation samples are additionally blocked on
+item 13 regardless.)
+
+**Effort:** M per model (conversion) for single-bone models, no CNA code changes
+needed. S–M CNA code change (once) to unblock the multi-bone rigid-part case, then M
+per model as above.
 
 ---
 
