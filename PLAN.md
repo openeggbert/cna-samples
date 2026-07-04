@@ -300,7 +300,7 @@ Complete games and starter kits — the most demanding ports.
 | 071 | Yacht | `Yacht_4_0` | ✅ Done |
 | 072 | GSMSample (Win+Xbox) | `GSMSample_4_0_WIN_XBOX` | ✅ Done | ported as `samples/GameStateManagement` |
 | 073 | SoccerPitch | `SoccerPitchSample_4_0` | ⬜ Todo |
-| 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | ⬜ Todo |
+| 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | ⚠️ Deferred — same `tank.fbx`/`Tank.cs` per-mesh `ModelBone` lookup as SplitScreen #076, same CNA gap (see `samples/SplitScreen/missing.md`) |
 
 ---
 
@@ -503,7 +503,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
-| Phase 6 — Full Games | 14 | 3 | 11 | 0 |
+| Phase 6 — Full Games | 14 | 3 | 10 | 1 |
 | Phase 7 — Advanced / Misc | 9 | 7 | 0 | 2 |
 | Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
 | XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
@@ -516,7 +516,7 @@ No version tag in directory name; likely XNA 3.x or earlier.
 | Third-party | 3 | 0 | 0 | 3 |
 | Unversioned starters | 2 | 0 | 0 | 2 |
 | Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **38** | **39** | **76** |
+| **Total** | **153** | **38** | **38** | **77** |
 
 ---
 
