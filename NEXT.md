@@ -17,7 +17,15 @@ for items deferred on missing CNA features. Phase 6 (Full games) is in progress
 (GameStateManagement #072, CatapultWars #067, Yacht #071 done; 11 of 14 still open). Phase
 7 (Advanced/UI/Misc) is well underway (GesturesSample #079, TouchThumbsticks #080,
 LocalizationSample #078, SnowShovel #083, DynamicMenu #077, UISample #082,
-PerformanceMeasuring #081 done — 7 of 9; only NGSMSample #075 left unblocked).
+PerformanceMeasuring #081 done — 7 of 9; the remaining 2 are both effectively deferred,
+see below). NGSMSample #075 was investigated this session and found not viable as a
+"quick next sample": ~1900 of its ~2900 lines (the whole `Networking/` folder — lobby,
+session create/find/join, gamer profile sign-in) need `Microsoft.Xna.Framework.Net`/
+`GamerServices`, which don't exist in CNA (same class of gap as PerformanceMeasuring's
+omitted `RemoteDebugCommand`); the one path that doesn't need networking ("Single
+Player") just loads an intentionally-empty `GameplayScreen` stub per the original's own
+doc ("there is no actual game code included here"). User decided (this session) to mark
+it Deferred in PLAN.md rather than port a misleadingly-thin single-player-only skeleton.
 SplitScreen #076 is blocked, needs the Phase 3/4 model pipeline for its `tank.fbx`, see
 section 4B — note that a `.model.json` conversion pipeline (`tools/obj2model.py` +
 `tools/fbx_ascii2model.py`) already exists and is proven working (CameraShake,
@@ -575,16 +583,18 @@ There is no lint/format command configured in this repo, and no automated test c
    input rather than `xdotool`.
 
 2. **(done this session)** ~~Port the next portable Phase 7 sample.~~ PerformanceMeasuring
-   #081 is done — see section 3. Only NGSMSample #075 remains as an unblocked Phase 7
-   candidate (SplitScreen #076 is blocked, though possibly less than previously thought —
-   see section 1). Next up:
-   - Goal: extend sample coverage with NGSMSample #075. Real `TouchPanel`/`Accelerometer`,
-     non-ASCII `SpriteFont` text, and now a static-model (`.model.json`) load are all
-     confirmed working end-to-end, so no remaining Phase 7 candidate should be
-     deprioritized for those reasons.
-   - Files: new `samples/NGSMSample/` directory; one line added to root `CMakeLists.txt`.
-   - Verify: `cmake --build cmake-build-debug --target NGSMSample_cna_samples`, then run
-     and screenshot it (see section 7).
+   #081 is done — see section 3. Both remaining Phase 7 samples are now considered
+   deferred rather than "quick next samples": NGSMSample #075 (investigated and rejected
+   this session — see section 1 and PLAN.md) and SplitScreen #076 (blocked on more than
+   just model loading, not yet fully re-investigated). **Phase 7 has no more easy
+   candidates** — the next new-sample port should come from either:
+   - Re-investigating SplitScreen #076 now that `.model.json` loading is proven twice
+     (CameraShake, PerformanceMeasuring): read `SplitScreenSample_4_0`'s source and
+     determine exactly what else it needs (skinned animation? split-viewport rendering,
+     which CNA should already support?) before deciding if it's actually unblocked.
+   - Picking up one of the 11 open Phase 6 full games instead (see `PLAN.md`'s Phase 6
+     table) — these are bigger but don't have Phase 7's networking/asset-pipeline
+     entanglements.
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).
