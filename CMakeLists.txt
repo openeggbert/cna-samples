@@ -94,6 +94,7 @@ add_subdirectory(samples/ParticleSample)
 # add_subdirectory(samples/NetRumble)
 add_subdirectory(samples/HoneycombRush)
 add_subdirectory(samples/NinjAcademy)
+add_subdirectory(samples/CardsStarterKit)
 # add_subdirectory(samples/ShipGame)
 
 # Phase 5 — Audio, AI, Misc

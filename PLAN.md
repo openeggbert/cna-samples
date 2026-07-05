@@ -295,7 +295,7 @@ Complete games and starter kits — the most demanding ports.
 | 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
 | 067 | CatapultWars | `CatapultWars_4_0` | ✅ Done |
 | 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
-| 069 | CardsStarterKit | `CardsStarterKit_4_0` | ⬜ Todo |
+| 069 | CardsStarterKit | `CardsStarterKit_4_0` | ✅ Done |
 | 070 | RolePlayingGame (Win+Xbox) | `RolePlayingGame_4_0_Win_Xbox` | ⬜ Todo |
 | 071 | Yacht | `Yacht_4_0` | ✅ Done |
 | 072 | GSMSample (Win+Xbox) | `GSMSample_4_0_WIN_XBOX` | ✅ Done | ported as `samples/GameStateManagement` |

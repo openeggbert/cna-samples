@@ -91,16 +91,18 @@ a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-41 enabled samples compile and link cleanly with the default **EasyGL** backend, as of
-commit `27451f1` (HoneycombRush) plus this session's uncommitted NinjAcademy #065 addition
-— `NinjAcademy_cna_samples` builds standalone with 0 errors. A full `cmake --build
-cmake-build-debug` (all targets) this session hit one *unrelated pre-existing* failure in
-**InputReporter** (`GamePadCapabilities` fields were made private with `getXxxProperty()`
-accessors upstream in `cna`, breaking InputReporter's direct field access — not caused by
-this session's changes, and not touched/fixed here since it's out of this session's scope).
-The active configured build tree is `cmake-build-debug`; this session's CMake reconfigure
-also needed `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` once (a vendored ENet `CMakeLists.txt` in
-`cna`'s new networking third_party dependency requires it with newer CMake).
+42 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
+`af308a1` (NinjAcademy #065, pushed) plus this session's uncommitted CardsStarterKit #069
+addition — `CardsStarterKit_cna_samples` builds standalone with 0 errors and 0 warnings
+(confirmed by an actual `cmake --build cmake-build-debug --target CardsStarterKit_cna_samples`
+run, not assumed). A full `cmake --build cmake-build-debug` (all targets) previously hit one
+*unrelated pre-existing* failure in **InputReporter** (`GamePadCapabilities` fields were made
+private with `getXxxProperty()` accessors upstream in `cna`, breaking InputReporter's direct
+field access — not caused by this repo's changes, not touched/fixed here since it's out of
+scope; not re-checked this pass). The active configured build tree is `cmake-build-debug`;
+CMake reconfigure previously needed `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` once (a vendored
+ENet `CMakeLists.txt` in `cna`'s networking third_party dependency requires it with newer
+CMake).
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -788,7 +790,51 @@ There is no lint/format command configured in this repo, and no automated test c
    rendering evidence only, not a confirmed interactive playthrough. A real
    controlled playthrough (click Start, throw a shuriken, slash a bomb) is
    still owed next session once input reliably reaches sample windows again.
-   Remaining good candidate with no found blockers: **CardsStarterKit #069**.
+
+4. **(done this session)** ~~Port CardsStarterKit #069.~~ A full Blackjack
+   card game (~8700 lines of C#) built on a reusable `CardsFramework`
+   (deck/hand/card model, `AnimatedGameComponent`/animation framework,
+   generic `GameTable` UI) plus Blackjack-specific rules/AI/betting on top,
+   reusing the ScreenManager framework pattern from GameStateManagement (this
+   sample's own `ScreenManager.cs`/`MenuScreen.cs` add `SafeArea`/
+   `ButtonBackground` and a horizontal button-row menu layout beyond the
+   stock template — ported as its own customized copy, not the stock one).
+   See `samples/CardsStarterKit/missing.md` for all adaptations: `Player.Hand`
+   renamed `PlayerHand`/`CardsGame.Game` renamed `GameInstance` (C++ name
+   clashes with the `Hand`/`Game` types), a `CardsGame::AddComponent<T>()`/
+   `RemoveComponent()` ownership scheme replacing XNA's GC + `Dispose()`
+   dance for the many dynamically-created chip/card/cue components (same
+   deferred-release-to-next-frame pattern as HoneycombRush/NinjAcademy),
+   `TraditionalCard` identity preserved via per-card `unique_ptr` (not value
+   copies) to match XNA's reference-type semantics, two asset-path
+   case-sensitivity fixes (`youLose`, `Shuffle_<theme>` — the original's
+   lowercase requests only work on Windows' case-insensitive filesystem), one
+   faithfully-reproduced original quirk in `GetResultAsset` (uses the
+   first-hand `BlackJack` flag even when resolving the second/split hand),
+   and several confirmed-dead original code paths ported for completeness
+   but intentionally left unreachable (`InstructionScreen`, `AudioManager`'s
+   music support, `MenuScreen`'s Xbox/Phone-only hit-test helpers,
+   `ScreenManager`'s `IsolatedStorageFile` (de)serialize methods). **No CNA
+   or sharp-runtime framework gaps were hit** — every compile error along the
+   way was a porting-side fix (`Vector2` has no `operator+=`, only free
+   `operator+`; `EventHandler<T>::Raise()` needs a `System::Object*` sender,
+   so non-component classes pass `nullptr`; `GraphicsDeviceManager` takes
+   `Game*` not `Game&`; `SpriteBatch::getGraphicsDeviceProperty()` returns a
+   pointer, not a reference). Build: `CardsStarterKit_cna_samples` compiles
+   and links with 0 errors and 0 warnings (confirmed via an actual build run,
+   not assumed). Verification is partial: a clean idle-render screenshot (no
+   input sent before capture) confirms the "BLACKJACK" main menu renders
+   correctly. A deliberate Play → bet → deal → hit/stand click-through was
+   **not** completed — `xdotool getactivewindow` showed a real user window
+   (`gitk`) actually focused when checked, so synthetic input was stopped
+   immediately per the `feedback_xdotool_shared_desktop` gotcha rather than
+   risk interfering with the user's own session. (An earlier same-session run
+   also showed the betting screen already active seconds after launch with no
+   deliberate click from this agent — treat that as stray-input noise, not a
+   confirmed transition.) A real controlled playthrough is still owed once
+   input can be safely driven. No further Phase 6 candidates found this
+   session; NinjAcademy #065 and CardsStarterKit #069 were the two remaining
+   ones from the earlier survey (section 1).
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).
