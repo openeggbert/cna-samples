@@ -91,18 +91,18 @@ a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-42 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
-`af308a1` (NinjAcademy #065, pushed) plus this session's uncommitted CardsStarterKit #069
-addition — `CardsStarterKit_cna_samples` builds standalone with 0 errors and 0 warnings
-(confirmed by an actual `cmake --build cmake-build-debug --target CardsStarterKit_cna_samples`
-run, not assumed). A full `cmake --build cmake-build-debug` (all targets) previously hit one
-*unrelated pre-existing* failure in **InputReporter** (`GamePadCapabilities` fields were made
-private with `getXxxProperty()` accessors upstream in `cna`, breaking InputReporter's direct
-field access — not caused by this repo's changes, not touched/fixed here since it's out of
-scope; not re-checked this pass). The active configured build tree is `cmake-build-debug`;
-CMake reconfigure previously needed `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` once (a vendored
-ENet `CMakeLists.txt` in `cna`'s networking third_party dependency requires it with newer
-CMake).
+43 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
+`af308a1` (NinjAcademy #065, pushed) plus this session's uncommitted CardsStarterKit #069 and
+**RolePlayingGame #070** additions — both build standalone with 0 errors (confirmed live via
+`cmake --build cmake-build-debug --target CardsStarterKit_cna_samples` /
+`--target RolePlayingGame_cna_samples`, not assumed). A full `cmake --build cmake-build-debug`
+(all targets) previously hit one *unrelated pre-existing* failure in **InputReporter**
+(`GamePadCapabilities` fields were made private with `getXxxProperty()` accessors upstream in
+`cna`, breaking InputReporter's direct field access — not caused by this repo's changes, not
+touched/fixed here since it's out of scope; not re-checked this pass). The active configured
+build tree is `cmake-build-debug`; CMake reconfigure previously needed
+`-DCMAKE_POLICY_VERSION_MINIMUM=3.5` once (a vendored ENet `CMakeLists.txt` in `cna`'s
+networking third_party dependency requires it with newer CMake).
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -844,28 +844,78 @@ There is no lint/format command configured in this repo, and no automated test c
      conversion needed) — it's otherwise a ~450-line, 3-file sample, one of the smallest
      remaining. TankOnHeightmap #074 would then also be unblocked.
 
-4. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
+5. **(done this session)** ~~Port RolePlayingGame #070.~~ By far the largest
+   sample in this repo (~32,700 lines of C# across `RolePlayingGame`/
+   `RolePlayingGameData`/`RolePlayingGameProcessors`) — a full 2D tile-based
+   RPG (top-down exploration, turn-based combat, quests, shops, leveling).
+   The user explicitly approved one deliberate convention deviation up front:
+   its 281 XML data files (armor/weapons/monsters/maps/quests/chests/stores)
+   are read by a hand-rolled runtime XML loader
+   (`Data/ContentLoader.hpp` + `Xml/XmlNode.hpp`, matching elements by name
+   rather than replicating the original's positional `ContentTypeReader`
+   binary-read order) instead of this project's usual "hand-translate a
+   handful of files into C++ literals" approach, which does not scale to 281
+   files. See `samples/RolePlayingGame/missing.md` for the full writeup,
+   including: a real `Item.Usage` `[Flags]`-enum-as-comma-separated-string
+   bug the loader caught (`std::stoi("NonCombat")` was crashing on load until
+   fixed with a dedicated parser); two Linux case-sensitivity asset bugs (a
+   `QuestNPCs`/`QuestNpcs` directory-name mismatch, and a
+   `Warrior1InActive`/`Warrior1Inactive.png` filename mismatch, the latter
+   fixed generally via a case-insensitive directory-scan fallback in the
+   loader rather than patched one-by-one, since more of the same class of
+   mismatch likely exist across 700+ textures); a missing `BeachTheme` audio
+   cue (a real gap in this sample's own shipped asset tree, not a porting
+   bug) now handled by catching-and-caching the failed load instead of
+   crashing; Combat simplified from the original's ~2900-line animated
+   battle-stage/action-class hierarchy to a text-menu Attack/Defend/Flee
+   resolver (no Spell/Item combat actions); several screens genuinely
+   reachable in the original (`StatisticsScreen`, `InventoryScreen`,
+   `EquipmentScreen`, `SpellbookScreen`, `PlayerSelectionScreen`,
+   `ControlsScreen`, `HelpScreen`, real gear-buying via `StoreBuyScreen`) were
+   not implemented this session — a genuine scope gap, documented as such
+   rather than misrepresented as originally-dead code; and Save/Load/
+   `MessageBoxScreen`/`SaveLoadScreen` dropped per this project's established
+   no-`IsolatedStorageFile` precedent. **No CNA or sharp-runtime framework
+   gaps were hit** — every bug found was a porting-side or data-side issue,
+   listed above. Build: `RolePlayingGame_cna_samples` compiles and links with
+   0 errors, confirmed via an actual `cmake --build` run partway through this
+   session and again on the final state, not assumed. Verification: a clean
+   idle-render screenshot (main menu, no input sent before capture) is
+   confirmed on the final build. A genuine New Game → world map → quest-popup
+   → HUD render (tile layers, party-leader sprite, "Save Mercadia" quest
+   log popup, HUD gold/HP/MP) was also confirmed and is what caught the four
+   bugs above — but only by temporarily adding a debug-only auto-trigger to
+   `MainMenuScreen::Update()` (removed before this pass ended), since
+   `xdotool` input was intermittently not reaching the sample window this
+   session despite `getactivewindow` reporting correct focus (same
+   environment flakiness as NinjAcademy's/CardsStarterKit's sessions — see
+   the `feedback_xdotool_shared_desktop` gotcha). A deliberately input-driven
+   playthrough (walk into a portal/chest/NPC via keyboard, trigger and
+   resolve a combat) is still owed once input reliably reaches sample
+   windows again.
+
+6. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank actually render.
    - Files: likely `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path)
      — exact location not yet confirmed, this needs investigation first.
    - Verify: the white stripe disappears when running
      `./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples`.
 
-5. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+7. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin/End` in the same frame must not discard the first.
    - Files: `cna/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend; confirm all
      layers draw (currently only the last `Begin/End` block's sprites appear).
 
-6. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
-   - Goal: when a Model/Effect pipeline exists (task 4/5 area, not yet started), enable
+8. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
+   - Goal: when a Model/Effect pipeline exists (task 6/7 area, not yet started), enable
      one of BloomSample / ColorReplacement / ReachGraphicsDemo / Spacewar with
      `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
    - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
    - Verify: the target builds and the binary does not abort on `help.png` load at
      startup.
 
-7. **Verify real hardware accelerometer shake/tilt on a device that has one.**
+9. **Verify real hardware accelerometer shake/tilt on a device that has one.**
    - Goal: confirm Yacht's and SnowShovel's real-sensor code path
      (`Accelerometer::getIsSupportedProperty()` true branch), only exercised via the
      keyboard-arrow/gamepad/touch fallback so far.

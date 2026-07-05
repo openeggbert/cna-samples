@@ -90,7 +90,7 @@ add_subdirectory(samples/ParticleSample)
 
 # Phase 4 — Full Games
 # add_subdirectory(samples/MarbleMaze)
-# add_subdirectory(samples/RolePlayingGame)
+add_subdirectory(samples/RolePlayingGame)
 # add_subdirectory(samples/NetRumble)
 add_subdirectory(samples/HoneycombRush)
 add_subdirectory(samples/NinjAcademy)
