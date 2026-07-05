@@ -91,11 +91,11 @@ a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-43 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
-`af308a1` (NinjAcademy #065, pushed) plus this session's uncommitted CardsStarterKit #069 and
-**RolePlayingGame #070** additions — both build standalone with 0 errors (confirmed live via
-`cmake --build cmake-build-debug --target CardsStarterKit_cna_samples` /
-`--target RolePlayingGame_cna_samples`, not assumed). A full `cmake --build cmake-build-debug`
+44 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
+`b1bd916` (CardsStarterKit #069, pushed), commit `6312cb1` (RolePlayingGame #070, pushed), plus
+this session's uncommitted **Particles2DPipeline #044** addition — builds standalone with 0
+errors (confirmed live via `cmake --build cmake-build-debug --target Particles2DPipeline_cna_samples`,
+not assumed). A full `cmake --build cmake-build-debug`
 (all targets) previously hit one *unrelated pre-existing* failure in **InputReporter**
 (`GamePadCapabilities` fields were made private with `getXxxProperty()` accessors upstream in
 `cna`, breaking InputReporter's direct field access — not caused by this repo's changes, not
@@ -894,28 +894,105 @@ There is no lint/format command configured in this repo, and no automated test c
    resolve a combat) is still owed once input reliably reaches sample
    windows again.
 
-6. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
+6. **(done this session)** Audited every remaining un-ported sample (Phase 3, Phase 4,
+   remaining Phase 6 — ~30 samples) against actual C# source, instead of trusting
+   DEFERRED.md's own summary claims (which this session confirmed were stale/overbroad
+   in places). Full per-sample table is in this session's transcript; key corrections
+   now folded into `DEFERRED.md`:
+   - **Two samples have real, narrow paths forward, unlike the rest of Phase 3/4:**
+     **Particles2DPipeline (#044)** has zero dependency on `BasicEffect`/lighting/models
+     at all (pure 2D `SpriteBatch` particles + 4 small hand-translatable XML files) —
+     genuinely portable right now, no CNA gap. **RimLighting (#037)** has zero custom
+     `.fx` shaders — it only needs a `TextureCubeTypeReader` added to
+     `ContentManager.cpp` (DEFERRED.md item 14, effort S), not the XL shader pipeline.
+   - **DEFERRED.md item 5 (`VertexPositionNormal` + lit shader) blocks far more samples
+     than its own list showed:** confirmed via source audit that LensFlareSample,
+     Graphics3DSample, PickingSample, TrianglePickingSample, HeightmapCollisionSample,
+     CustomModelClassSample, InverseKinematics, ChaseCamera, and MarbleMaze's EX2/End
+     stage are blocked *only* on this (no custom `.fx` at all) — previously lumped in
+     with the rest of Phase 3/4's shader-pipeline blocker by association, inaccurately.
+   - Confirmed still accurate: NormalMapping/BillboardSample/InstancedModel/
+     DistortionSample/NonPhotoRealistic/ShadowMapping/ShatterEffect/Particles3D/
+     XmlParticles/CustomModelEffect/ShipGame/NetRumble all ship real custom `.fx`
+     shaders (item 11, XL). SimpleAnimation shares SplitScreen/TankOnHeightmap's
+     multi-bone gap. CustomModelAnimation/SkinningSample/SkinnedModelExtensions/
+     CPUSkinning need skeletal animation playback (item 13; RolePlayingGame was
+     removed from item 13's blocked list since it shipped this session as a 2D sprite
+     game with no skeletal-animation dependency after all). MarbleMaze and
+     CatapultWarsTrainingKit confirmed as the same redundant Starter/ExN
+     training-kit shape as HoneycombRushTrainingKit. BloomSample's PLAN.md reason
+     had its stale "+ RenderTarget2D" clause trimmed (item 12 is ✅ resolved; the 3
+     custom `.fx` files are its real remaining blocker).
+   - **Portable-sample candidate identified: Particles2DPipeline (#044)** — see item 7,
+     done this same session.
+   - **Also corrected this session (DEFERRED.md item 15):** re-audited the "Deferred
+     — Phone Hardware" accelerometer/sensor entries after the user pointed out CNA's
+     `Accelerometer` isn't just an Android stub. Confirmed by reading
+     `cna/src/Microsoft/Devices/Sensors/Accelerometer.cpp` directly: it's a real
+     SDL_Sensor implementation gated on Android/iOS/**Desktop**, already used
+     successfully three times (Yacht/SnowShovel/Bounce) via a keyboard/gamepad
+     fallback that existed in *those* samples' own original C#. AccelerometerSample
+     (#084) and TiltPerspective (#107) don't have that pre-existing fallback in their
+     originals, so porting them means inventing one — a scope decision, not a
+     technical blocker; PLAN.md's reasons were corrected accordingly. **Orientation
+     (#102) turned out to have zero accelerometer/sensor dependency at all** — it's
+     actually a `GraphicsDeviceManager.SupportedOrientations`/`GameWindow
+     .CurrentOrientation` demo, which CNA already implements (same subsystem as the
+     already-fixed portrait-orientation bug) — likely portable, needs a fresh
+     investigation pass. GeolocationSample (#095) was confirmed still genuinely
+     GPS-hardware-blocked, unaffected by this correction.
+
+7. **(done this session)** ~~Port Particles2DPipeline #044.~~ The audit's
+   confirmed-portable candidate — a small (~600-line) particle-effects demo
+   (explosions, a smoke plume, a mouse-driven emitter). Its 4 XML settings
+   files (`EmitterSettings`/`ExplosionSettings`/`ExplosionSmokeSettings`/
+   `SmokePlumeSettings`) were hand-translated to C++ construction code
+   (`ParticleSystem.hpp`'s `BuildXxxSettings()` functions), the same
+   established convention as DynamicMenu/NinjAcademy — small enough to scale
+   to 4 files, unlike RolePlayingGame's 281. Each `ParticleSystem` is a
+   plain member of the game class rather than a `Game.Components`-registered
+   `DrawableGameComponent`, matching the precedent already set by the
+   sibling `samples/ParticleSample` port (see `missing.md`). **No CNA
+   framework gap of any kind** — confirmed the audit's finding that this
+   sample has zero dependency on models/lighting/custom shaders. The
+   original's non-Xbox input path (`Mouse` for the emitter, `TouchPanel`
+   polled for a Tap gesture alongside Space/A) was ported completely as-is,
+   with no invented fallback needed: on this touchless desktop `TouchPanel`
+   simply never produces a gesture, identical to how real Windows without a
+   touch digitizer already behaves in the shipped original. Build:
+   `Particles2DPipeline_cna_samples` compiles and links with 0 errors.
+   Verification: two idle-render screenshots (no synthetic input sent before
+   capture) confirm correct rendering of both halves of the default
+   Explosions cycle (additive flash, then alpha-blended smoke), including
+   the free-particle-pool "grow by 10" path exercising correctly with no
+   crash. Switching to the SmokePlume/Emitter states was **not** verified —
+   `xdotool getactivewindow` did not resolve to the sample's own window
+   before any input was attempted, so none was sent (see the
+   `feedback_xdotool_shared_desktop` gotcha); still owed once input reliably
+   reaches sample windows again.
+
+8. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip w<0 vertices the way DirectX does so the ground/tank actually render.
    - Files: likely `cna/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection path)
      — exact location not yet confirmed, this needs investigation first.
    - Verify: the white stripe disappears when running
      `./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples`.
 
-7. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+9. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin/End` in the same frame must not discard the first.
    - Files: `cna/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend; confirm all
      layers draw (currently only the last `Begin/End` block's sprites appear).
 
-8. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
-   - Goal: when a Model/Effect pipeline exists (task 6/7 area, not yet started), enable
+10. **Add `CMakeLists.txt` + `CONTENT_DIR` to a deferred sample once its blocker lifts.**
+   - Goal: when a Model/Effect pipeline exists (task 8/9 area, not yet started), enable
      one of BloomSample / ColorReplacement / ReachGraphicsDemo / Spacewar with
      `CONTENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Content`.
    - Files: `samples/<Name>/CMakeLists.txt`, root `CMakeLists.txt`.
    - Verify: the target builds and the binary does not abort on `help.png` load at
      startup.
 
-9. **Verify real hardware accelerometer shake/tilt on a device that has one.**
+11. **Verify real hardware accelerometer shake/tilt on a device that has one.**
    - Goal: confirm Yacht's and SnowShovel's real-sensor code path
      (`Accelerometer::getIsSupportedProperty()` true branch), only exercised via the
      keyboard-arrow/gamepad/touch fallback so far.

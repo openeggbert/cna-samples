@@ -229,7 +229,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 031 | BloomSample | `BloomSample_4_0` | 🚫 Deferred — custom Effect (shaders) + RenderTarget2D + Model not in CNA |
+| 031 | BloomSample | `BloomSample_4_0` | 🚫 Deferred — custom Effect (shaders) not in CNA (RenderTarget2D itself is ✅ resolved, DEFERRED.md item 12; the 3 custom .fx files — GaussianBlur/BloomCombine/BloomExtract — are the remaining blocker) |
 | 032 | DistortionSample | `DistortionSample_4_0` | ⬜ Todo |
 | 033 | NonPhotoRealistic | `NonPhotoRealisticSample_4_0` | ⬜ Todo |
 | 034 | NormalMapping | `NormalMappingSample_4_0` | ⬜ Todo |
@@ -242,7 +242,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | 041 | LensFlare | `LensFlareSample_4_0` | ⬜ Todo |
 | 042 | ShatterEffect | `ShatterEffectSample_4_0` | ⬜ Todo |
 | 043 | Particles3D | `Particles3DSample_4_0` | ⬜ Todo |
-| 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ⬜ Todo |
+| 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ✅ Done |
 | 045 | XmlParticles | `XmlParticles_4_0` | ⬜ Todo |
 | 046 | Graphics3D | `Graphics3DSample_4_0` | ⬜ Todo |
 | 047 | PickingSample | `PickingSample_4_0` | ⬜ Todo |
@@ -329,7 +329,7 @@ hardware / services not available on a desktop Linux target.
 
 | # | Sample Name | Source Directory | Reason deferred |
 |---|---|---|---|
-| 084 | AccelerometerSample | `AccelerometerSample_4_0` | Phone accelerometer hardware |
+| 084 | AccelerometerSample | `AccelerometerSample_4_0` | CNA's Accelerometer is real (SDL_Sensor), but this desktop has no physical sensor and the original has no fallback input at all — porting means inventing a keyboard-tilt fallback (scope decision, not a technical blocker; see DEFERRED.md item 15) |
 | 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | Xbox Live Avatar system |
 | 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | Xbox Live Avatar system |
 | 087 | AvatarShadows | `AvatarShadows_4_0` | Xbox Live Avatar system |
@@ -347,12 +347,12 @@ hardware / services not available on a desktop Linux target.
 | 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension, no executable |
 | 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | Xbox Live networking stack |
 | 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Xbox Live Avatar system |
-| 102 | Orientation | `Orientation_4_0` | Phone orientation sensor |
+| 102 | Orientation | `Orientation_4_0` | Miscategorized — has zero accelerometer/sensor dependency; demonstrates `GraphicsDeviceManager.SupportedOrientations`/`GameWindow.CurrentOrientation`, which CNA already implements. Likely portable now — needs a fresh investigation pass, not a hardware wait (see DEFERRED.md item 15) |
 | 103 | PeerToPeer | `PeerToPeerSample_4_0` | Xbox Live P2P networking |
 | 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only, no standalone executable |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | Windows Phone push notifications |
 | 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | Phone media library API |
-| 107 | TiltPerspective | `TiltPerspective_4_0` | Phone accelerometer / tilt |
+| 107 | TiltPerspective | `TiltPerspective_4_0` | Same as #084 — CNA's Accelerometer is real, but this desktop has no physical sensor and the original has no fallback input at all (see DEFERRED.md item 15) |
 | 108 | WinFormsContent | `WinFormsContentSample_4_0` | WinForms host window |
 | 109 | WinFormsGraphics | `WinFormsGraphicsSample_4_0` | WinForms host window |
 | 110 | WP7MusicManagement | `WP7MusicManagement_4_0` | Windows Phone 7 media APIs |

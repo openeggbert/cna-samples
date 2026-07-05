@@ -110,10 +110,105 @@ The Primitives3D port uses `VertexPositionColor` as a workaround (flat shading o
 - Add a normal-lit GLSL shader to the EasyGL backend
 - Extend `VertexBuffer::SetData` to accept `VertexPositionNormal*`
 
-**Blocked samples:** Primitives3D (lighting), SkinningSample, NormalMapping,
-HeightmapCollision, BillboardSample, and all samples using `BasicEffect` with lighting.
+**Blocked samples:** Primitives3D (lighting), and all samples using `BasicEffect`
+with per-vertex lighting (`.LightingEnabled = true` / `.EnableDefaultLighting()`).
+Confirmed by direct source audit (2026-07-05) that this is the *actual* blocker —
+not a custom `.fx` shader — for: **LensFlareSample** (terrain lighting),
+**Graphics3DSample** (`Spaceship.cs`, 3 directional lights), **PickingSample**
+(defines its own `VertexPositionNormal`), **TrianglePickingSample**,
+**HeightmapCollisionSample**, **CustomModelClassSample**, **InverseKinematics**,
+**ChaseCamera**, and **MarbleMaze**'s EX2/End tutorial stage — none of these nine
+have a single custom `.fx` file; they were previously assumed blocked on item 11
+(shader pipeline) by association with the rest of Phase 3/4, which was inaccurate.
+(NormalMapping/HeightmapCollision/BillboardSample as originally listed here *also*
+ship a custom `.fx`, so item 11 is their primary blocker regardless of lighting —
+item 5 alone would not unblock them.)
 
 **Effort:** L
+
+---
+
+## 14. TextureCube content loading (`Content.Load<TextureCube>`)
+
+**What is missing:**
+`ContentManager.cpp` has no `TextureCubeTypeReader` registered — `Content.Load<TextureCube>(...)`
+throws, even though the underlying pieces it needs already exist: CNA's `TextureCube`
+class and DDS decoding are both implemented and proven working (see the
+`easygl_texturecube_*` example/tests), and `EnvironmentMapEffect` is also already
+implemented.
+
+**Where to implement:** Add a `TextureCubeTypeReader : ContentTypeReader<Graphics::TextureCube>`
+to `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`'s built-in type readers
+(same shape as the existing `Texture2DTypeReader`), reading a `.dds` cubemap file.
+
+**Blocked samples:** RimLighting (#037) — confirmed via direct source audit
+(2026-07-05) to have **zero** custom `.fx` files; it uses stock `EnvironmentMapEffect`
++ a `TextureCube` (`OutputCube.dds`) purely via `Content.Load<TextureCube>`. This is
+the only real gap — unlike the rest of Phase 3, RimLighting does not need the XL
+HLSL→GLSL shader pipeline (item 11) at all.
+
+**Effort:** S
+
+---
+
+## 15. Accelerometer/sensor platform reality — NOT a hard blocker where a fallback fits
+
+**What is actually true (confirmed by reading `cna/src/Microsoft/Devices/Sensors/Accelerometer.cpp`
+directly, 2026-07-05):** `Microsoft::Devices::Sensors::Accelerometer` is a real,
+working, SDL3 `SDL_Sensor`-backed implementation — **not** a stub. `getIsSupportedProperty()`
+gates on `CNA::getCurrentPlatform()` being `Android`, `iOS`, **or** `Desktop` (not
+Android-only), then does a real probe (`SDL_InitSubSystem`/`SDL_GetSensors`/
+`SDL_OpenSensor`) for actual sensor hardware. On this project's development machine
+(desktop Linux, no physical accelerometer chip), that probe correctly returns `false`
+— that is a hardware-absence result, not a platform restriction, and the same code
+path would return `true` on a real Android/iOS device or a desktop/laptop with a
+physical accelerometer (e.g. a 2-in-1 tablet). `Gyroscope` has the identical
+Android/iOS/Desktop-gated, real-probe shape (see `Gyroscope.cpp`).
+
+**Established working pattern (proven three times — Yacht, SnowShovel, Bounce):**
+when `getIsSupportedProperty()` is false (this desktop, the normal case), the sample
+falls back to keyboard/gamepad/touch input that the *original* XNA sample's own
+Windows desktop build already shipped (Yacht/SnowShovel/Bounce are all Windows Phone
+ports that had a `#if WINDOWS_PHONE` accelerometer branch **and** a working non-phone
+input branch in the same shipped C#) — no invented control scheme, just wiring the
+already-existing fallback path to run unconditionally instead of behind a
+compile-time `#if`. See `samples/Yacht/missing.md`, `samples/SnowShovel/missing.md`.
+
+**Where this pattern does NOT directly apply — audited per-sample (2026-07-05):**
+- **AccelerometerSample (#084)** and **TiltPerspective (#107):** unlike Yacht/
+  SnowShovel/Bounce, these two samples' original C# ships with **no alternate input
+  path at all** — the entire point of each sample is moving a sprite / shifting a 3D
+  perspective purely by tilting the phone (confirmed: no `#if WINDOWS_PHONE` split, no
+  keyboard/gamepad branch anywhere in `Game.cs`/`AccelerometerHelper.cs`). Porting
+  either would mean *inventing* a keyboard-tilt-emulation fallback that doesn't exist
+  in the original, which is a bigger deviation than Yacht/SnowShovel/Bounce needed
+  (they only had to un-`#if` an existing branch) — but this project already has
+  precedent for adding input schemes the original never had at all (DynamicMenu/
+  UISample's touch-fallback patterns, NEXT.md §6). **Not a hard blocker — just a
+  bigger design decision than usual, worth confirming with the user before doing it**,
+  since "invent the missing half of the sample" is a different scope commitment than
+  "port what's there."
+- **Orientation (#102): this sample has nothing to do with the accelerometer at
+  all** — it was miscategorized. It demonstrates `GraphicsDeviceManager
+  .SupportedOrientations`/`GameWindow.CurrentOrientation`/`OrientationChanged`
+  (screen rotation lock, not a physical sensor reading) — confirmed via full-text
+  read of `LayoutSample.cs`/`OrientationSample.cs`: zero references to
+  `Accelerometer`/`Compass`/any sensor class anywhere. CNA already has
+  `DisplayOrientation.hpp`, and `GraphicsDeviceManager`/`GameWindow` both implement
+  `SupportedOrientations`/`CurrentOrientation` (this is the same subsystem behind the
+  already-fixed portrait-orientation bug — see the project's own
+  `feedback_cna_portrait_orientation_bug` memory). **Likely portable now, pending a
+  full read-through to confirm no other blocker** — PLAN.md's "Phone orientation
+  sensor" reason for #102 is wrong and should be corrected/re-investigated, not
+  treated as settled.
+- **GeolocationSample (#095): genuinely unrelated to the accelerometer and still a
+  real hard blocker** — uses `System.Device.Location.GeoCoordinateWatcher` (real
+  Windows Phone GPS/network location service), with no fallback of any kind in the
+  original. This one's "Phone GPS hardware" reason in PLAN.md is accurate as-is.
+
+**Effort:** — (no CNA change needed; this item is a documentation/classification
+correction, not an engineering task). Porting #084/#107 is a scope decision, not a
+technical blocker. #102 needs a fresh investigation pass, not a CNA change.
 
 ---
 
@@ -324,4 +419,6 @@ attempting the rest.
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
 | 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
-| 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, RolePlayingGame, other animated Phase 4 samples | not started |
+| 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
+| 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
+| 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample, TiltPerspective (scope decision, not blocked); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
