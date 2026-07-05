@@ -91,11 +91,11 @@ a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-44 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
-`b1bd916` (CardsStarterKit #069, pushed), commit `6312cb1` (RolePlayingGame #070, pushed), plus
-this session's uncommitted **Particles2DPipeline #044** addition — builds standalone with 0
-errors (confirmed live via `cmake --build cmake-build-debug --target Particles2DPipeline_cna_samples`,
-not assumed). A full `cmake --build cmake-build-debug`
+45 enabled samples compile and link cleanly with the default **EasyGL** backend: commit
+`2a33c80` (Particles2DPipeline #044, pushed) plus this session's uncommitted
+**Orientation #102** addition — builds standalone with 0 errors (confirmed live via
+`cmake --build cmake-build-debug --target Orientation_cna_samples`, not assumed). A full
+`cmake --build cmake-build-debug`
 (all targets) previously hit one *unrelated pre-existing* failure in **InputReporter**
 (`GamePadCapabilities` fields were made private with `getXxxProperty()` accessors upstream in
 `cna`, breaking InputReporter's direct field access — not caused by this repo's changes, not
@@ -1000,45 +1000,58 @@ There is no lint/format command configured in this repo, and no automated test c
    - Verify: run on a machine/device with a physical accelerometer; shake/tilt it; confirm
      dice roll (Yacht) / shovel movement (SnowShovel) triggers.
 
-12. **(investigated this session, not yet ported)** Followed up on DEFERRED.md item 15's
-    three flagged samples (#084, #107, #102) with a closer source read. Likely next
-    candidates, in this order:
-    - **Orientation (#102) — smallest, cleanest candidate; one open decision before
-      starting.** Only 232 lines (`OrientationSample.cs` + `Program.cs`); confirmed
-      `LayoutSample.cs` in the same directory is dead code, not referenced by
-      `Program.cs` and not even included in the project's own `.csproj` — do not port
-      it. The sample ships **four** orientation scenarios (full-res landscape-locked /
-      full-res portrait-locked / half-res with hardware scaling / dynamic
-      tap-to-lock-unlock both orientations) as one live default (#1: static landscape,
-      `enableOrientationLocking = false`) plus three fully-written but commented-out
-      alternates in the same file — the sample's own `.htm` explicitly says "In order
-      to see all four approaches, change the sample's code as instructed," i.e. this
-      was authored as a code tutorial you edit and recompile, not a single interactive
-      demo. Porting literally-as-shipped (scenario #1) would render one static image
-      with no interactivity at all — technically faithful but not demo-worthy.
-      Scenario #4 (dynamic orientation + tap-to-lock, the one the `.htm` calls out as
-      showing "a button will enable locking and unlocking the current orientation") is
-      real, complete, uncommented-out-ready code already in the shipped file, not
-      anything invented — recommend porting with scenario #4 enabled instead of the
-      boring literal default, documented clearly in `missing.md` as "shipped
-      alternate enabled instead of the inert default," same spirit as NinjAcademy's
-      real `NameEntryScreen` instead of a stub. Confirm this choice before starting.
-      Otherwise no blocker: uses `GraphicsDeviceManager.SupportedOrientations`/
-      `GameWindow.CurrentOrientation`/`TouchPanel` Tap gesture (mouse-click fallback,
-      established pattern) — all already real in CNA.
-    - **AccelerometerSample (#084) and TiltPerspective (#107) — bigger scope
-      decision, confirm before starting.** Unlike Yacht/SnowShovel/Bounce, both
-      originals are **Windows-Phone-only projects** (`<XnaPlatform>Windows
-      Phone</XnaPlatform>`, a single `.csproj`, no separate Windows/Xbox build at
-      all) — confirmed no `#if WINDOWS_PHONE`/non-phone branch exists anywhere in
-      either sample's C#, because none was ever needed. Porting either means
-      *inventing* an arrow-key tilt-emulation control scheme from scratch (not
-      un-`#if`-ing an existing branch, which is all Yacht/SnowShovel/Bounce needed) —
-      a bigger design commitment than any accelerometer port so far this session.
-      AccelerometerSample is the simpler of the two (395 lines, moves one sprite by
-      raw tilt); TiltPerspective (1336 lines) shifts a 3D-perspective view by tilt —
-      check whether that visual effect even reads as meaningful when driven by
-      discrete arrow-key steps instead of continuous tilt before committing to it.
+12. **(done this session)** ~~Port Orientation #102.~~ Followed up on DEFERRED.md
+    item 15's three flagged samples with a closer source read (#084/#107/#102);
+    Orientation was the clean one. Confirmed `LayoutSample.cs` in the same directory
+    is dead code (not referenced by `Program.cs`, not in the `.csproj`) and skipped
+    it. The sample ships **four** orientation scenarios as one live default
+    (#1: static landscape, `enableOrientationLocking = false`) plus three
+    fully-written but commented-out alternates in the same file — the `.htm`
+    explicitly says "In order to see all four approaches, change the sample's code
+    as instructed," i.e. authored as a code tutorial to edit and recompile, not a
+    single interactive demo. Ported with **Scenario #4 enabled instead of the inert
+    literal default** (dynamic tap-to-lock/unlock both orientations) — real,
+    complete code already in the shipped file, not invented; same spirit as
+    NinjAcademy's real `NameEntryScreen` instead of a stub. Also added, matching
+    established precedent: a keyboard `O` to cycle orientation (standing in for
+    physical device rotation, same pattern as DynamicMenu #077's `O` toggle — this
+    desktop has no rotation sensor) and a mouse-click-to-`TouchPanel::EnqueueGesture`
+    Tap synthesis (same precedent as DynamicMenu/NinjAcademy). **No CNA framework
+    gap** — `GraphicsDeviceManager.SupportedOrientations`/`GameWindow
+    .CurrentOrientation`/`TouchPanel::EnqueueGesture` were all already real. Build:
+    `Orientation_cna_samples` compiles and links with 0 errors. Verification: an
+    idle-render screenshot confirms correct rendering (cornflower-blue background,
+    centered "directions" compass texture, status text), and — after the user
+    reported "`O` does nothing" from their own testing — a follow-up interactive
+    pass (confirming genuine window focus immediately before each keypress, per the
+    `feedback_xdotool_shared_desktop` gotcha) reproduced it and found a real bug:
+    the original 3-way orientation cycle included both `LandscapeLeft` and
+    `LandscapeRight`, which render pixel-identical (the `directions` texture has no
+    rotation transform, matching the original), so half of all `O` presses looked
+    like no-ops. **Fixed** to a plain Landscape/Portrait 2-state toggle, matching
+    DynamicMenu's own toggle shape — confirmed live afterward, window resizing
+    800x480 -> 480x800 on `O`. Separately confirmed the *lock* state gating `O` is
+    correct-by-design, not a bug: an incidental stray click during testing (shared
+    desktop) locked the orientation, which made `O` correctly do nothing until
+    unlocked again, mirroring how a real locked phone ignores physical rotation —
+    documented in `missing.md` so it doesn't get mistaken for a defect twice. Moved
+    PLAN.md row 102 out of the "Deferred — Phone Hardware" table into Phase 7,
+    marked ✅ Done.
+
+13. **AccelerometerSample (#084) and TiltPerspective (#107) — bigger scope
+    decision, confirm before starting.** Unlike Yacht/SnowShovel/Bounce/Orientation,
+    both originals are **Windows-Phone-only projects** (`<XnaPlatform>Windows
+    Phone</XnaPlatform>`, a single `.csproj`, no separate Windows/Xbox build at
+    all) — confirmed no `#if WINDOWS_PHONE`/non-phone branch exists anywhere in
+    either sample's C#, because none was ever needed. Porting either means
+    *inventing* an arrow-key tilt-emulation control scheme from scratch (not
+    un-`#if`-ing an existing branch, which is all Yacht/SnowShovel/Bounce/
+    Orientation needed) — a bigger design commitment than any sensor port so far
+    this session. AccelerometerSample is the simpler of the two (395 lines, moves
+    one sprite by raw tilt); TiltPerspective (1336 lines) shifts a 3D-perspective
+    view by tilt — check whether that visual effect even reads as meaningful when
+    driven by discrete arrow-key steps instead of continuous tilt before committing
+    to it.
 
 ---
 

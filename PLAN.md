@@ -319,6 +319,7 @@ UI navigation, localization, performance measurement, touch/gesture, networking.
 | 081 | PerformanceMeasuring | `PerformanceMeasuringSample_4_0` | ✅ Done |
 | 082 | UISample | `UISample_4_0` | ✅ Done |
 | 083 | SnowShovel | `SnowShovelSample_4_0` | ✅ Done |
+| 102 | Orientation | `Orientation_4_0` | ✅ Done — moved here from the "Deferred — Phone Hardware" table below; was miscategorized, had zero accelerometer/sensor dependency (see `samples/Orientation/missing.md`) |
 
 ---
 
@@ -347,7 +348,6 @@ hardware / services not available on a desktop Linux target.
 | 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension, no executable |
 | 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | Xbox Live networking stack |
 | 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Xbox Live Avatar system |
-| 102 | Orientation | `Orientation_4_0` | Miscategorized — has zero accelerometer/sensor dependency; demonstrates `GraphicsDeviceManager.SupportedOrientations`/`GameWindow.CurrentOrientation`, which CNA already implements. Likely portable now — needs a fresh investigation pass, not a hardware wait (see DEFERRED.md item 15) |
 | 103 | PeerToPeer | `PeerToPeerSample_4_0` | Xbox Live P2P networking |
 | 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only, no standalone executable |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | Windows Phone push notifications |
