@@ -1000,6 +1000,46 @@ There is no lint/format command configured in this repo, and no automated test c
    - Verify: run on a machine/device with a physical accelerometer; shake/tilt it; confirm
      dice roll (Yacht) / shovel movement (SnowShovel) triggers.
 
+12. **(investigated this session, not yet ported)** Followed up on DEFERRED.md item 15's
+    three flagged samples (#084, #107, #102) with a closer source read. Likely next
+    candidates, in this order:
+    - **Orientation (#102) — smallest, cleanest candidate; one open decision before
+      starting.** Only 232 lines (`OrientationSample.cs` + `Program.cs`); confirmed
+      `LayoutSample.cs` in the same directory is dead code, not referenced by
+      `Program.cs` and not even included in the project's own `.csproj` — do not port
+      it. The sample ships **four** orientation scenarios (full-res landscape-locked /
+      full-res portrait-locked / half-res with hardware scaling / dynamic
+      tap-to-lock-unlock both orientations) as one live default (#1: static landscape,
+      `enableOrientationLocking = false`) plus three fully-written but commented-out
+      alternates in the same file — the sample's own `.htm` explicitly says "In order
+      to see all four approaches, change the sample's code as instructed," i.e. this
+      was authored as a code tutorial you edit and recompile, not a single interactive
+      demo. Porting literally-as-shipped (scenario #1) would render one static image
+      with no interactivity at all — technically faithful but not demo-worthy.
+      Scenario #4 (dynamic orientation + tap-to-lock, the one the `.htm` calls out as
+      showing "a button will enable locking and unlocking the current orientation") is
+      real, complete, uncommented-out-ready code already in the shipped file, not
+      anything invented — recommend porting with scenario #4 enabled instead of the
+      boring literal default, documented clearly in `missing.md` as "shipped
+      alternate enabled instead of the inert default," same spirit as NinjAcademy's
+      real `NameEntryScreen` instead of a stub. Confirm this choice before starting.
+      Otherwise no blocker: uses `GraphicsDeviceManager.SupportedOrientations`/
+      `GameWindow.CurrentOrientation`/`TouchPanel` Tap gesture (mouse-click fallback,
+      established pattern) — all already real in CNA.
+    - **AccelerometerSample (#084) and TiltPerspective (#107) — bigger scope
+      decision, confirm before starting.** Unlike Yacht/SnowShovel/Bounce, both
+      originals are **Windows-Phone-only projects** (`<XnaPlatform>Windows
+      Phone</XnaPlatform>`, a single `.csproj`, no separate Windows/Xbox build at
+      all) — confirmed no `#if WINDOWS_PHONE`/non-phone branch exists anywhere in
+      either sample's C#, because none was ever needed. Porting either means
+      *inventing* an arrow-key tilt-emulation control scheme from scratch (not
+      un-`#if`-ing an existing branch, which is all Yacht/SnowShovel/Bounce needed) —
+      a bigger design commitment than any accelerometer port so far this session.
+      AccelerometerSample is the simpler of the two (395 lines, moves one sprite by
+      raw tilt); TiltPerspective (1336 lines) shifts a 3D-perspective view by tilt —
+      check whether that visual effect even reads as meaningful when driven by
+      discrete arrow-key steps instead of continuous tilt before committing to it.
+
 ---
 
 ## 9. Do not do yet
