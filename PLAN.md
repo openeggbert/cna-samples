@@ -291,7 +291,7 @@ Complete games and starter kits — the most demanding ports.
 | 062 | NetRumble | `NetRumble_4_0` | ⬜ Todo |
 | 063 | HoneycombRush | `HoneycombRush_4_0` | ✅ Done |
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
-| 065 | NinjAcademy | `NinjAcademy_4_0` | ⬜ Todo |
+| 065 | NinjAcademy | `NinjAcademy_4_0` | ✅ Done |
 | 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
 | 067 | CatapultWars | `CatapultWars_4_0` | ✅ Done |
 | 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |

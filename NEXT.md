@@ -91,11 +91,16 @@ a future "next sample" pick.
 ## 2. Current status
 
 ### Build
-40 enabled samples compile and link cleanly with the default **EasyGL** backend — a full
-`cmake --build cmake-build-debug` (all targets, 0 errors) was run as of commit `27451f1`
-(HoneycombRush, now on `develop` and pushed). No source has changed since that build (only
-`NEXT.md` in this pass), so the guarantee still holds; it has not been re-run in this
-session. The active configured build tree is `cmake-build-debug`.
+41 enabled samples compile and link cleanly with the default **EasyGL** backend, as of
+commit `27451f1` (HoneycombRush) plus this session's uncommitted NinjAcademy #065 addition
+— `NinjAcademy_cna_samples` builds standalone with 0 errors. A full `cmake --build
+cmake-build-debug` (all targets) this session hit one *unrelated pre-existing* failure in
+**InputReporter** (`GamePadCapabilities` fields were made private with `getXxxProperty()`
+accessors upstream in `cna`, breaking InputReporter's direct field access — not caused by
+this session's changes, and not touched/fixed here since it's out of this session's scope).
+The active configured build tree is `cmake-build-debug`; this session's CMake reconfigure
+also needed `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` once (a vendored ENet `CMakeLists.txt` in
+`cna`'s new networking third_party dependency requires it with newer CMake).
 
 ### Tests
 No automated test suite exists in this repo. The samples themselves are the manual/visual
@@ -758,10 +763,32 @@ There is no lint/format command configured in this repo, and no automated test c
    (#076, TankOnHeightmap #074 same gap — the user is handling that fix directly in
    `cna`, not this repo).
 
-3. **(done this session)** ~~Port a Phase 6 full game.~~ SoccerPitch #073 and
-   HoneycombRush #063 are both done (section 3) — surveyed all 11 then-open Phase 6
-   samples for blockers first (section 1). Good remaining candidates with no found
-   blockers: **NinjAcademy #065**, **CardsStarterKit #069**.
+3. **(done this session)** ~~Port a Phase 6 full game.~~ SoccerPitch #073,
+   HoneycombRush #063, and now **NinjAcademy #065** (this session — a
+   shuriken/sword-slash arcade game, ~30 source files, reusing the
+   ScreenManager framework pattern from GameStateManagement/HoneycombRush;
+   see `samples/NinjAcademy/missing.md` for adaptations: tombstoning dropped,
+   Guide.BeginShowKeyboardInput replaced with a real keyboard-driven
+   NameEntryScreen popup, Animations.xml/Configuration.xml hand-translated,
+   two original timing quirks faithfully reproduced rather than fixed). No
+   CNA framework gaps were hit. Build: `NinjAcademy_cna_samples` compiles
+   with 0 errors. Verification is partial: the idle main menu was independently
+   re-confirmed clean (correct art/layout, no stray input) by re-running the
+   binary and screenshotting before touching input. A deliberate click-through
+   (Start → gameplay → throw/hit cycle) could **not** be completed this
+   session — both mouse clicks and F1 stopped reaching any SDL sample window
+   at all partway through verification (reproduced on the already-working
+   DynamicMenu too, so it's an environment-wide input regression on this
+   shared desktop right now, not a NinjAcademy bug — see the
+   `feedback_xdotool_shared_desktop` gotcha). The porting agent's own run
+   earlier in the session did capture the gameplay HUD (score/hearts/bamboo/
+   targets) and high-score table rendering correctly, but that run's screen
+   progression (Menu → Loading → Countdown → Gameplay → HighScore) advanced
+   on its own without a deliberately-tracked click, so treat those as
+   rendering evidence only, not a confirmed interactive playthrough. A real
+   controlled playthrough (click Start, throw a shuriken, slash a bomb) is
+   still owed next session once input reliably reaches sample windows again.
+   Remaining good candidate with no found blockers: **CardsStarterKit #069**.
    - Also worth a follow-up: independently re-confirm PerformanceMeasuring's `Tab`-to-close
      and `Up`/`Down` sphere-count controls, cut short this session by real user keystrokes
      crossing into the test window (see section 3/5's newest gotcha).
