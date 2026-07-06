@@ -112,7 +112,35 @@ screenshot.
 
 ## 3. Recent changes
 
-Most recent session (2026-07-06), in order:
+**Newest session (2026-07-06, follow-up):** `cna`'s `feature/net` fixed two of the
+three DEFERRED.md gaps `ClientServerSample` (#091) worked around — #19
+(`GamerServicesDispatcher` hang, commit `08171ac`) and #20 (`NetworkGamer.IsHost`/`Id`
+stubs, commit `81f10b5`). Removed both workarounds from `ClientServerSample`: a real
+`GamerServicesComponent` is now constructed (matching the C# original exactly), and
+the local `bool isHost_` tracking member is gone in favor of
+`networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()` directly. Built
+against `cna`'s `feature/net` tip (temporarily checked out in the `../cna`
+build-dependency checkout, not merged into `cna`'s own `develop` — that's a separate
+decision for whoever manages that branch; **a future session should either merge
+`feature/net` → `develop` in `cna`, or re-check-out `feature/net` locally again, before
+relying on these fixes being present**). Live-verified with real `xdotool` keypresses
+(unlike the prior session, which needed a debug auto-trigger): session creation no
+longer hangs, tank spawns labeled `"Stub Gamer (server)"` (the real
+`GamerServicesDispatcher`-populated identity, not the old manually-synthesized
+`"Player"`), movement works. A genuine two-instance host+client test hit a separate,
+pre-existing `ENetDiscoveryService` two-process discovery limitation on this
+container (not a regression) — see `samples/ClientServerSample/missing.md`.
+Item #21 (`GamerJoined` queued, not synchronous) was investigated in `cna` in depth
+and found to require either a `sharp-runtime` change (needs the user's direct
+sign-off) or accepting the sample's existing extra `Update()`-after-subscribing call
+as the permanent, correct pattern — kept as-is. Updated `DEFERRED.md` items #19–21 and
+the summary table. Commit `3197b06`, pushed to `develop`.
+**Not done this session:** re-attempting NetworkPrediction (#100)/PeerToPeer (#103)
+— both share the same three gaps and are now easier to port (2 of 3 workarounds no
+longer needed), but porting two new samples from scratch is a separate, larger task
+than this session's cleanup scope; a natural next step if the user wants it.
+
+Most recent full porting session (2026-07-06), in order:
 - Fixed `InputReporter`'s full-repo build failure: it read `GamePadCapabilities`
   fields directly (`cap.HasLeftStickButton`); upstream `cna` made them private
   behind `getXxxProperty()`. Updated all ~23 accesses in
@@ -161,6 +189,9 @@ Most recent session (2026-07-06), in order:
 
 Commits this session (newest first): `eee6769`, `155bc18`, `d9a2baf`, `580283c`,
 `4dd7ceb`, `d747356`. All pushed to `develop`.
+
+Commit from the newest follow-up session (see the top entry above): `3197b06`,
+pushed to `develop`.
 
 ---
 
@@ -392,10 +423,17 @@ No lint/format command and no automated test suite are configured in this repo.
      screenshot, not a thin line.
 
 3. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
-   - Goal: apply the same 3 workarounds ClientServerSample needed (no
-     `GamerServicesComponent`; local host-tracking bool; one extra
-     `Update()` call after hooking events — section 6) and confirm they're
-     still needed/sufficient for these two samples' own `Update()` loop shape.
+   - Goal: two of ClientServerSample's three workarounds are gone now (DEFERRED.md
+     #19/#20 fixed upstream in `cna` — see section 3's newest entry): a real
+     `GamerServicesComponent` can be constructed normally, and
+     `networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()` can be used
+     directly instead of a local tracking bool. Only the third workaround (one extra
+     `Update()` call right after hooking events, item #21) is still needed — and is
+     now understood to be the permanent, correct pattern, not a stopgap.
+   - **Before starting:** make sure `../cna`'s checkout actually has these fixes —
+     either `git -C ../cna checkout feature/net` (what this session used, not merged
+     to `develop` yet) or check whether someone has since merged `feature/net` →
+     `develop` there.
    - Files: new `samples/NetworkPrediction/src/` or `samples/PeerToPeer/src/`;
      read `samples/ClientServerSample/missing.md` and DEFERRED.md items #19–21
      first.
