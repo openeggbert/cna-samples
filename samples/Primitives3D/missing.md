@@ -39,14 +39,27 @@ index buffer.  Covers both indexed and non-indexed triangle list/strip draws.
 
 ## No HUD text (controls overlay)
 
-**XNA behaviour:** `SpriteBatch.DrawString` renders a three-line overlay in the
-top-left corner explaining the controls (A = change primitive, B = change color,
-Y = toggle wireframe).
+**XNA behaviour:** `Primitives3DGame.cs` loads `Content.Load<SpriteFont>("hudfont")`
+and each `Draw()` renders a three-line overlay in the top-left corner explaining the
+controls ("A or tap top of screen = Change primitive", "B or tap bottom left of
+screen = Change color", "Y or tap bottom right of screen = Toggle wireframe") via
+`spriteBatch.DrawString(spriteFont, text, new Vector2(48, 48), Color.White)`.
 
-**CNA port behaviour:** The overlay is absent.  `SpriteBatch` is created but
-`DrawString` is not called because CNA has no `SpriteFont` support yet.
+**CNA port behaviour:** The overlay is absent. `Primitives3DGame.hpp` constructs a
+`spriteBatch` member in `LoadContent()` (line 131) but never loads a `SpriteFont` or
+calls `DrawString` with it anywhere in `Draw()` — the member is otherwise unused.
 
-**Tracked in:** DEFERRED.md item 2 (SpriteFont loading) and item 8 (DrawString).
+**Root cause:** Not a current CNA limitation — `SpriteFont` loading and
+`SpriteBatch.DrawString` are both fully implemented in CNA now (see DEFERRED.md
+items 2 and 8, both ✅ resolved; already used for on-screen text in
+`samples/SafeArea` and `samples/InputSequence`). This is simply an unported piece of
+the sample: no `.font.json`/atlas font asset was generated for Primitives3D's
+`Content/`, and the corresponding `DrawString` call was never added. Porting it would
+require `tools/make_font.py` to generate a font asset and adding the `DrawString`
+call to `Draw()`.
+
+**Tracked in:** not planned (port gap, not a CNA gap) — DEFERRED.md items 2 and 8 are
+resolved and no longer block this.
 
 ---
 

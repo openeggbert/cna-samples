@@ -45,3 +45,53 @@ slightly above centre; status text displayed below the board.
 (see "Button widget" entry above).
 **Root cause:** Follows from the input model change.
 **Tracked in:** not planned
+
+## Font: "Moire" substituted with a generated bitmap font
+**XNA behaviour:** `TextFont.spritefont` and `ButtonFont.spritefont` both specify
+`<FontName>Moire</FontName>` (a Windows-only font), at 40pt and 20pt respectively —
+`TextFont` for the status text, `ButtonFont` for the three button labels.
+**CNA port behaviour:** A single `Content/font.font.json` + `font.png` atlas is
+generated via `tools/make_font.py` (substituting an available TrueType font), at a
+much smaller pixel size suited only to the single-line status text at the bottom of
+the board — the second, button-sized font was dropped along with the button widgets.
+**Root cause:** "Moire" is a proprietary Windows font not freely distributable, and
+CNA has no `.spritefont`/TTF-at-runtime pipeline; `make_font.py` bakes a static atlas
+instead, per this repo's standard SpriteFont substitution convention.
+**Tracked in:** not planned (acceptable substitute); DEFERRED.md item 2 (SpriteFont
+pipeline) already resolved for the atlas mechanism itself.
+
+## Fullscreen and 30 fps target omitted
+**XNA behaviour:** The constructor sets `graphics.IsFullScreen = true` and
+`TargetElapsedTime = TimeSpan.FromTicks(333333)` (~30 fps), commented "Frame rate is
+30 fps by default for Windows Phone."
+**CNA port behaviour:** `TicTacToeGame`'s constructor sets neither — the game runs
+windowed at 800x600 and at CNA's `Game` default timestep (~60 fps), twice the
+original's frame rate.
+**Root cause:** Phone-specific settings outside the scope of a desktop port; several
+other Windows-Phone-derived samples in this repo do port the explicit 30 fps
+timestep, but this sample's port did not.
+**Tracked in:** not planned.
+
+## GamePad Back button dropped, keyboard-only exit
+**XNA behaviour:** `Update` unconditionally polls
+`GamePad.GetState(PlayerIndex.One).Buttons.Back` every frame (in addition to the
+touch-driven "Exit" button) and exits the game when pressed.
+**CNA port behaviour:** Only `Keyboard::GetState().IsKeyDown(Keys::Escape)` is
+polled; no gamepad equivalent is wired up (CNA's `GamePad` API exists and is used
+elsewhere in this repo, e.g. `GamePad::GetState`/`IsButtonDown`).
+**Root cause:** Simplification for a desktop-only port; not a CNA limitation.
+**Tracked in:** not planned
+
+## First-turn probability changed from 40/60 to 50/50
+**XNA behaviour:** `GameInitialize` (and `newGameButton_Click`'s restart) picks the
+first player with `random.Next(0, 10) > 5` — true for 4 of the 10 possible values
+(6,7,8,9), so the human player goes first only 40% of the time and the AI goes first
+60% of the time.
+**CNA port behaviour:** `InitBoard()`/`ResetGame()` use `random_.Next(0, 2) == 0` to
+pick the AI, giving a fair 50/50 split between player-first and AI-first games.
+**Root cause:** Port simplification/oversight — the original's skewed 40/60 odds
+were not reproduced; CNA's `System::Random::Next(min, max)` has the same exclusive-
+upper-bound semantics as .NET's, so the exact odds could be replicated with
+`random_.Next(0, 10) > 5`.
+**Tracked in:** not planned (cosmetic gameplay-balance difference, not a CNA
+limitation).

@@ -9,6 +9,14 @@ programming model built on SDL3 and a pluggable graphics backend.
 The original C# samples are archived at `/rv/tmp/XNAGameStudio/Samples` (local mirror of
 [XNA Game Studio archive](https://github.com/SimonDarksideJ/XNAGameStudio)).
 
+Every sample this repo tracks — done, in progress, or blocked on a CNA gap — gets a
+`samples/<Name>/` directory containing at minimum `<Name>.htm` (the original doc,
+copied verbatim) and `missing.md` (what's missing vs. the CNA port, or why it isn't
+ported yet). Samples that will **never** get a directory here (not real XNA 4.0
+games, WinForms/content-pipeline-only tools, redundant training-kit duplicates, or
+tied to a platform/service CNA won't ever provide) are listed instead in
+[`ignored.md`](ignored.md), one line per sample with its reason.
+
 For cross-validation, the official MonoGame sample collection is cloned at
 `/rv/tmp/MonoGame.Samples`. Of the 83 portable XNA 4.0 samples in this plan,
 **only two** have a direct MonoGame equivalent: Platformer (#013) and ShipGame (#066).
@@ -149,29 +157,30 @@ Each sample's `Content/` directory is copied next to the built executable.
 ## Sample Count Summary
 
 Source directory `/rv/tmp/XNAGameStudio/Samples` contains **153 subdirectories**
-(excluding `.idea`). All 153 are listed as numbered tasks below.
+(excluding `.idea`). All 153 are accounted for below: either a numbered task in
+this file (with a `samples/<Name>/` directory — done, or a placeholder) or a line
+in `ignored.md` (never gets a directory).
 
-| Category | Count |
-|---|---|
-| Phase 1–7 portable desktop samples | 83 |
-| Deferred — phone HW / Avatar / WinForms / Xbox Live | 28 |
-| XNA 2.0 / 3.0 / 3.1 archive samples | 12 |
-| Avatar asset packs (art, no C# code) | 4 |
-| Avatar rig packs (art, no C# code) | 3 |
-| Phone / Mango platform variants | 7 |
-| VB language duplicates | 1 |
-| Silverlight / WP7 (no XNA 4.0 code) | 5 |
-| Image / resource-only directories | 3 |
-| Third-party kits | 3 |
-| Unversioned starter kits | 2 |
-| Misc / non-code | 2 |
-| **Total** | **153** |
+| Category | Count | Where |
+|---|---|---|
+| Done (real port, builds) | 45 | this file |
+| Placeholder (`<Name>.htm` + `missing.md`, blocked on a CNA gap or scope decision) | 41 | this file |
+| Ignored — never gets a directory | 67 | `ignored.md` |
+| **Total** | **153** | |
+
+Of the 41 placeholders: 5 predate this sweep (ReachGraphicsDemo, Spacewar,
+ColorReplacement, BloomSample, SplitScreen) and 36 were added in one pass across
+Phase 3, Phase 4, the remaining Phase 6 samples, and 6 of the 27 "Deferred — Phone
+Hardware" appendix samples — see each `missing.md` for the specific `DEFERRED.md`
+item blocking it.
 
 ---
 
 ## Complete Sample Task List
 
-Status legend: ✅ Done · 🔨 In progress · ⬜ Todo · ⚠️ Deferred (CNA gap) · ❌ Out of scope
+Status legend: ✅ Done · 🔨 In progress · ⬜ Todo (no directory yet) ·
+🚧 Placeholder (`samples/<Name>/<Name>.htm` + `missing.md` exist, blocked on a CNA
+gap — see `DEFERRED.md`) · ❌ Ignored (never gets a directory — see `ignored.md`)
 
 ---
 
@@ -230,24 +239,24 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
 | 031 | BloomSample | `BloomSample_4_0` | 🚫 Deferred — custom Effect (shaders) not in CNA (RenderTarget2D itself is ✅ resolved, DEFERRED.md item 12; the 3 custom .fx files — GaussianBlur/BloomCombine/BloomExtract — are the remaining blocker) |
-| 032 | DistortionSample | `DistortionSample_4_0` | ⬜ Todo |
-| 033 | NonPhotoRealistic | `NonPhotoRealisticSample_4_0` | ⬜ Todo |
-| 034 | NormalMapping | `NormalMappingSample_4_0` | ⬜ Todo |
-| 035 | PerPixelLighting | `PerPixelLightingSample_4_0` | ⬜ Todo |
-| 036 | VertexLighting | `VertexLightingSample_4_0` | ⬜ Todo |
-| 037 | RimLighting | `RimLighting_4_0` | ⬜ Todo |
-| 038 | ShadowMapping | `ShadowMappingSample_4_0` | ⬜ Todo |
-| 039 | BillboardSample | `BillboardSample_4_0` | ⬜ Todo |
-| 040 | InstancedModel | `InstancedModelSample_4_0` | ⬜ Todo |
-| 041 | LensFlare | `LensFlareSample_4_0` | ⬜ Todo |
-| 042 | ShatterEffect | `ShatterEffectSample_4_0` | ⬜ Todo |
-| 043 | Particles3D | `Particles3DSample_4_0` | ⬜ Todo |
+| 032 | DistortionSample | `DistortionSample_4_0` | 🚧 Placeholder — see `samples/DistortionSample/missing.md` |
+| 033 | NonPhotoRealistic | `NonPhotoRealisticSample_4_0` | 🚧 Placeholder — see `samples/NonPhotoRealistic/missing.md` |
+| 034 | NormalMapping | `NormalMappingSample_4_0` | 🚧 Placeholder — see `samples/NormalMapping/missing.md` |
+| 035 | PerPixelLighting | `PerPixelLightingSample_4_0` | 🚧 Placeholder — see `samples/PerPixelLighting/missing.md` |
+| 036 | VertexLighting | `VertexLightingSample_4_0` | 🚧 Placeholder — see `samples/VertexLighting/missing.md` |
+| 037 | RimLighting | `RimLighting_4_0` | 🚧 Placeholder — see `samples/RimLighting/missing.md` |
+| 038 | ShadowMapping | `ShadowMappingSample_4_0` | 🚧 Placeholder — see `samples/ShadowMapping/missing.md` |
+| 039 | BillboardSample | `BillboardSample_4_0` | 🚧 Placeholder — see `samples/BillboardSample/missing.md` |
+| 040 | InstancedModel | `InstancedModelSample_4_0` | 🚧 Placeholder — see `samples/InstancedModel/missing.md` |
+| 041 | LensFlare | `LensFlareSample_4_0` | 🚧 Placeholder — see `samples/LensFlare/missing.md` |
+| 042 | ShatterEffect | `ShatterEffectSample_4_0` | 🚧 Placeholder — see `samples/ShatterEffect/missing.md` |
+| 043 | Particles3D | `Particles3DSample_4_0` | 🚧 Placeholder — see `samples/Particles3D/missing.md` |
 | 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ✅ Done |
-| 045 | XmlParticles | `XmlParticles_4_0` | ⬜ Todo |
-| 046 | Graphics3D | `Graphics3DSample_4_0` | ⬜ Todo |
-| 047 | PickingSample | `PickingSample_4_0` | ⬜ Todo |
-| 048 | TrianglePicking | `TrianglePickingSample_4_0` | ⬜ Todo |
-| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | ⬜ Todo |
+| 045 | XmlParticles | `XmlParticles_4_0` | 🚧 Placeholder — see `samples/XmlParticles/missing.md` |
+| 046 | Graphics3D | `Graphics3DSample_4_0` | 🚧 Placeholder — see `samples/Graphics3D/missing.md` |
+| 047 | PickingSample | `PickingSample_4_0` | 🚧 Placeholder — see `samples/PickingSample/missing.md` |
+| 048 | TrianglePicking | `TrianglePickingSample_4_0` | 🚧 Placeholder — see `samples/TrianglePicking/missing.md` |
+| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | 🚧 Placeholder — see `samples/HeightmapCollision/missing.md` |
 
 ---
 
@@ -257,15 +266,15 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 050 | SimpleAnimation | `SimpleAnimation_4_0` | ⬜ Todo |
-| 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | ⬜ Todo |
-| 052 | CustomModelClass | `CustomModelClassSample_4_0` | ⬜ Todo |
-| 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | ⬜ Todo |
-| 054 | SkinningSample | `SkinningSample_4_0` | ⬜ Todo |
-| 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | ⬜ Todo |
-| 056 | CPUSkinning | `CPUSkinningSample_4_0` | ⬜ Todo |
-| 057 | InverseKinematics | `InverseKinematics_4_0` | ⬜ Todo |
-| 058 | ChaseCamera | `ChaseCamera_4_0` | ⬜ Todo |
+| 050 | SimpleAnimation | `SimpleAnimation_4_0` | 🚧 Placeholder — see `samples/SimpleAnimation/missing.md` |
+| 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | 🚧 Placeholder — see `samples/CustomModelAnimation/missing.md` |
+| 052 | CustomModelClass | `CustomModelClassSample_4_0` | 🚧 Placeholder — see `samples/CustomModelClass/missing.md` |
+| 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | 🚧 Placeholder — see `samples/CustomModelEffect/missing.md` |
+| 054 | SkinningSample | `SkinningSample_4_0` | 🚧 Placeholder — see `samples/SkinningSample/missing.md` |
+| 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | 🚧 Placeholder — see `samples/SkinnedModelExtensions/missing.md` |
+| 056 | CPUSkinning | `CPUSkinningSample_4_0` | 🚧 Placeholder — see `samples/CPUSkinning/missing.md` |
+| 057 | InverseKinematics | `InverseKinematics_4_0` | 🚧 Placeholder — see `samples/InverseKinematics/missing.md` |
+| 058 | ChaseCamera | `ChaseCamera_4_0` | 🚧 Placeholder — see `samples/ChaseCamera/missing.md` |
 
 ---
 
@@ -287,20 +296,20 @@ Complete games and starter kits — the most demanding ports.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 061 | MarbleMaze | `MarbleMaze_4_0` | ⬜ Todo |
-| 062 | NetRumble | `NetRumble_4_0` | ⬜ Todo |
+| 061 | MarbleMaze | `MarbleMaze_4_0` | 🚧 Placeholder — see `samples/MarbleMaze/missing.md` |
+| 062 | NetRumble | `NetRumble_4_0` | 🚧 Placeholder — see `samples/NetRumble/missing.md` |
 | 063 | HoneycombRush | `HoneycombRush_4_0` | ✅ Done |
-| 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ⬜ Todo |
+| 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ❌ Ignored — see `ignored.md` |
 | 065 | NinjAcademy | `NinjAcademy_4_0` | ✅ Done |
-| 066 | ShipGame | `ShipGame_4_0` | ⬜ Todo | MonoGame: `ShipGame` |
+| 066 | ShipGame | `ShipGame_4_0` | 🚧 Placeholder — see `samples/ShipGame/missing.md` | MonoGame: `ShipGame` |
 | 067 | CatapultWars | `CatapultWars_4_0` | ✅ Done |
-| 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ⬜ Todo |
+| 068 | CatapultWarsTrainingKit | `CatapultWarsTrainingKit_4_0` | ❌ Ignored — see `ignored.md` |
 | 069 | CardsStarterKit | `CardsStarterKit_4_0` | ✅ Done |
 | 070 | RolePlayingGame (Win+Xbox) | `RolePlayingGame_4_0_Win_Xbox` | ✅ Done | Combat/several screens simplified — see `samples/RolePlayingGame/missing.md` |
 | 071 | Yacht | `Yacht_4_0` | ✅ Done |
 | 072 | GSMSample (Win+Xbox) | `GSMSample_4_0_WIN_XBOX` | ✅ Done | ported as `samples/GameStateManagement` |
 | 073 | SoccerPitch | `SoccerPitchSample_4_0` | ✅ Done |
-| 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | ⚠️ Deferred — same `tank.fbx`/`Tank.cs` per-mesh `ModelBone` lookup as SplitScreen #076, same CNA gap (see `samples/SplitScreen/missing.md`) |
+| 074 | TankOnHeightmap | `TankOnAHeightMapSample_4_0` | 🚧 Placeholder — see `samples/TankOnHeightmap/missing.md` (same `tank.fbx`/`Tank.cs` per-mesh `ModelBone` gap as SplitScreen #076) |
 
 ---
 
@@ -310,8 +319,8 @@ UI navigation, localization, performance measurement, touch/gesture, networking.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 075 | NGSMSample | `NGSMSample_4_0` | ⚠️ Deferred — Networking/* (~1900 of ~2900 lines) needs `NetworkSession`/`GamerServices`, not in CNA; remaining "Single Player" path is just an empty GameplayScreen stub, not worth porting alone |
-| 076 | SplitScreen | `SplitScreenSample_4_0` | ⚠️ Deferred — needs per-mesh `ModelBone` support in CNA's `.model.json` reader (only a single flat Root bone is created today); see `samples/SplitScreen/missing.md` and DEFERRED.md item 6 |
+| 075 | NGSMSample | `NGSMSample_4_0` | ❌ Ignored — see `ignored.md` (would only ever demonstrate an empty stub, even with networking) |
+| 076 | SplitScreen | `SplitScreenSample_4_0` | 🚧 Placeholder — needs per-mesh `ModelBone` support in CNA's `.model.json` reader (only a single flat Root bone is created today); see `samples/SplitScreen/missing.md` and DEFERRED.md item 6 |
 | 077 | DynamicMenu | `DynamicMenu_4_0` | ✅ Done |
 | 078 | LocalizationSample | `LocalizationSample_4_0` | ✅ Done |
 | 079 | GesturesSample | `GesturesSample_4_0` | ✅ Done |
@@ -325,198 +334,69 @@ UI navigation, localization, performance measurement, touch/gesture, networking.
 
 ### Deferred — Phone Hardware / Avatar / WinForms / Xbox Live Networking
 
-Cannot be ported until CNA gains the relevant platform support, or requires
-hardware / services not available on a desktop Linux target.
+Of the 27 `_4_0` samples in this appendix, only 6 make sense as future candidates
+(kept below, each now with a placeholder directory); the other 21 are permanently
+excluded — see `ignored.md` for the reason each one will never get a directory here.
 
-| # | Sample Name | Source Directory | Reason deferred |
+| # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 084 | AccelerometerSample | `AccelerometerSample_4_0` | CNA's Accelerometer is real (SDL_Sensor), but this desktop has no physical sensor and the original has no fallback input at all — porting means inventing a keyboard-tilt fallback (scope decision, not a technical blocker; see DEFERRED.md item 15) |
-| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | Xbox Live Avatar system |
-| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | Xbox Live Avatar system |
-| 087 | AvatarShadows | `AvatarShadows_4_0` | Xbox Live Avatar system |
-| 088 | BingMaps | `BingMaps_4_0` | Bing Maps REST API |
-| 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | Bing Maps REST API |
-| 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | WinForms desktop tool |
-| 091 | ClientServerSample | `ClientServerSample_4_0` | Xbox Live networking stack |
-| 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | Content pipeline extension, no executable |
-| 093 | CurveEditor | `CurveEditor_4_0` | WinForms animation tool |
-| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | Xbox Live Avatar system |
-| 095 | GeolocationSample | `GeolocationSample_4_0` | Phone GPS hardware |
-| 096 | InvitesSample | `InvitesSample_4_0` | Xbox Live invite system |
-| 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | WP7 memory management lab |
-| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | Microphone capture hardware |
-| 099 | ModelImporterSample | `ModelImporterSample_4_0` | Content pipeline extension, no executable |
-| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | Xbox Live networking stack |
-| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Xbox Live Avatar system |
-| 103 | PeerToPeer | `PeerToPeerSample_4_0` | Xbox Live P2P networking |
-| 104 | PerformanceUtility | `PerformanceUtility_4_0` | Utility library only, no standalone executable |
-| 105 | PushNotifications | `PushNotificationsSample_4_0` | Windows Phone push notifications |
-| 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | Phone media library API |
-| 107 | TiltPerspective | `TiltPerspective_4_0` | Same as #084 — CNA's Accelerometer is real, but this desktop has no physical sensor and the original has no fallback input at all (see DEFERRED.md item 15) |
-| 108 | WinFormsContent | `WinFormsContentSample_4_0` | WinForms host window |
-| 109 | WinFormsGraphics | `WinFormsGraphicsSample_4_0` | WinForms host window |
-| 110 | WP7MusicManagement | `WP7MusicManagement_4_0` | Windows Phone 7 media APIs |
-| 111 | XnaGraphicsProfileChecker | `XnaGraphicsProfileChecker_4_0` | WinForms diagnostic tool |
+| 084 | AccelerometerSample | `AccelerometerSample_4_0` | 🚧 Placeholder — needs a scope decision, not a CNA gap: CNA's Accelerometer is real (SDL_Sensor), but this desktop has no physical sensor and the original has no fallback input at all — porting means inventing a keyboard-tilt fallback; see `samples/AccelerometerSample/missing.md` and DEFERRED.md item 15 |
+| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 087 | AvatarShadows | `AvatarShadows_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 088 | BingMaps | `BingMaps_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
+| 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
+| 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool, not a `Game`) |
+| 091 | ClientServerSample | `ClientServerSample_4_0` | 🚧 Placeholder — see `samples/ClientServerSample/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
+| 093 | CurveEditor | `CurveEditor_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool) |
+| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 095 | GeolocationSample | `GeolocationSample_4_0` | ❌ Ignored — see `ignored.md` (phone GPS hardware, no SDL equivalent) |
+| 096 | InvitesSample | `InvitesSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live account service) |
+| 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | ❌ Ignored — see `ignored.md` (WP7 teaching lab, not a standalone sample) |
+| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | 🚧 Placeholder — see `samples/MicrophoneEcho/missing.md` (DEFERRED.md item 16, microphone capture) |
+| 099 | ModelImporterSample | `ModelImporterSample_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
+| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | 🚧 Placeholder — see `samples/NetworkPrediction/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 103 | PeerToPeer | `PeerToPeerSample_4_0` | 🚧 Placeholder — see `samples/PeerToPeer/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 104 | PerformanceUtility | `PerformanceUtility_4_0` | ❌ Ignored — see `ignored.md` (utility library, no standalone executable) |
+| 105 | PushNotifications | `PushNotificationsSample_4_0` | ❌ Ignored — see `ignored.md` (Windows Phone push notification service) |
+| 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | ❌ Ignored — see `ignored.md` (phone media library API) |
+| 107 | TiltPerspective | `TiltPerspective_4_0` | 🚧 Placeholder — same scope decision as #084; see `samples/TiltPerspective/missing.md` and DEFERRED.md item 15 |
+| 108 | WinFormsContent | `WinFormsContentSample_4_0` | ❌ Ignored — see `ignored.md` (WinForms host window) |
+| 109 | WinFormsGraphics | `WinFormsGraphicsSample_4_0` | ❌ Ignored — see `ignored.md` (WinForms host window) |
+| 110 | WP7MusicManagement | `WP7MusicManagement_4_0` | ❌ Ignored — see `ignored.md` (WP7 media API, no desktop analog) |
+| 111 | XnaGraphicsProfileChecker | `XnaGraphicsProfileChecker_4_0` | ❌ Ignored — see `ignored.md` (WinForms diagnostic tool) |
 
 ---
 
-### XNA 2.0 / 3.0 / 3.1 Archive Samples
+### Everything else (#112–153): permanently ignored — see `ignored.md`
 
-Older XNA versions; lower API compatibility with CNA 4.0 target.
-Deferred until all _4_0 samples are done and CNA is mature.
-
-| # | Sample Name | Source Directory | XNA Version |
-|---|---|---|---|
-| 112 | BasicEffectShader | `BasicEffectShader_ARCHIVE_2_0` | XNA 2.0 |
-| 113 | Catapult | `Catapult_ARCHIVE_2_0` | XNA 2.0 |
-| 114 | MaterialsAndLights | `MaterialsAndLights_ARCHIVE_2_0` | XNA 2.0 |
-| 115 | Minjie | `Minjie_ARCHIVE_2_0` | XNA 2.0 |
-| 116 | MultipassLighting | `MultipassLighting_ARCHIVE_2_0` | XNA 2.0 |
-| 117 | Pickture | `Pickture_ARCHIVE_2_0` | XNA 2.0 |
-| 118 | RobotGame | `RobotGame_ARCHIVE_2_0` | XNA 2.0 |
-| 119 | SpriteBatchShader | `SpriteBatchShader_ARCHIVE_2_0` | XNA 2.0 |
-| 120 | VectorRumble | `VectorRumble_ARCHIVE_2_0` | XNA 2.0 |
-| 121 | SpaceShooter | `SpaceShooter_ARCHIVE_3_0` | XNA 3.0 |
-| 122 | TiledSprites | `TiledSpritesSample_ARCHIVE_3_1` | XNA 3.1 |
-| 123 | RedistributableTTFs | `RedistributableTTFs_ARCHIVE_3_1` | XNA 3.1 (fonts only) |
-
----
-
-### Avatar Asset Packs (Art, No C# Code)
-
-Animation data for the Xbox Avatar system. No C# game code to port.
-Relevant only after Avatar system support is added to CNA.
-
-| # | Name | Source Directory |
-|---|---|---|
-| 124 | AvatarAnimPack (BIN) | `AvatarAnimPack_4_0_BIN` |
-| 125 | AvatarAnimPack (FBX) | `AvatarAnimPack_4_0_FBX` |
-| 126 | AvatarAnimPack (Maya) | `AvatarAnimPack_4_0_Maya` |
-| 127 | AvatarAnimPack (Mod Tool) | `AvatarAnimPack_4_0_Mod_Tool` |
-
----
-
-### Avatar Rig Packs (Art, No C# Code)
-
-Rigging data for 3D DCCs. No C# game code to port.
-
-| # | Name | Source Directory |
-|---|---|---|
-| 128 | AvatarRig (3ds Max 2010) | `AvatarRig_4_0_Max_2010` |
-| 129 | AvatarRig (Maya 2009) | `AvatarRig_4_0_Maya_2009` |
-| 130 | AvatarRig (SoftImage Mod Tool 7.5) | `AvatarRig_4_0_SoftImage_Mod_Tool7_5` |
-
----
-
-### Phone / Mango Platform Variants
-
-These are phone-only or Mango-specific variants of samples that already have a
-desktop (`_WIN_XBOX`) equivalent listed above (or are phone-exclusive games).
-
-| # | Name | Source Directory | Desktop equivalent |
-|---|---|---|---|
-| 131 | GSMSample (Mango) | `GSMSample_4_0_Mango` | #072 |
-| 132 | GSMSample (Mango VB) | `GSMSample_4_0_Mango_VB` | #072 (VB dup) |
-| 133 | GSMSample (Phone) | `GSMSample_4_0_PHONE` | #072 |
-| 134 | ModelViewerDemo (Mango) | `ModelViewerDemo_4_0_Mango` | None (phone-only) |
-| 135 | PaddleBattle (Mango) | `PaddleBattle_4_0_Mango` | None (phone-only) |
-| 136 | PaddleBattle (Mango VB) | `PaddleBattle_4_0_Mango_VB` | None (VB dup) |
-| 137 | RolePlayingGame (Phone) | `RolePlayingGame_4_0_Phone` | #070 |
-
----
-
-### VB Language Duplicates
-
-Visual Basic versions of samples already covered by their C# counterpart above.
-
-| # | Name | Source Directory | C# equivalent |
-|---|---|---|---|
-| 138 | CardsStarterKit (VB) | `CardsStarterKit_4_0_VB` | #069 |
-
----
-
-### Silverlight / Windows Phone 7 (No XNA 4.0 Code)
-
-These directories contain Silverlight or WP7-native code, not XNA 4.0 C#.
-Not applicable for CNA porting.
-
-| # | Name | Source Directory |
-|---|---|---|
-| 139 | CustomIndeterminateProgressBar | `CustomIndeterminateProgressBarSample` |
-| 140 | NonLinear WP SL Navigation | `NonLinear-WP-SLApp-Navigation-Service` |
-| 141 | PushRecipe WP7 | `PushRecipe_WP7_SL` |
-| 142 | SilverlightMicrophone | `SilverlightMicrophoneSample` |
-| 143 | TombstoningSample | `TombstoningSample` |
-
----
-
-### Image / Resource-Only Directories
-
-No C# code — contain only image assets used by other samples.
-
-| # | Name | Source Directory |
-|---|---|---|
-| 144 | ButtonImages | `ButtonImages` |
-| 145 | ControllerImages | `ControllerImages` |
-| 146 | LobbyChatImages | `LobbyChatImages` |
-
----
-
-### Third-Party / Community Kits
-
-Not official Microsoft samples. Listed for reference.
-
-| # | Name | Source Directory | Notes |
-|---|---|---|---|
-| 147 | Riemers Tutorials | `Riemers` | Third-party XNA tutorials |
-| 148 | XNA 4 Racing Game Kit | `XNA-4-Racing-Game-Kit-master` | Community game kit |
-| 149 | Movipa | `Movipa` | Third-party video playback sample |
-
----
-
-### Unversioned Starter Kits
-
-No version tag in directory name; likely XNA 3.x or earlier.
-
-| # | Name | Source Directory |
-|---|---|---|
-| 150 | LevelStarterKit | `LevelStarterKit` |
-| 151 | UnitConverterStarterKit | `UnitConverterStarterKit` |
-
----
-
-### Misc / Non-Code
-
-| # | Name | Source Directory | Notes |
-|---|---|---|---|
-| 152 | XNA XNB Format | `XNA_XNB_Format` | Binary format documentation, no C# code |
-| 153 | SoundLab | `SoundLab` | Audio tool / no XNA 4.0 game code |
+The remaining 42 catalogued directories — XNA 2.0/3.0/3.1 archive samples (12),
+Avatar asset/rig art packs with no C# code (7), phone/Mango platform variants that
+duplicate a desktop sample already listed above (7), a VB language duplicate (1),
+Silverlight/WP7-native directories with no XNA 4.0 code (5), image-only resource
+directories (3), third-party/community kits that aren't official Microsoft samples
+(3), unversioned/incomplete starter kits (2), and misc non-code directories (2) —
+are none of them XNA 4.0 desktop samples this repo could ever build against CNA.
+Full per-directory listing with reasons: [`ignored.md`](ignored.md).
 
 ---
 
 ## Phase Status Overview
 
-| Phase | Samples | Done | Todo | Deferred / Out of scope |
+| Phase | Samples | Done | Placeholder | Ignored |
 |---|---|---|---|---|
-| Phase 1 — Foundation | 12 | 10 | 0 | 2 |
-| Phase 2 — 2D Games | 18 | 16 | 0 | 2 |
-| Phase 3 — 3D Graphics | 19 | 0 | 19 | 0 |
+| Phase 1 — Foundation | 12 | 10 | 1 | 1 |
+| Phase 2 — 2D Games | 18 | 16 | 2 | 0 |
+| Phase 3 — 3D Graphics | 19 | 1 | 18 | 0 |
 | Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 |
-| Phase 6 — Full Games | 14 | 5 | 8 | 1 |
-| Phase 7 — Advanced / Misc | 9 | 7 | 0 | 2 |
-| Deferred (phone/Avatar/WinForms/Live) | 28 | 0 | 0 | 28 |
-| XNA 2.0/3.x archives | 12 | 0 | 0 | 12 |
-| Avatar asset packs | 4 | 0 | 0 | 4 |
-| Avatar rig packs | 3 | 0 | 0 | 3 |
-| Phone / Mango variants | 7 | 0 | 0 | 7 |
-| VB duplicates | 1 | 0 | 0 | 1 |
-| Silverlight / WP7 | 5 | 0 | 0 | 5 |
-| Image / resource-only | 3 | 0 | 0 | 3 |
-| Third-party | 3 | 0 | 0 | 3 |
-| Unversioned starters | 2 | 0 | 0 | 2 |
-| Misc / non-code | 2 | 0 | 0 | 2 |
-| **Total** | **153** | **40** | **36** | **77** |
+| Phase 6 — Full Games | 14 | 8 | 4 | 2 |
+| Phase 7 — Advanced / Misc | 10 | 8 | 1 | 1 |
+| Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 0 | 6 | 21 |
+| Everything else (archives/art/dup/non-code — see `ignored.md`) | 42 | 0 | 0 | 42 |
+| **Total** | **153** | **45** | **41** | **67** |
 
 ---
 

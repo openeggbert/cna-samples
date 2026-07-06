@@ -49,10 +49,10 @@ Platformer's `pad2`.
 than this one sample needs; not escalated to a CNA fix.
 **Tracked in:** Not planned.
 
-## Fixed: two unreachable bugs in the original, ported faithfully otherwise
-Two small bugs in the original C# were fixed since they're one-line changes
+## Fixed: three unreachable bugs in the original, ported faithfully otherwise
+Three small bugs in the original C# were fixed since they're one-line changes
 and could otherwise crash or silently misbehave if ever triggered, even
-though neither is actually reachable anywhere in this sample as shipped:
+though none is actually reachable anywhere in this sample as shipped:
 - `TextControl.Font`'s getter was `get { return Font; }` (infinite recursion /
   stack overflow) instead of `get { return font; }`. Never actually read
   anywhere in the sample (only ever written to), so never triggered.
@@ -61,6 +61,21 @@ though neither is actually reachable anywhere in this sample as shipped:
   `DrawRectangle` nor `DrawCenteredText` in `CommonGraphics` are actually
   called anywhere in this sample — they're plain utility functions ported
   for completeness alongside everything else in that file.
+- `DrawContext.BlankTexture` (`Controls/DrawContext.cs:42`) is a public field
+  never assigned anywhere in the original — `Control.BatchDraw`
+  (`Controls/Control.cs:289-303`) constructs every `DrawContext` without
+  setting it, so it's always `null`. `ImageControl.Draw`
+  (`Controls/ImageControl.cs:63`) falls back to it
+  (`texture ?? context.BlankTexture`) only when its own `texture` is null,
+  which would throw inside `SpriteBatch.Draw(null, ...)` if ever hit — never
+  triggered, since the sample's only `ImageControl` construction site
+  (`Screens/LevelSelectScreen.cs:84`) always passes a real loaded texture.
+  The C++ port's `Control::BatchDraw` (`Controls/Control.hpp:150-157`) takes
+  an added `Texture2D& blankTexture` parameter and always sets
+  `context.BlankTexture = &blankTexture` (wired from
+  `ScreenManager::getBlankTexture()`'s 1x1 white texture via
+  `Screens.hpp:92-93`), so the same never-triggered fallback path would draw
+  white instead of crashing, if ever exercised.
 **Tracked in:** Not planned — trivial, faithful bug fixes with no behavioral
 impact on anything the sample actually exercises.
 
@@ -91,6 +106,38 @@ free memory for in this sample (or in this project generally).
 **Root cause:** Simplification matching established project precedent; no
 behavioral difference visible to the user.
 **Tracked in:** Not planned.
+
+## Adapted: windowed instead of `IsFullScreen = true`
+**XNA behaviour:** `SampleGame`'s constructor sets `graphics.IsFullScreen = true`
+unconditionally (comment: "Disable the status bar") — on Windows Phone this
+fills the screen under the notification bar; on a desktop Windows build it
+would force an actual fullscreen window.
+**CNA port behaviour:** Left windowed — `UISampleGame`'s constructor never
+calls `setIsFullScreenProperty`, so it defaults to windowed, matching every
+other sample in this repo. Forcing fullscreen would make screenshotting/
+testing this one sample inconsistent with the rest of the project for no
+behavioral benefit on desktop.
+**Root cause:** Desktop dev-loop practicality; matches the same precedent
+already documented in `samples/DynamicMenu/missing.md`.
+**Tracked in:** Not planned.
+
+## Font substitution: Segoe UI -> DejaVu Sans
+**XNA behaviour:** Three fonts, all "Segoe UI" via the XNA Content Pipeline,
+are actually used: `Font\MenuTitle` (Regular 48pt, loaded by `ScreenManager`
+as its one shared menu font), `Font\MenuHeader` (Bold 18pt), and
+`Font\MenuDetail` (Regular 16pt). A fourth file, `gamefont.spritefont` (Segoe
+UI Bold 30pt), ships in the content project but is never referenced by any
+`.cs` file in the sample — confirmed dead content, correctly not ported.
+**CNA port behaviour:** `Font/MenuTitle`, `Font/MenuHeader`, `Font/MenuDetail`
+generated from DejaVu Sans at the same point sizes via `tools/make_font.py`
+(CNA has no `.spritefont`/TTF-at-runtime pipeline). Glyph metrics differ
+slightly from the originals.
+**Root cause:** XNA `.xnb` SpriteFont binaries are not supported; Segoe UI is
+not available as an open TTF, so DejaVu Sans is substituted per this
+project's established convention (see CLAUDE.md's Assets section).
+**Tracked in:** Not planned — same class of adaptation as
+`samples/GameStateManagement/missing.md`'s and `samples/Yacht/missing.md`'s
+own Segoe UI / Segoe UI Mono substitutions.
 
 ## Verification note
 Interactively confirmed by screenshot: Main Menu renders correctly (title,

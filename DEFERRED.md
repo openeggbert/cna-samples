@@ -403,6 +403,90 @@ attempting the rest.
 
 ---
 
+## 16. Microphone capture (`Microsoft.Xna.Framework.Audio.Microphone`)
+
+**What is missing:**
+CNA has no `Microphone` class and no audio-capture-device support at all (only
+playback, via SDL3_mixer — see item 7). XNA's `Microphone` API enumerates capture
+devices, opens one at a chosen sample rate, and delivers raw PCM via a
+`BufferReady` event / `GetData()`.
+
+**Where to implement:** `cna/include/Microsoft/Xna/Framework/Audio/Microphone.hpp` +
+backend. SDL3 itself already supports capture devices (`SDL_OpenAudioDevice` with
+`iscapture`/the newer recording-device APIs), independent of SDL3_mixer, so this is
+plausible to add without a new external dependency — unlike, say, GamerServices
+networking (item 17), which needs a real transport, not just an SDL wrapper.
+
+**Blocked samples:** MicrophoneEcho (#098) — captures microphone input and plays it
+back through a `DynamicSoundEffectInstance` (loopback echo).
+
+**Effort:** M
+
+---
+
+## 17. Multiplayer networking (`Microsoft.Xna.Framework.Net` / `GamerServices.NetworkSession`)
+
+**What is missing:**
+`NetworkSession`, `NetworkSessionType` (`SystemLink`/`PlayerMatch`/`Ranked`),
+`GamerServicesComponent`, `AvailableNetworkSessionCollection`, and related gamer/
+session-property types do not exist anywhere in `cna/include` or `cna/src` (confirmed
+by grep — zero matches). This is XNA's session-discovery-and-lockstep multiplayer
+layer built on top of Xbox LIVE/Games for Windows Live in the original, but the
+*technique* each sample demonstrates (LAN session create/find/join, client-server
+authority, input prediction/lag compensation, peer-to-peer topology) is generic
+networking, not Xbox-Live-account-specific — a from-scratch CNA-native
+`NetworkSession`-alike (e.g. plain UDP/TCP sockets discovering LAN peers via
+broadcast, mirroring the public `NetworkSession` surface XNA samples call into)
+could plausibly stand in for it without needing any real Xbox Live/GfWL service.
+
+**Blocked samples:** NetRumble (#062, also needs item 11's shader pipeline for its
+bloom post-process — double-blocked), ClientServerSample (#091), NetworkPrediction
+(#100), PeerToPeer (#103). (NGSMSample and SplitScreen's `_4_0` sibling
+`GSMSample_4_0_PHONE`/`_Mango` variants also touch `GamerServices`, but are excluded
+for unrelated reasons — see `ignored.md`.)
+
+**Effort:** L/XL — real engine-level feature work (a session/transport layer), not
+just content conversion. Recommend prototyping against ClientServerSample first (the
+simplest of the four — a single authoritative server, no prediction/lockstep) before
+NetworkPrediction/PeerToPeer/NetRumble.
+
+---
+
+## 18. Content-pipeline processor extensibility (build-time `ContentProcessor` chaining)
+
+**What is missing:**
+CNA's entire asset story is "convert once, offline, with a standalone tool, into a
+static runtime JSON/binary format" (`tools/obj2model.py`, `tools/make_font.py`,
+`tools/gen_help_png.py`, etc.). There is no pluggable, MSBuild-time,
+C#-`ContentProcessor`-style extensibility point — nothing resembling XNA's
+`ContentProcessor<TInput,TOutput>` / `ContentProcessorContext.Convert`/`BuildAsset`
+chaining model, where a sample can supply its own processor(s) that run as part of
+the content build and transform/synthesize data before it ever reaches the runtime
+(e.g. baking a reflection cubemap from a flat photo, or flattening/re-deriving model
+data in a project-specific way).
+
+This is a different, deeper class of gap than items #6 (static model format
+conversion) or #11 (custom shader conversion) — both of those assume an offline tool
+already produced a static input file; this item is about the *meta*-capability of a
+custom build-time transform pipeline itself.
+
+**Blocked samples:** CustomModelEffect (#053) — its `CustomModelEffectPipeline`
+project chains three custom processors (`EnvironmentMappedModelProcessor` →
+`EnvironmentMappedMaterialProcessor` → `CubemapProcessor`) to synthesize a 6-face
+reflection cubemap from a single flat photo at build time; see
+`samples/CustomModelEffect/missing.md` for the full breakdown. No other audited
+Phase 3/4 sample needs this — every other custom-`.fx` sample (BloomSample,
+NormalMapping, etc.) applies its effect entirely at runtime via an ordinary
+`Content.Load<Effect>()` call, with no custom `ContentProcessor` involved.
+
+**Effort:** L — most likely an informal one-off offline preprocessing script (Python
+or C++) that performs the same steps against this sample's specific assets and emits
+a `.model.json` + cubemap file CNA's runtime can load directly, rather than a general
+pluggable pipeline (no second sample has demonstrated a need for genuine
+extensibility yet).
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -422,3 +506,6 @@ attempting the rest.
 | 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
 | 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
 | 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample, TiltPerspective (scope decision, not blocked); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
+| 16 | Microphone capture | cna | M | MicrophoneEcho | not started |
+| 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | NetRumble, ClientServerSample, NetworkPrediction, PeerToPeer | not started |
+| 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |

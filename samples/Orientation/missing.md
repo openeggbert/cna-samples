@@ -63,6 +63,79 @@ apparent "does nothing" reports were the original's own by-design lock
 behavior, not a defect.
 **Tracked in:** Same precedent as `samples/DynamicMenu/missing.md`.
 
+## Not preserved: `TargetElapsedTime` (30 fps) and `IsFullScreen = true`
+**XNA behaviour:** The constructor sets `TargetElapsedTime =
+TimeSpan.FromTicks(333333)` unconditionally (comment: "Frame rate is 30 fps
+by default for Windows Phone") and `graphics.IsFullScreen = true`
+unconditionally (comment: "Switch to full screen mode") -- neither is `#if
+WINDOWS_PHONE`-gated, so both would also apply to a desktop Windows build of
+this sample.
+**CNA port behaviour:** `OrientationGame`'s constructor never calls
+`setTargetElapsedTimeProperty`, so the game runs at CNA's 60 fps default
+instead of the original's 30 fps, and explicitly calls
+`graphics_.setIsFullScreenProperty(false)` (actively windowed, not just left
+at a default) -- matching the windowed-for-desktop-testing precedent already
+documented in `samples/DynamicMenu/missing.md`.
+**Root cause:** Desktop dev-loop practicality for `IsFullScreen`, matching
+repo-wide convention. The 30 fps `TargetElapsedTime` was not carried over the
+way it was in `DynamicMenu`/`UISample` (both of which do preserve it) --
+flagged here as a real, if minor, timing difference rather than a deliberate
+choice.
+**Tracked in:** Not planned for `IsFullScreen`. The dropped `TargetElapsedTime`
+is worth fixing (a one-line `setTargetElapsedTimeProperty(System::TimeSpan::
+FromTicks(333333))` in the constructor) if this sample is revisited.
+
+## Font substitution: Segoe UI Mono -> DejaVu Sans Mono
+**XNA behaviour:** `Font.spritefont` specifies "Segoe UI Mono", Regular,
+14pt.
+**CNA port behaviour:** Generated from DejaVu Sans Mono at 14px via
+`tools/make_font.py` (CNA has no `.spritefont`/TTF-at-runtime pipeline).
+Glyph metrics differ slightly from the original.
+**Root cause:** XNA `.xnb` SpriteFont binaries are not supported; Segoe UI
+Mono is not available as an open TTF, so DejaVu Sans Mono is substituted per
+this project's established convention (see CLAUDE.md's Assets section).
+**Tracked in:** Not planned -- same class of adaptation as
+`samples/DynamicMenu/missing.md`'s own Segoe UI Mono -> DejaVu Sans Mono
+note.
+
+## Missing: back-buffer size reassertion when locking orientation
+**XNA behaviour:** When locking, `Update()` explicitly reasserts the *live*
+viewport size before the implicit `ApplyChanges()` later in the same block:
+`graphics.SupportedOrientations = Window.CurrentOrientation;` followed by
+`graphics.PreferredBackBufferWidth = GraphicsDevice.Viewport.Width;` and
+`graphics.PreferredBackBufferHeight = GraphicsDevice.Viewport.Height;`, with a
+comment explaining `ApplyChanges()` could otherwise revert to a stale
+previously-set preferred size.
+**CNA port behaviour:** The lock branch only calls
+`graphics_.setSupportedOrientationsProperty(currentOrientation_);` -- the two
+`PreferredBackBufferWidth`/`Height` reassertion lines are absent, even though
+the adjacent code comment ("keep the current back-buffer size exactly as it
+is") claims the original's full behavior. Harmless on CNA's current desktop
+backend: `GraphicsDeviceManager`'s orientation-locking is only ever active on
+iOS/Android, and CNA's `GameWindow::INTERNAL_OnClientSizeChanged` deliberately
+never calls `ApplyChanges()` on a user window resize, so
+`PreferredBackBufferWidth`/`Height` can't drift out from under
+`CycleOrientation()`'s own last-set value on this backend today -- but it is
+a genuine omission of the original's defensive code, not merely a stale
+comment.
+**Root cause:** Porting oversight -- the two reassertion lines were dropped
+when translating the lock branch.
+**Tracked in:** Not planned -- currently a dead-code-equivalent gap on
+desktop backends; worth revisiting only if a future CNA backend makes
+`PreferredBackBufferWidth`/`Height` actually drift between `ApplyChanges()`
+calls.
+
+## Added: Escape key also exits the game
+**XNA behaviour:** `Update()` exits only on
+`GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed`.
+**CNA port behaviour:** Also exits on
+`Keyboard::GetState().IsKeyDown(Keys::Escape)`.
+**Root cause:** Desktop dev-loop practicality -- no gamepad guaranteed
+attached.
+**Tracked in:** Not planned -- minor, deliberate desktop-usability addition,
+same class as `samples/SoccerPitch/missing.md`'s and
+`samples/DynamicMenu/missing.md`'s equivalent notes.
+
 ## Mouse click synthesizes a Tap gesture
 **XNA behaviour:** All interaction is via `TouchPanel` gestures; no mouse
 support (Windows Phone only, no Windows/Xbox build of this sample ever

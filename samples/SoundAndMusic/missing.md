@@ -1,5 +1,13 @@
 # Missing / Differences from XNA 4.0 original
 
+## Fullscreen and 30 fps target omitted
+
+**XNA behaviour:** Constructor sets `graphics.IsFullScreen = true` and
+`TargetElapsedTime = TimeSpan.FromTicks(333333)` (30 fps) — Windows Phone defaults.
+**CNA port behaviour:** Windowed, runs at CNA's default frame rate (not fixed to 30 fps).
+**Root cause:** Phone-specific settings outside the scope of a desktop port.
+**Tracked in:** not planned.
+
 ## Touch input replaced by mouse
 
 **XNA behaviour:** All interaction uses `TouchPanel.GetState()` and touch-drag for sliders.

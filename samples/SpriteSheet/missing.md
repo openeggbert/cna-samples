@@ -15,26 +15,40 @@ in `SpriteSheet::Build()`. Individual sprite images are loaded as
 `std::vector<Color>` atlas, and uploaded to the GPU via `Texture2D::SetData`.
 The runtime result is identical to the XNA build-time atlas.
 
-**Root cause:** CNA has no Content Pipeline.
+**Root cause:** CNA has no build-time, pluggable `ContentProcessor`-chaining
+extensibility point (custom processors like `SpriteSheetProcessor.cs` /
+`SpritePacker.cs` can't run as part of an offline content build).
 
-**Tracked in:** DEFERRED.md item 6 (Model / pipeline loading).
+**Tracked in:** DEFERRED.md item 18 (Content-pipeline processor
+extensibility). Item 6 is unrelated (that one covers Model/FBX asset
+conversion only).
 
 ---
 
-## DrawString calls omitted
+## DrawString calls omitted (SpriteFont never loaded)
 
 **XNA behaviour:** Two `spriteBatch.DrawString(spriteFont, ...)` calls render
 text labels: "Here are some individual sprites, all stored in a single sprite
-sheet:" (left panel) and "And here is the combined sprite sheet texture:"
-(right panel).
+sheet:" (`SpriteSheetGame.cs:125-127`) and "And here is the combined sprite
+sheet texture:" (`SpriteSheetGame.cs:203-205`), using a `hudFont` SpriteFont
+loaded via `Content.Load<SpriteFont>("hudFont")`.
 
-**CNA port behaviour:** Both `DrawString` calls are omitted. The rest of the
-drawing (spinning cat, glow animation, checker background, sprite sheet
-texture) is unchanged.
+**CNA port behaviour:** Both `DrawString` calls are omitted, and no
+`hudFont` SpriteFont asset is loaded anywhere in `SpriteSheetGame.hpp`. The
+rest of the drawing (spinning cat, glow animation, checker background,
+sprite sheet texture) is unchanged.
 
-**Root cause:** CNA does not yet support SpriteFont.
+**Root cause:** NOT a current CNA limitation — SpriteFont loading and
+`SpriteBatch.DrawString` are both fully implemented in CNA (DEFERRED.md
+items 2 and 8, both marked ✅ resolved) and are already used successfully by
+other ported samples (SafeArea, InputSequence). This port simply never
+generated a `hudFont` atlas via `tools/make_font.py` or added the two
+`DrawString` calls — an open port omission, not a framework gap.
 
-**Tracked in:** DEFERRED.md item (SpriteFont / DrawString).
+**Tracked in:** Not a DEFERRED.md item (the underlying feature already
+exists) — open port gap; a future session could add
+`Content/hudFont.font.json`/`.png` via `tools/make_font.py` and restore the
+two `DrawString` calls.
 
 ---
 

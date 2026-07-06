@@ -89,7 +89,7 @@ rather than crashing, mirroring the original's own
 **A real asset gap, not a porting bug:** `Map001.xml`'s `MusicCueName` is
 `"BeachTheme"`, but no `BeachTheme.wav` (or any correspondingly-named cue)
 ships anywhere in this sample's asset tree -- confirmed absent from the
-27 `.wav` files under `Content/Audio/Waves/`. This is a real gap in the
+27 `.wav` files under `Content/Audio/`. This is a real gap in the
 shipped desktop mirror of this sample (the compiled `.xsb` presumably
 aliased it to another wave internally); the port plays silence for this one
 cue rather than crashing.
@@ -159,14 +159,14 @@ gap, not a deliberately-pruned dead path:
 `Combatant`/`CombatantPlayer`/`CombatantMonster`/`ArtificialIntelligence`
 and the `Combat/Actions/` class hierarchy (`CombatAction`,
 `MeleeCombatAction`, `SpellCombatAction`, `ItemCombatAction`,
-`DefendCombatAction`, ~1600 more lines) implement a real-time animated
+`DefendCombatAction`, ~3000 more lines) implement a real-time animated
 battle stage: combatants have on-screen positions, walk/attack/dodge/hit/die
 animation states driven by their `CombatSprite`, floating damage-number
 "combat effects", projectile-travel timing for melee/spell/item actions, and
 a full turn-order/AI state machine including fleeing, spell selection, and
 item use from inventory mid-battle.
 
-**CNA port behaviour:** `Combat/CombatEngine.hpp` (~350 lines) keeps the
+**CNA port behaviour:** `Combat/CombatEngine.hpp` (~270 lines) keeps the
 same *outcome* -- turn-based combat against the same `FixedCombat`/
 `RandomCombat` monster data, the same `StatisticsValue`-based damage math
 (weapon `TargetDamageRange` vs. monster `PhysicalDefense`, monster
@@ -179,6 +179,54 @@ Up/Down, Defend, or attempt to Flee) instead of the animated battle stage.
 **Only Attack/Defend/Flee exist -- Spell casting and Item use in combat are
 not implemented at all** (the `Combat/Actions/` hierarchy is not ported).
 `Combat/Actions/` is an empty directory in this port.
+
+## Secondary UI screens render as plain-text panels, not the original's textured chrome (major simplification)
+
+**XNA behaviour:** Beyond combat (covered above), most of the game's "detail"
+screens are richly skinned: `Hud.cs` (~700 lines, ~17 textures) draws a
+scrollable character-portrait carousel with selection brackets, per-slot
+active/inactive/can't-use plank backgrounds, and Y/Start button-prompt icons;
+`DialogueScreen.cs` draws a wooden dialogue-box texture with wrapped body
+text and Back/Select button icons; `ChestScreen.cs`/`RewardsScreen.cs` show a
+scrollable icon grid of items with per-item Take/TakeAll; `StoreScreen.cs`/
+`StoreBuyScreen.cs`/`StoreSellScreen.cs` show a two-pane itemized buy/sell UI;
+`LevelUpScreen.cs` shows a per-stat before/after comparison grid; `GameScreens/
+PopupScreen.png` and `HUD/CombatPopup.png` back the various popup frames.
+
+**CNA port behaviour:** `Hud.hpp`, `DialogueScreen.hpp` (and everything built
+on it: `ChestScreen`, `InnScreen`, `PlayerNpcScreen`, `QuestNpcScreen`,
+`QuestLogScreen`, `LevelUpScreen`, `RewardsScreen`), and `StoreScreen.hpp` all
+draw plain `SpriteBatch.DrawString` text (optionally over a flat translucent
+rectangle) instead of loading any of the original's UI-chrome textures.
+**The relevant textures are present in `Content/`** (`Content/Textures/
+GameScreens/PopupScreen.png`, `Content/Textures/HUD/CombatPopup.png`,
+`Content/Textures/Characters/Portraits/*.png`, `Content/Textures/Buttons/
+*.png`, `Content/Textures/GameScreens/GoldIcon.png`, etc. — confirmed
+converted and shipped, 720 PNGs total in this sample's `Content/`) but a
+repo-wide grep of `src/GameScreens/`, `src/MenuScreens/`, and `src/Combat/`
+for `Load<Texture2D>`/`Load<SpriteFont>` finds **zero** texture loads outside
+`ContentLoader.hpp` (data-driven gear/item/portrait icon references, loaded
+but not necessarily drawn by these screens) and `Fonts.hpp` (fonts only) —
+i.e. this is a genuine "converted but unused" asset gap, not merely a
+cosmetic reskin. Each affected header carries an inline comment
+acknowledging the simplification and pointing at this file. Gameplay/data
+logic is otherwise preserved exactly (see the per-screen notes elsewhere in
+this file, e.g. Combat's damage math, Store's Buy/SellMultiplier math,
+Chest's inventory transfer) — this is a presentation-layer-only gap. The
+world map itself is not affected: `TileEngine.hpp` does draw real tile
+textures (`map_->Texture`) and the party sprite via `AnimatingSprite`, so the
+overworld view matches the original's look; only the secondary/menu screens
+listed above are text-only.
+
+**Root cause:** scope — reproducing ~17+ hand-tuned UI-chrome textures'
+9-slice/scroll/carousel layout logic per screen was deprioritized against
+preserving the underlying gameplay math for all of these screens in one
+porting session.
+
+**Tracked in:** not a CNA gap (no missing API — `SpriteBatch.Draw(Texture2D,
+...)` works fine and is already used elsewhere, e.g. `TileEngine.hpp`); a
+scope gap in this port, same class as the "Screens genuinely reachable...
+not implemented" section above.
 
 ## C++ structural adaptations (no behavioral difference)
 

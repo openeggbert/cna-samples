@@ -16,6 +16,27 @@ resource class, since there is no .NET satellite-assembly / resx-compilation ste
 **Root cause:** No OS locale API in sharp-runtime.
 **Tracked in:** Not planned — deliberate, documented adaptation.
 
+## LoadLocalizedAsset catches std::runtime_error instead of ContentLoadException
+**XNA behaviour:** `LoadLocalizedAsset<T>` catches `ContentLoadException` specifically
+around each speculative `Content.Load<T>(localizedAssetName)` call, since that is the
+only exception type `ContentManager.Load<T>` ever throws for a missing/unloadable asset.
+**CNA port behaviour:** The port's `LoadLocalizedAsset<T>` catches `std::runtime_error`
+(the common base class) instead of `ContentLoadException` specifically. This is
+necessary because `ContentManager::Load<Graphics::Texture2D>` does not uniformly throw
+`ContentLoadException` on failure the way its Doxygen contract states: `Texture2DTypeReader::Read`
+forwards straight to `Texture2D(path, device)`, which calls `CNA::Internal::Graphics::ImageLoader::Load`,
+which throws a bare `std::runtime_error("Failed to load image: ...")` from SDL_image when
+a candidate path (e.g. `"Images/Flag.ja"`) doesn't exist — it never gets wrapped as a
+`ContentLoadException`. Catching the shared `std::runtime_error` base (which
+`ContentLoadException` also derives from) is required to catch both cases uniformly.
+**Root cause:** `ContentManager::Load<Texture2D>`'s missing-file path lets a raw
+`std::runtime_error` from the SDL_image-backed `ImageLoader` propagate instead of
+wrapping it in `ContentLoadException`, unlike the generic `ContentManager::Load<T>` path.
+**Tracked in:** Not filed as a CNA issue yet; harmless here since the broader catch
+still isolates only "this asset variant is missing," but a future CNA fix should make
+`Load<Texture2D>` wrap loader failures in `ContentLoadException` for parity with the
+generic path and with XNA.
+
 ## CNA framework fixes made while porting this sample
 Porting this sample surfaced two real CNA bugs, both fixed in the `cna` repo (not
 worked around here) since they weren't specific to this sample:

@@ -1,5 +1,28 @@
 # Missing / Differences from XNA 4.0 original
 
+## Adapted: windowed instead of `IsFullScreen = true`
+**XNA behaviour:** The constructor sets `graphics.IsFullScreen = true;` (Windows
+Phone fills the screen at its native 800x480 resolution; the frame rate is also
+set to 30 fps via `TargetElapsedTime = TimeSpan.FromTicks(333333)`).
+**CNA port behaviour:** `PreferredBackBufferWidth/Height` are explicitly set to
+800x480 and the 30 fps `TargetElapsedTime` is preserved, but `IsFullScreen` is
+left at its default (windowed) — matching this project's established
+DynamicMenu/HoneycombRush/Bounce/TicTacToe/PathDrawing precedent of leaving
+desktop ports windowed.
+**Root cause:** Desktop dev-loop practicality; forcing fullscreen has no
+behavioral benefit on desktop and would make screenshotting/testing this
+sample inconsistent with the rest of the project.
+**Tracked in:** Not planned.
+
+## Texture converted from TGA to PNG
+**XNA behaviour:** Loads `cat.tga` via `Content.Load<Texture2D>("cat")`.
+**CNA port behaviour:** Converted to `Content/Images/cat.png`, loaded via
+`Content.Load<Texture2D>("Images/cat")`.
+**Root cause:** CNA's `ContentManager`/asset pipeline does not support `.xnb`/TGA
+source assets (see CLAUDE.md Assets section); source art was converted to PNG,
+matching the same TGA→PNG conversion documented for Audio3D's `CatTexture.tga`.
+**Tracked in:** Not planned — standard asset-conversion step for this project.
+
 ## Added: parallel mouse input path
 **XNA behaviour:** The original "TouchGestureSample" is Windows Phone 7 only and reads
 exclusively from `TouchPanel` (raw touch points for selection, gestures for Hold, Tap,
@@ -39,5 +62,6 @@ this is an inherent limitation of the desktop fallback, not of CNA's real `Touch
 ## No known differences beyond the above
 Gesture recognition, sprite creation/removal/coloring/movement/scaling, and the
 wall-bounce/friction physics are otherwise a direct, faithful port of `Game1.cs` and
-`Sprite.cs`. Screen resolution (800x480, matching the WP7 default the original relied on
-implicitly) and the fixed 30 fps timestep are preserved.
+`Sprite.cs`. Screen resolution (800x480, matching the WP7 native resolution the
+original relied on implicitly via `IsFullScreen = true`, see above) and the fixed
+30 fps timestep are preserved.

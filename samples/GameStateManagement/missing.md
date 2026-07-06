@@ -44,6 +44,18 @@ SpriteBatch; several run per frame (background + menu + popup).
 `Begin/End` occurs in the same frame **on the Vulkan backend** — so this sample is
 correct on EasyGL but may show only the topmost screen on Vulkan.
 
+## TraceEnabled/TraceScreens debug logging omitted
+
+**XNA behaviour:** `ScreenManager.TraceEnabled` (default `false`) — when set,
+`ScreenManager.Update` calls `TraceScreens()`, which prints a comma-separated list
+of every screen's type name to `Debug.WriteLine` each frame.
+**CNA port behaviour:** No `TraceEnabled` field or `TraceScreens()` method exist;
+`ScreenManager::Update` has no debug-trace branch.
+**Root cause:** Port omission of a debug-only diagnostic that is never enabled
+anywhere in the original sample (no code sets `TraceEnabled = true`); dropping it
+has no visible effect on default behaviour.
+**Tracked in:** not planned (dead debug code in the original; no CNA gap involved).
+
 ## F1 help overlay added
 
 **XNA behaviour:** None.

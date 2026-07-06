@@ -131,6 +131,21 @@ string styles used inconsistently across the original):
 unused in the shipped original.
 **Tracked in:** not planned.
 
+## Fullscreen omitted (30 fps timestep kept faithfully)
+**XNA behaviour:** The constructor sets `graphics.IsFullScreen = true`
+unconditionally — on Windows Phone this just fills the screen; on a desktop
+Windows build it would force an actual fullscreen window. It also sets
+`TargetElapsedTime = TimeSpan.FromTicks(333333)` (30 fps).
+**CNA port behaviour:** Left windowed, matching every other sample in this
+repo — forcing fullscreen would make screenshotting/testing this one sample
+inconsistent with the rest of the project for no behavioral benefit on
+desktop. The 30 fps fixed timestep itself **is** kept
+(`setTargetElapsedTimeProperty(TimeSpan::FromSeconds(1.0/30.0))` in
+`YachtGame.hpp`), matching the original's frame rate.
+**Root cause:** Desktop dev-loop practicality; matches established repo-wide
+precedent (see DynamicMenu/Bounce/PathDrawing/CatapultWars missing.md).
+**Tracked in:** not planned.
+
 ## No isolated-storage state serialization
 **XNA behaviour:** Game state (scorecard, current turn, dice) can be
 serialized to isolated storage as part of the tombstoning lifecycle.

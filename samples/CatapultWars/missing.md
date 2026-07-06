@@ -64,6 +64,52 @@ metrics differ slightly, so text widths are not pixel-identical to the original.
 **Root cause:** "Moire ExtraBold" is not available; CNA needs a bitmap-font atlas.
 **Tracked in:** DEFERRED.md item 2 (SpriteFont pipeline).
 
+## Fullscreen omitted (fixed 30 fps timestep kept faithfully)
+**XNA behaviour:** The constructor sets `graphics.IsFullScreen = true` unconditionally
+("Switch to full screen for best game experience") — on Windows Phone this just fills
+the screen; on a desktop Windows build it would force an actual fullscreen window. It
+also sets `TargetElapsedTime = TimeSpan.FromTicks(333333)` (30 fps); the 30 fps timestep
+matters because catapult/projectile animations advance exactly one frame per `Update()`
+call.
+**CNA port behaviour:** Left windowed, matching every other sample in this repo —
+forcing fullscreen would make screenshotting/testing this one sample inconsistent
+with the rest of the project for no behavioral benefit on desktop. Unlike most other
+samples in this repo, though, the 30 fps fixed timestep itself **is** kept
+(`setTargetElapsedTimeProperty(TimeSpan::FromSeconds(1.0/30.0))`, with an explanatory
+comment in `CatapultGame.hpp`), so animation speed matches the original exactly.
+**Root cause:** Desktop dev-loop practicality for the fullscreen bit; the 30 fps
+timestep is a deliberate exception to the repo's usual "omit phone timestep, default
+to 60 fps" pattern (see e.g. Bounce/PathDrawing's missing.md) because this sample's
+animations are frame-stepped rather than time-scaled.
+**Tracked in:** not planned.
+
+## Case-sensitive asset path: drag-arrow texture
+**XNA behaviour:** `Human.Initialize()` loads
+`Content.Load<Texture2D>("Textures/HUD/arrow")` (lower-case `arrow`) — resolves
+fine under Windows' case-insensitive filesystem/content pipeline.
+**CNA port behaviour:** The shipped PNG is `Content/Textures/HUD/Arrow.png`
+(capital `A`), so `Human::Initialize()` loads `"Textures/HUD/Arrow"` to match
+the file actually on disk (see the inline comment in `Human.hpp`).
+**Root cause:** Linux's filesystem is case-sensitive; same class of fix as
+documented in RolePlayingGame/HoneycombRush/CardsStarterKit's missing.md.
+**Tracked in:** not planned.
+
+## AudioManager: `GameComponent` singleton → static utility class
+**XNA behaviour:** `AudioManager` derives from `GameComponent` and
+`AudioManager.Initialize(game)` calls `game.Components.Add(audioManager)`,
+registering it in the `Game.Components` collection (mainly for automatic
+`Dispose()` cleanup on exit; `Update`/`Draw` are never overridden).
+**CNA port behaviour:** `AudioManager` is a plain static utility class holding
+`inline static` sound-effect state; `AudioManager::Initialize(Game*)` only
+stashes the `Game*` pointer and never registers with
+`getComponentsProperty()`. All public methods (`PlaySound`, `StopSounds`,
+`PauseResumeSounds`, `PlayMusic`, ...) behave identically; only component-list
+membership and the C# `Dispose` cleanup path are dropped.
+**Root cause:** No behavioural need for `GameComponent` membership since the
+original never used its `Update`/`Draw` hooks; a static utility is simpler in
+C++ than a component that exists solely to be found via the singleton pattern.
+**Tracked in:** not planned.
+
 ## No isolated-storage state serialization
 **XNA behaviour:** `ScreenManager` can serialize/deserialize the screen stack to
 isolated storage (tombstoning support).

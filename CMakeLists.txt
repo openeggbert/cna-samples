@@ -122,3 +122,46 @@ add_subdirectory(samples/UISample)
 add_subdirectory(samples/PerformanceMeasuring)
 add_subdirectory(samples/SoccerPitch)
 add_subdirectory(samples/Orientation)
+
+# ---------------------------------------------------------------------------
+# Deferred / not-yet-ported samples — placeholder directories only
+# (<Name>.htm + missing.md, no src/CMakeLists.txt yet). Uncomment and add a
+# CMakeLists.txt once each sample's CNA blocker (see DEFERRED.md) is fixed and
+# real source is added. See ignored.md for samples that will never appear here.
+# ---------------------------------------------------------------------------
+
+# Phase 1/2 stragglers missed by earlier add_subdirectory sweeps
+# add_subdirectory(samples/ReachGraphicsDemo)
+# add_subdirectory(samples/ColorReplacement)
+
+# Phase 3 — 3D Graphics & Shaders (remaining)
+# add_subdirectory(samples/DistortionSample)
+# add_subdirectory(samples/NonPhotoRealistic)
+# add_subdirectory(samples/PerPixelLighting)
+# add_subdirectory(samples/VertexLighting)
+# add_subdirectory(samples/RimLighting)
+# add_subdirectory(samples/ShatterEffect)
+# add_subdirectory(samples/XmlParticles)
+# add_subdirectory(samples/Graphics3D)
+# add_subdirectory(samples/PickingSample)
+# add_subdirectory(samples/TrianglePicking)
+
+# Phase 4 — Models & Animation
+# add_subdirectory(samples/SimpleAnimation)
+# add_subdirectory(samples/CustomModelAnimation)
+# add_subdirectory(samples/CustomModelClass)
+# add_subdirectory(samples/CustomModelEffect)
+# add_subdirectory(samples/SkinnedModelExtensions)
+# add_subdirectory(samples/CPUSkinning)
+
+# Phase 6 — Full Games (remaining)
+# add_subdirectory(samples/TankOnHeightmap)
+
+# Deferred — Phone Hardware / Networking (PLAN.md appendix; the only 6 of ~27
+# kept as future candidates — see ignored.md for the rest)
+# add_subdirectory(samples/AccelerometerSample)
+# add_subdirectory(samples/TiltPerspective)
+# add_subdirectory(samples/MicrophoneEcho)
+# add_subdirectory(samples/ClientServerSample)
+# add_subdirectory(samples/NetworkPrediction)
+# add_subdirectory(samples/PeerToPeer)

@@ -107,10 +107,42 @@ storing `std::shared_ptr<Transition>` instead, copying the list of *pointers*
 (cheap, and safe against reallocation) before iterating -- see the comment in
 `Control::Update`.
 
+## RNG lifecycle: persistent `System::Random` instead of a fresh `Random` per tap
+**XNA behaviour:** `hueChangeButton_Tapped` constructs `Random rnd = new Random();`
+-- fresh, time-seeded, and discarded -- on every single tap. .NET's
+parameterless `Random()` seeds from `Environment.TickCount`, so two taps
+within the same clock tick can even reproduce the identical "random" color, a
+known quirk of this construct-per-call pattern.
+**CNA port behaviour:** `DynamicMenuGame` holds one `System::Random random_;`
+member, seeded once at construction, and `HueChangeButtonTapped` draws from
+that single persistent generator on every tap instead of constructing a new
+one. The color formula itself (r/g/b/a via `NextDouble()`, complementary font
+color, `Color(r,g,b)*a`) is byte-for-byte identical -- only the generator's
+instantiation/reseed lifecycle differs.
+**Root cause:** Idiomatic C++ RNG usage (see CLAUDE.md's `System::Random
+random;` member guidance) instead of literally reproducing the original's
+unusual "new Random() per call" pattern.
+**Tracked in:** Not planned -- a strictly-better RNG usage pattern with no
+visible behavioral downside (still produces a new-looking random color per
+tap).
+
+## Added: Escape key also exits the game
+**XNA behaviour:** `Update()` exits only on
+`GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed` -- no
+keyboard exit path exists anywhere in this Windows-Phone-only original.
+**CNA port behaviour:** `Update()` exits on GamePad Back **or**
+`Keyboard::GetState().IsKeyDown(Keys::Escape)`, for keyboard-only desktop
+testing.
+**Root cause:** Desktop dev-loop practicality -- no gamepad guaranteed
+attached.
+**Tracked in:** Not planned -- minor, deliberate desktop-usability addition,
+same class as `samples/SoccerPitch/missing.md`'s equivalent note.
+
 ## No known differences beyond the above
-Page 1's four buttons (hue randomization + complementary font color, tap-index
-counter, bounce animation state machine, get-big-then-shrink-back transition
-chain), the Transition system's position/size/color interpolation and the four
+Page 1's four buttons (hue randomization + complementary font color -- see the
+RNG lifecycle note above for the one caveat, tap-index counter, bounce
+animation state machine, get-big-then-shrink-back transition chain), the
+Transition system's position/size/color interpolation and the four
 `CreateFadeIn`/`CreateFadeOut`/`CreateFlyIn`/`CreateFlyOut` factory helpers
 (present in the library, unused by this sample -- matching the original, which
 doesn't call them either), the Button press-and-hold-briefly-then-fire timing,

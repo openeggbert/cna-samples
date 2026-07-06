@@ -104,8 +104,13 @@ only). The high score is saved directly with the fixed name `"Player"`
 (`HighScoreScreen::PutHighScore("Player", Score())`), synchronously, in
 `CheckIfCurrentGameFinished()` — the `AfterPlayerEnterName` async-callback path was
 dropped entirely since there's nothing async left to call back from.
-**Root cause:** CNA has no on-screen keyboard / text-input UI.
-**Tracked in:** DEFERRED.md (on-screen keyboard input, if ever added to CNA).
+**Root cause:** CNA's `Guide` (`cna/include/Microsoft/Xna/Framework/GamerServices/Guide.hpp`)
+is an intentional stub: `BeginShowKeyboardInput`/`EndShowKeyboardInput` always
+complete synchronously with an empty string (no system on-screen keyboard on
+this platform) — a real, documented platform limitation, not a CNA bug to fix.
+**Tracked in:** not planned — no DEFERRED.md item exists for this (there is no
+CNA on-screen-keyboard work planned); see CLAUDE.md's "do not work around CNA
+bugs" note and the equivalent `NinjAcademy`/`Yacht` writeups for the same stub.
 
 ## `IsolatedStorageFile` → plain file I/O
 **XNA behaviour:** `HighScoreScreen.SaveHighscore()`/`LoadHighscores()` persist the
@@ -191,6 +196,20 @@ instead.
 hardcodes the same fixed positions the original does.
 **Root cause:** dead code in the original.
 **Tracked in:** not planned.
+
+## Font substitution
+**XNA behaviour:** All five `.spritefont` files (`MenuFont` 48, `HighScoreFont` 50,
+`GameScreenFont14px`/`16px`/`36px`) use the **"Moire"** TrueType font (Bold for the
+three `GameScreenFont*` sizes, Regular for `MenuFont`/`HighScoreFont`) via the XNA
+Content Pipeline.
+**CNA port behaviour:** Generated from a DejaVu Sans substitute (matching each
+font's original Bold/Regular style) at the same point sizes via `tools/make_font.py`
+(CNA has no `.spritefont`/TrueType-at-runtime pipeline; atlases are pre-baked PNG +
+`.font.json`). Glyph metrics differ slightly from "Moire", so text widths are not
+pixel-identical to the original.
+**Root cause:** "Moire" is not available on this system; CNA needs a bitmap-font atlas.
+**Tracked in:** DEFERRED.md item 2 (SpriteFont pipeline) — already resolved for the
+atlas mechanism itself; only the specific font file is substituted.
 
 ## No fullscreen forcing
 **XNA behaviour:** `graphics.IsFullScreen = true;` in the main `HoneycombRush`

@@ -75,6 +75,53 @@ approach `Platformer`'s `pad2` helper already uses for its own countdown timer.
 one sample needs; not escalated to a CNA fix.
 **Tracked in:** Not planned — same class of adaptation as `Platformer`'s `pad2`.
 
+## RNG: one shared stream (and a different draw order) instead of two independent streams
+**XNA behaviour:** `Game.cs` declares two entirely independent `Random`
+instances: the private nested `Snowflake` class has its own `static Random
+rand = new Random();` (`Game.cs:34`), used only inside `Snowflake`'s
+constructor in the exact order `Scale`, then `AngularVelocity`, then
+`Tint.R`/`Tint.G`/`Tint.B` (`Game.cs:52-58`); the outer `Game` class has a
+separate `Random rand;` field (`Game.cs:128`), used only by `Snow()` to pick
+spawn positions/velocities/sprite index.
+**CNA port behaviour:** `SnowShovelGame` has a single `System::Random rand_;`
+member, forwarded by reference into every `Snowflake` constructor call
+(`Snowflake.hpp:27`) as well as used directly by `Snow()` -- one shared
+stream instead of two independent ones. Worse, `Snowflake`'s `Tint` is built
+in the C++ member-initializer list (3 `rand.NextDouble()` calls), which the
+language guarantees runs *before* the constructor body (`Scale`/
+`AngularVelocity`), the reverse draw order from the original; argument
+evaluation order within the 3-arg `Tint(...)` call and within `Snow()`'s
+multi-arg `emplace_back(...)` call is also unspecified by the C++ standard,
+unlike C#'s guaranteed left-to-right evaluation.
+**Root cause:** Simplification during porting -- one member `Random` was used
+everywhere instead of replicating the original's two-instance split.
+`System::Random`'s default constructor seeds from `std::random_device`
+(non-deterministic, like .NET's own default `Random()`), so neither version
+is bit-reproducible run-to-run regardless -- this is a structural RNG-usage
+deviation (shared vs. independent streams, different consumption order), not
+a reproducibility regression. No visible gameplay bug: scale/spin/tint still
+land in the same original ranges, just drawn from a differently-ordered/
+shared sequence.
+**Tracked in:** Not planned -- no visible behavioral difference (snowflake
+appearance is still "randomly varied" as intended), just a documented
+structural deviation.
+
+## Font substitution: Segoe UI Mono / Moire -> DejaVu Sans Mono / DejaVu Sans
+**XNA behaviour:** `TitleFont.spritefont` specifies "Segoe UI Mono", Regular,
+14pt. `ScoreFont.spritefont` specifies "Moire", Regular, 12pt — an unusual
+decorative/display font, not a standard Windows system font.
+**CNA port behaviour:** Generated from DejaVu Sans Mono (`TitleFont`) and
+DejaVu Sans (`ScoreFont`) at the same point sizes via `tools/make_font.py`
+(CNA has no `.spritefont`/TTF-at-runtime pipeline). Glyph metrics, and for
+`ScoreFont` the overall letterform style, differ noticeably from "Moire",
+which is not an open font.
+**Root cause:** XNA `.xnb` SpriteFont binaries are not supported; neither
+Segoe UI Mono nor Moire is available as an open TTF, so DejaVu substitutes
+are used per this project's established convention (see CLAUDE.md's Assets
+section).
+**Tracked in:** Not planned — same class of adaptation as this project's
+other font substitutions (see e.g. `samples/Yacht/missing.md`).
+
 ## Verification note
 Interactively verified via `xdotool` + screenshots: pre-game screen (title, centered
 instructions, score/time/elapsed-time HUD, shovel, falling snowflakes all correctly
@@ -92,6 +139,15 @@ manually tested the mouse fallback themselves on real hardware and confirmed it 
 (see the section above) was added; the keyboard/gamepad/touch paths (including the restart
 transition) were not separately called out in that manual pass but share the exact same
 code path already verified above for the analogous start transition.
+
+**Not yet verified on real accelerometer hardware:** everything confirmed above exercises
+the keyboard/gamepad/mouse/touch *fallback* paths only. The actual tilt-sensor code path
+(`Accelerometer::GetTilt()` returning real `SDL_Sensor` data, see the "Added: real
+accelerometer" section above) has never been run on a device with physical accelerometer
+hardware — this development machine has none, so `Accelerometer::getIsSupportedProperty()`
+always returns false here and the fallback path is all that's ever executed. Tracked in
+NEXT.md section 5 ("real hardware accelerometer shake/tilt (Yacht, SnowShovel) has never
+been tested on a device with a physical sensor").
 
 ## No known differences beyond the above
 Snowflake spawning/bouncing physics, wave escalation (more snowflakes, shorter bonus time

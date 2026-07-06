@@ -163,9 +163,16 @@ for the desktop/mouse path this port targets.
 to `IsolatedStorageFile`, but `BlackjackGame`/`GameplayScreen`/`PauseScreen`
 never call either method -- there is no save/resume feature in this sample
 at all (player balance resets to $500 every launch, same as the original).
-**CNA port behaviour:** Not ported -- CNA has no `IsolatedStorageFile`
-equivalent, and the methods are unreachable in this sample regardless.
-**Root cause:** N/A -- dead code in the original sample itself.
+**CNA port behaviour:** Not ported. Note: sharp-runtime has since gained a
+working `System::IO::IsolatedStorage::IsolatedStorageFile` (see
+`sharp-runtime/include/System/IO/IsolatedStorage/IsolatedStorageFile.hpp`,
+marked "Status: DONE" -- `GetUserStoreForApplication()`, `CreateFile()`,
+`OpenFile()`, etc.), so the "CNA has no equivalent" reasoning that once
+justified dropping this no longer holds. It stays unported here regardless,
+because the methods are genuinely unreachable in this sample -- no save/resume
+feature exists in the original to begin with.
+**Root cause:** N/A -- dead code in the original sample itself, not a CNA
+capability gap.
 **Tracked in:** Same precedent as every other ScreenManager port in this repo.
 
 ## Verification: idle main menu confirmed; deliberate click-through not completed

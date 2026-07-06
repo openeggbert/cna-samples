@@ -35,8 +35,22 @@ a framework bug.
 `IsolatedStorageFile`.
 **CNA port behaviour:** Uses `std::ofstream`/`std::ifstream` against
 `highscores.txt` next to the binary.
-**Root cause:** CNA has no `IsolatedStorageFile` equivalent.
-**Tracked in:** Same precedent as HoneycombRush's `HighScoreScreen.hpp`.
+**Root cause:** Historically CNA/sharp-runtime had no `IsolatedStorageFile`
+equivalent, and this port followed that established precedent. As of this
+audit, sharp-runtime *does* now provide a real, working
+`System::IO::IsolatedStorage::IsolatedStorageFile` (documented "Status: DONE"
+in `sharp-runtime/include/System/IO/IsolatedStorage/IsolatedStorageFile.hpp`,
+backed by `std::filesystem` — file/directory CRUD, `GetUserStoreForApplication()`,
+etc.) — it was completed well before this sample was ported and is reachable
+here since `CNA` links `SHARP_RUNTIME` `PUBLIC`. So this is no longer a
+framework gap, just a case of the port not (yet) using an API that exists;
+the plain-`std::ofstream` approach still works correctly and is faithful in
+spirit (a persisted local file), so this is left as-is rather than switched
+over speculatively.
+**Tracked in:** Same precedent as HoneycombRush's `HighScoreScreen.hpp` (which
+has the same now-stale "no equivalent" framing) and RolePlayingGame's
+`Session.hpp`; not re-verified/updated there since this audit is scoped to
+NinjAcademy only.
 
 ## Mouse fallback for tap/drag input
 **XNA behaviour:** All input is `TouchPanel` gestures (`Tap` for menu

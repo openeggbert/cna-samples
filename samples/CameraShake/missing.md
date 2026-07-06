@@ -17,6 +17,32 @@ a long shake via `TouchPanel`.
 **Root cause:** Touch input is phone-specific.
 **Tracked in:** not planned
 
+## GamePad input not implemented (keyboard only)
+**XNA behaviour:** `Update` polls `GamePad.GetState(PlayerIndex.One)` alongside the
+keyboard every frame — an Xbox 360 controller's A/X buttons trigger the short/long
+camera shake exactly like the keyboard equivalents, and `GamePad.Buttons.Back` (in
+addition to `Keys.Escape`) exits the game.
+**CNA port behaviour:** `CameraShakeGame::Update` only reads `Keyboard::GetState()` —
+no `GamePadState` is polled at all, so a connected gamepad has no effect. The shake
+triggers and exit are keyboard-only (A/X keys, Escape).
+**Root cause:** Porting simplification, not a CNA framework limitation — CNA fully
+implements `GamePad::GetState`/`GamePadState::IsButtonDown` (used by other ported
+samples, e.g. RolePlayingGame, Yacht).
+**Tracked in:** not planned (desktop demo; gamepad input parity not required)
+
+## Instruction text uses a fixed offset instead of Viewport.TitleSafeArea
+**XNA behaviour:** `DrawInstructions` positions the "A - Short shake / X - Long shake"
+text at `GraphicsDevice.Viewport.TitleSafeArea.X/Y` (the TV-safe inset rectangle), with
+the text and its 1px drop shadow offset from that point.
+**CNA port behaviour:** `DrawInstructions` uses a hardcoded `Vector2(20.0f, 20.0f)`
+instead of calling `getViewportProperty().getTitleSafeAreaProperty()`.
+**Root cause:** Porting simplification, not a CNA framework limitation — CNA does
+implement `Viewport::getTitleSafeAreaProperty()` (used by other ported samples, e.g.
+SafeArea, FlockingSample, PerformanceMeasuring). CNA's implementation currently just
+returns the full viewport bounds (X=0,Y=0, no real inset), so the practical visual
+difference is a fixed 20px offset from the corner vs. 0px.
+**Tracked in:** not planned (cosmetic only)
+
 ## Model format converted from FBX/X to .model.json
 **XNA behaviour:** Loads `tank.fbx` (ASCII FBX 6.1, 12 mesh parts) and `Ground.x`
 via XNA ContentManager.
@@ -49,9 +75,12 @@ DirectX clips triangles whose vertices extend behind the camera and the visible 
 and tank scene is displayed.
 **CNA port behaviour:** The scene renders as a white stripe only on both the Vulkan and
 EasyGL backends. The ground corner vertex at (6554,0,6554) falls behind the camera
-(x+z=13108 exceeds the threshold ≈3000 for camera at (1000,1000,1000)), causing
-near-plane clipping artefacts. The z-remap bug in CNA Vulkan shaders
-(`pos.z = (pos.z + pos.w) * 0.5`) was removed (fix in CNA repo), but the white stripe
-persists regardless of backend.
-**Root cause:** CNA near-plane clipping of w<0 vertices does not match DirectX behaviour.
-**Tracked in:** CNA issue (affects all backends).
+(x+z=13108 exceeds the threshold ≈3000 for camera at (1000,1000,1000)), which is
+consistent with a near-plane clipping artefact for w<0 vertices. A previously-suspected
+Vulkan z-remap bug (`pos.z = (pos.z + pos.w) * 0.5`) was removed (fix in CNA repo), but
+the white stripe persisted regardless of backend, ruling that out as the (sole) cause.
+**Root cause:** Not yet root-caused. The working hypothesis is that CNA's near-plane
+clipping of w<0 vertices does not match DirectX's behaviour, but the exact CNA
+file/function responsible has not been identified — needs further investigation.
+**Tracked in:** NEXT.md "Known issues" and "Next smallest tasks" item 1 (framework gap,
+affects all backends; not yet a numbered DEFERRED.md item).
