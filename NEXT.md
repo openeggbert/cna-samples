@@ -12,17 +12,19 @@ XNA Game Studio samples total) to CNA C++, preserving the original class hierarc
 naming (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests
 for CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** The great majority of readily-portable samples are done — 46 sample
-targets are wired into the root `CMakeLists.txt` and build (MicrophoneEcho #098 was
-added this session, see section 3). **12 more are unblocked and ready to port right
-now, with zero remaining CNA gap:** ClientServerSample (#091), NetworkPrediction
-(#100), PeerToPeer (#103) (item 17, networking, resolved), and LensFlare (#041),
-Graphics3D (#046), PickingSample (#047), TrianglePicking (#048), HeightmapCollision
-(#049), CustomModelClass (#052), InverseKinematics (#057), ChaseCamera (#058),
-MarbleMaze (#061) (item 5, lit 3D rendering, resolved) — both gaps were checked
-live against `cna`'s current source on 2026-07-06 (see section 3), not assumed.
-NetRumble (#062) went from double- to single-blocked (still needs item 11's
-shaders). The remaining 28 placeholder
+**Current phase:** The great majority of readily-portable samples are done — 47
+sample targets are wired into the root `CMakeLists.txt` and build (MicrophoneEcho
+#098 and ClientServerSample #091 were both added this session, see section 3).
+**11 more are unblocked and ready to port right now, with zero remaining CNA gap:**
+NetworkPrediction (#100), PeerToPeer (#103) (item 17, networking, resolved — though
+porting ClientServerSample surfaced 3 narrower gaps, items 19–21, likely also
+relevant to these two — see `samples/ClientServerSample/missing.md`), and LensFlare
+(#041), Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
+HeightmapCollision (#049), CustomModelClass (#052), InverseKinematics (#057),
+ChaseCamera (#058), MarbleMaze (#061) (item 5, lit 3D rendering, resolved) — both
+gaps were checked live against `cna`'s current source on 2026-07-06 (see section 3),
+not assumed. NetRumble (#062) went from double- to single-blocked (still needs item
+11's shaders). The remaining 28 placeholder
 samples have a real CNA gap: an HLSL→GLSL shader pipeline (item 11, the biggest
 bucket) or skeletal animation playback (item 13) are the two big ones, plus, for
 exactly one sample (CustomModelEffect), a content-pipeline processor CNA has no
@@ -193,6 +195,25 @@ model loading and rendering, and `GraphicsDeviceManager.SupportedOrientations`/
 - **Ported MicrophoneEcho (#098)** — real `samples/MicrophoneEcho/src/` now exists
   (was a placeholder minutes earlier). See section 8 item 1 for full detail. 46th
   sample target now wired into the root `CMakeLists.txt`.
+- **Ported ClientServerSample (#091)** — real `samples/ClientServerSample/src/` now
+  exists. See section 8 item 2 for full detail. This surfaced 3 new CNA gaps
+  (DEFERRED.md items #19–21: `GamerServicesDispatcher::Update()` no-op hangs
+  `NetworkSession::Create`/`Find`/`Join` whenever a `GamerServicesComponent` is
+  present; `NetworkGamer.IsHost`/`.Id` are hardcoded stub constants; the initial
+  `GamerJoined` event is queued instead of synchronous) and one `cna-samples`
+  build-wiring gap (`CNA_ENABLE_NET`/`CNA_Net` never set/linked by this repo's own
+  CMake — fixed directly in `CMakeLists.txt`/`cmake/SampleHelpers.cmake`, since
+  that's this repo's own file, not `cna`'s). All three CNA gaps were found by
+  actually building and running the sample against real API calls, not by reading
+  headers/tests alone — worth remembering alongside this session's earlier
+  "verify DEFERRED.md claims live" lesson: even a working, tested API surface can
+  hide integration bugs that only show up when a real caller (a whole sample, not
+  a unit test) exercises it end to end. 47th sample target now wired in. Debugging
+  used `fprintf`+`fflush` tracing directly (not screenshots) to pin down an
+  infinite-loop hang that produced no error output — screenshots/`xdotool` alone
+  couldn't have distinguished "hung" from "this shared desktop's X server/input
+  is being flaky again," which is exactly what made this one hard to diagnose at
+  first.
 
 ### Previous session
 - Added `samples/NinjAcademy/` (#065), `samples/CardsStarterKit/` (#069),
@@ -425,15 +446,40 @@ No lint/format command and no automated test suite are configured in this repo.
    with reliable local input should confirm the full record/playback loop.
    PLAN.md status flipped to ✅ Done; root `CMakeLists.txt` line uncommented.
 
-2. **Port ClientServerSample (#091), NetworkPrediction (#100), and/or PeerToPeer
-   (#103) — also unblocked.** `cna`'s `feature/net` branch (merged 2026-07-04) added
-   a full `NetworkSession`/`GamerServicesComponent`/`SystemLink` LAN-discovery
-   implementation — DEFERRED.md item #17 is resolved, confirmed the same way.
-   ClientServerSample is the simplest of the three (single authoritative server, no
-   prediction/lockstep) — start there.
-   - Files: new `samples/ClientServerSample/src/`; see its `missing.md`.
-   - Verify: `cmake --build cmake-build-debug --target ClientServerSample_cna_samples`;
-     run two instances on the same LAN segment to confirm session discovery/join.
+2. **✅ DONE (2026-07-06): Port ClientServerSample (#091).** Ported and live-verified
+   (screenshot: session created, tank spawned, sprites render, no crash over an 8+
+   second monitored run). Surfaced 3 real CNA gaps in the process — all worked
+   around at the sample level, all documented in `samples/ClientServerSample/
+   missing.md` and DEFERRED.md items #19–21: (a) `GamerServicesDispatcher::Update()`
+   is a no-op, so `NetworkSession::Create/Find/Join` hangs forever in a busy-loop
+   *whenever a `GamerServicesComponent` is added* (the C# original's own standard
+   boilerplate!) — worked around by simply not adding one, which loses no
+   functionality in this CNA implementation; (b) `NetworkGamer.IsHost`/`.Id` are
+   hardcoded stub constants (always `true`/`0`), not per-instance state — `IsHost`
+   worked around with a locally-tracked `bool isHost_`, but `Id`/`FindGamerById`
+   is NOT worked around and will misroute state in sessions with >1 gamer (solo
+   sessions are unaffected and were what got verified); (c) the initial
+   `GamerJoined` event is queued for the *next* frame instead of raised
+   synchronously during `Create()`/`Join()` like real XNA — worked around with one
+   extra `networkSession_->Update()` call right after subscribing to events. Also
+   fixed a `cna-samples`-side build-wiring gap: `CNA_Net`/`CNA_GamerServices` are
+   separate CMake targets in `cna` gated behind `CNA_ENABLE_NET` (off by default)
+   and never linked by `cna_add_sample()` — fixed in this repo's root
+   `CMakeLists.txt` and `cmake/SampleHelpers.cmake`, needed by all 4 networking
+   samples. **Not verified this session:** `JoinSession()`/actual 2-machine LAN
+   discovery (would need two running instances) — a good next step for whoever
+   picks up NetworkPrediction/PeerToPeer, since those 3 gaps likely apply there too.
+
+2b. **Port NetworkPrediction (#100), and/or PeerToPeer (#103) — also unblocked.**
+   Read `samples/ClientServerSample/missing.md` and DEFERRED.md items #19–21 first
+   — the same 3 workarounds (no `GamerServicesComponent`; track host locally, not
+   via `gamer.IsHost`; flush the session once after `HookSessionEvents()`) will
+   very likely be needed again.
+   - Files: new `samples/NetworkPrediction/src/` or `samples/PeerToPeer/src/`; see
+     each one's own `missing.md`.
+   - Verify: `cmake --build cmake-build-debug --target NetworkPrediction_cna_samples`
+     (or `PeerToPeer_cna_samples`); ideally also attempt the 2-instance LAN-join
+     path ClientServerSample didn't get to.
    - Note: NetRumble (#062) is now only single-blocked (still needs item #11's
      shader pipeline for its bloom post-process) — not yet a "next pick", but no
      longer double-blocked.

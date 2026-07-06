@@ -49,6 +49,14 @@ function(cna_add_sample target_name)
         target_link_libraries(${full_target} PRIVATE SDL3::SDL3main)
     endif()
 
+    # CNA_Net (NetworkSession, PacketWriter/Reader, ...) pulls in CNA_GamerServices
+    # (GamerServicesComponent, Guide, SignedInGamer, ...) transitively via its own
+    # PUBLIC link — only samples that actually call into Microsoft::Xna::Framework::Net
+    # need this, but linking it unconditionally when the target exists is harmless.
+    if(TARGET CNA_Net)
+        target_link_libraries(${full_target} PRIVATE CNA_Net)
+    endif()
+
     if(WIN32)
         set_target_properties(${full_target} PROPERTIES WIN32_EXECUTABLE TRUE)
         if(COMMAND cna_copy_sdl_runtime)

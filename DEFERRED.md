@@ -457,7 +457,25 @@ porting. NetRumble (#062) is now only single-blocked, by item 11 (its 4 custom
 `.fx` shaders, including the bloom post-process) — update its `missing.md` to drop
 the networking half of its "double-blocked" framing.
 
-**Effort:** — (done in `cna`)
+**Update, same day, after actually porting ClientServerSample:** "the types exist
+and are tested" turned out to be true but incomplete — three more specific,
+narrower gaps surfaced only once a real sample was built and *run* against them,
+each documented as its own item since they're independently fixable: item 19
+(`GamerServicesDispatcher::Update()` no-op hangs the synchronous `Create`/`Find`/
+`Join` wrappers whenever a `GamerServicesComponent` is present — i.e., whenever a
+sample matches its own C# original's real usage), item 20 (`NetworkGamer.IsHost`/
+`.Id` are hardcoded stub constants, not per-instance state), and item 21 (the
+initial `GamerJoined` event is queued for the next frame instead of raised
+synchronously during `Create()`/`Join()`, unlike real XNA). ClientServerSample
+works around all three at the sample level (see its `missing.md`) and is fully
+ported and live-verified; the other three networking samples likely need the same
+workarounds but haven't been individually re-confirmed yet. **Lesson reinforced:**
+even a "the API surface exists and has tests" confirmation isn't the same as "a
+real caller integrating it works" — building and running an actual sample against
+new API surface can surface gaps that isolated unit tests didn't exercise.
+
+**Effort:** — (done in `cna`) for the core types; see items 19–21 for the narrower
+gaps found integrating them.
 
 ---
 
@@ -496,6 +514,139 @@ extensibility yet).
 
 ---
 
+## 19. `NetworkSession::Create`/`Find`/`Join` hang forever when a `GamerServicesComponent` is added
+
+**What is missing:** confirmed live (2026-07-06) while porting ClientServerSample
+(#091): calling `NetworkSession::Create(...)` after constructing a
+`GamerServicesComponent` and adding it to `Game.Components` — exactly what every one
+of these samples' C# originals do in their constructor
+(`Components.Add(new GamerServicesComponent(this));`) — hangs forever in a tight
+busy-loop, 99% CPU, no output, unresponsive to SIGTERM. Root cause, confirmed by
+reading the source directly: `NetworkSession::Create()`'s synchronous wrapper is
+```cpp
+System::IAsyncResult* result = BeginCreate(...);
+while (!result->getIsCompletedProperty())
+{
+    if (!GamerServices::GamerServicesDispatcher::UpdateAsync())
+        activeAction_->setIsCompletedProperty(true);
+}
+return EndCreate(result);
+```
+`GamerServicesDispatcher::UpdateAsync()` is `{ if (isInitialized_) Update(); return isInitialized_; }`, and `GamerServicesDispatcher::Update()` is a **completely empty function body** — it does nothing at all, ever. `BeginCreate()` never sets `IsCompleted` itself (it just constructs a `NetworkSessionAction` and returns). So: with no `GamerServicesComponent` (dispatcher never initialized), `UpdateAsync()` returns `false` on the very first loop iteration, which forces `IsCompleted = true`, and the loop exits immediately (this is *why* CNA's own `NetworkSessionTests.cpp` — which never constructs a `GamerServicesComponent` — doesn't hit this). But with a `GamerServicesComponent` added (matching every sample's own C# original), `isInitialized_` becomes `true`, `UpdateAsync()` unconditionally returns `true` forever, and nothing — nowhere in the codebase — ever sets `IsCompleted` on that pending action. The loop never exits.
+
+**Where to implement:** `cna/src/Microsoft/Xna/Framework/GamerServices/GamerServicesDispatcher.cpp`'s `Update()` needs to actually do something when a `NetworkSession` action is pending — at minimum, poll the ENet backend for whether the requested operation (host bind, LAN session discovery, join handshake) has completed and call `activeAction_->setIsCompletedProperty(true)` once it has, mirroring what a real synchronous completion would look like.
+
+**Workaround used in ClientServerSample (#091):** don't construct/add a
+`GamerServicesComponent` at all. Confirmed this loses no other functionality in this
+CNA implementation (the component has no other observable effect — `Guide.ShowSignIn`
+is independently a no-op regardless of whether the component exists, per item 15-
+adjacent findings). This is a real, documented deviation from the C# original (see
+`samples/ClientServerSample/missing.md`), not a silent workaround.
+
+**Blocked samples:** ClientServerSample (#091, workaround applied, ported), and
+presumably NetworkPrediction (#100), PeerToPeer (#103), NetRumble (#062) — all four
+call `NetworkSession::Create`/`Find`/`Join` the same synchronous way and all four
+C# originals add a `GamerServicesComponent`; the same workaround (omit it) should
+apply, but hasn't been separately confirmed live for the other three yet.
+
+**Effort:** M — `GamerServicesDispatcher::Update()` needs real logic, not a bigger
+architectural change.
+
+---
+
+## 20. `NetworkGamer` identity is not distinguishable (`IsHost` always true, `Id` always 0)
+
+**What is missing:** confirmed by reading `cna/src/Microsoft/Xna/Framework/Net/
+NetworkGamer.cpp` directly:
+```cpp
+bool NetworkGamer::getIsHostProperty() const              { return true; }
+SharpRuntime::bytecs NetworkGamer::getIdProperty() const  { return 0; }
+```
+Both are **hardcoded stub constants**, not derived from any actual state (doc
+comments call this "matching FNA's stub" — plausible for real FNA/XNA without a live
+Xbox LIVE/GfWL backing service, but it means every `NetworkGamer` in a session
+— host and every client — reports `IsHost == true` and `Id == 0`, with no way to
+tell them apart via these two properties. Consequences, both confirmed by reading
+the code (not merely inferred):
+- `NetworkSession::getIsHostProperty()` is implemented as "true if any local gamer's
+  `IsHost` is true" — since that's unconditionally true, `NetworkSession.IsHost` is
+  **also always true**, on every machine, host or client.
+- `NetworkSession::FindGamerById(id)` does a linear `getIdProperty() == id` scan —
+  since every gamer's `Id` is 0, this **always returns the first gamer in
+  `AllGamers`**, regardless of which `id` was actually requested. Any protocol that
+  writes `gamer.Id` into a packet and looks it back up on the receiving end (e.g.
+  ClientServerSample's/NetworkPrediction's/PeerToPeer's per-tank state sync) will
+  misroute every gamer's state onto the first gamer whenever more than one gamer is
+  in the session.
+
+**Workaround used in ClientServerSample (#091):** for "am I the host" (session-level),
+track a local `bool isHost_` set explicitly at the call site — `true` after
+`NetworkSession::Create()`, `false` after `NetworkSession::Join()` — since each
+machine always knows unambiguously which one it called, this fully replaces the
+broken `NetworkSession.IsHost`/`gamer.IsHost` for this sample's needs. No workaround
+was applied for `FindGamerById`/`Id` — the port keeps the original's `gamer.Id`-based
+wire protocol as-is (matching the C# source), so **multi-gamer sessions will not
+correctly route tank state past the first gamer** until this is fixed in `cna`; this
+is a known, documented, unfixed limitation for that one scenario (see
+`samples/ClientServerSample/missing.md`). Single-gamer (solo host, no other clients
+joined) sessions are unaffected and were live-verified working.
+
+**Where to implement:** `NetworkGamer` needs a real per-instance identity — e.g. an
+`isHost_` bool member correctly set at construction (mirroring `NetworkSession::
+host_`, which *is* tracked correctly) and returned by `getIsHostProperty()` instead of
+a hardcoded `true`; and a real per-session-unique `byte` id assigned when each gamer
+joins (local or remote) and returned by `getIdProperty()` instead of a hardcoded `0`.
+
+**Blocked samples:** ClientServerSample (#091, `IsHost` worked around, `Id`/
+`FindGamerById` not), and likely NetworkPrediction (#100), PeerToPeer (#103),
+NetRumble (#062) to varying degrees depending on whether each protocol relies on
+`gamer.Id`/`FindGamerById` for multi-gamer state routing — not separately confirmed
+for those three yet.
+
+**Effort:** M.
+
+---
+
+## 21. Initial `GamerJoined` event is queued for the next `Update()`, not raised synchronously during `Create()`/`Join()`
+
+**What is missing:** in real XNA, `NetworkSession.Create()`/`.Join()` synchronously
+establish the initial local gamer(s) and raise `GamerJoined` for each one as part of
+that same call — by the time `Create()` returns, code relying on `GamerJoined`
+having already fired (e.g. a `Tag` set by the handler) can safely assume it's done.
+CNA's `NetworkSession` constructor instead *queues* a `GamerJoin` `NetworkEvent` per
+initial gamer into an internal `std::queue`, which is only drained by
+`NetworkSession::Update()` — i.e., not until the *next* frame's `networkSession.
+Update()` call in the ported sample's own game loop, one full `Update()` cycle after
+`Create()`/`Join()` returns.
+
+**Consequence, confirmed live:** a sample whose `Update()` loop is structured like
+the original (read/act on each local gamer via its `Tag` *before* calling
+`networkSession.Update()` — exactly ClientServerSample's `UpdateNetworkSession()`
+shape) will find an empty `Tag` (`std::any` holding nothing) on the very first
+network-session frame, since the handler that populates it hasn't run yet. Observed
+as an uncaught `std::bad_any_cast` terminating the process.
+
+**Workaround used in ClientServerSample (#091):** call `networkSession_->Update();`
+once, immediately after `HookSessionEvents()`, inside both `CreateSession()` and
+`JoinSession()` — this drains the queued initial `GamerJoin` event(s) synchronously
+before control returns to the normal per-frame loop, matching what real XNA does
+implicitly. Confirmed live: with this fix, session creation + tank spawn + render
+all work end-to-end with no crash (screenshot-verified).
+
+**Where to implement:** `NetworkSession`'s constructor could raise `GamerJoined`
+directly for each initial local gamer instead of only queuing a `NetworkEvent`, or
+`Create()`/`Join()`'s synchronous wrappers could drain the queue once before
+returning — either would remove the need for every calling sample to work around it.
+
+**Blocked samples:** ClientServerSample (#091, workaround applied, ported); likely
+also affects NetworkPrediction (#100) and PeerToPeer (#103) if they have a similar
+"read local gamer state before pumping the session" loop shape — not separately
+confirmed for those two yet.
+
+**Effort:** S.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -518,3 +669,6 @@ extensibility yet).
 | 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
 | 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
 | 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |
+| 19 | GamerServicesDispatcher::Update() no-op hangs NetworkSession::Create/Find/Join | cna | M | ClientServerSample (worked around: omit GamerServicesComponent), NetworkPrediction, PeerToPeer, NetRumble | not started |
+| 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample (IsHost worked around; Id/FindGamerById not — breaks multi-gamer routing), NetworkPrediction, PeerToPeer, NetRumble | not started |
+| 21 | Initial GamerJoined event queued, not synchronous | cna | S | ClientServerSample (worked around: extra session.Update() call), NetworkPrediction, PeerToPeer | not started |

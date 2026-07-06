@@ -24,6 +24,12 @@ set(CNA_BUILD_TESTS         OFF CACHE BOOL "Build CNA tests"         FORCE)
 set(CNA_BUILD_EXAMPLES      OFF CACHE BOOL "Build CNA examples"      FORCE)
 set(SHARP_RUNTIME_BUILD_TESTS OFF CACHE BOOL "Build sharp-runtime tests" FORCE)
 
+# CNA_Net/CNA_GamerServices (NetworkSession, GamerServicesComponent, Guide, ...) are
+# separate CMake targets in cna, gated behind this option and OFF by default. Several
+# samples (ClientServerSample, NetworkPrediction, PeerToPeer, and eventually NetRumble)
+# need them.
+set(CNA_ENABLE_NET          ON  CACHE BOOL "Enable CNA Net/GamerServices targets" FORCE)
+
 add_subdirectory(../cna CNA_BUILD)
 
 # Re-export the backend target name that CNA sets internally so that
@@ -162,6 +168,6 @@ add_subdirectory(samples/Orientation)
 # add_subdirectory(samples/AccelerometerSample)
 # add_subdirectory(samples/TiltPerspective)
 add_subdirectory(samples/MicrophoneEcho)
-# add_subdirectory(samples/ClientServerSample)
+add_subdirectory(samples/ClientServerSample)
 # add_subdirectory(samples/NetworkPrediction)
 # add_subdirectory(samples/PeerToPeer)
