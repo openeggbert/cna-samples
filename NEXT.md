@@ -133,12 +133,28 @@ container (not a regression) — see `samples/ClientServerSample/missing.md`.
 Item #21 (`GamerJoined` queued, not synchronous) was investigated in `cna` in depth
 and found to require either a `sharp-runtime` change (needs the user's direct
 sign-off) or accepting the sample's existing extra `Update()`-after-subscribing call
-as the permanent, correct pattern — kept as-is. Updated `DEFERRED.md` items #19–21 and
+as the permanent, correct pattern. Updated `DEFERRED.md` items #19–21 and
 the summary table. Commit `3197b06`, pushed to `develop`.
+
+**Same-day follow-up: the user approved the `sharp-runtime` change, and it landed.**
+`sharp-runtime`'s `EventHandler<T>` gained a generic, opt-in `SetReplayHook()`
+(`develop` commit `69661c2`); `cna`'s `NetworkSession` constructor now uses it so
+`GamerJoined` replays immediately on subscription, matching real XNA (`feature/net`
+commit `ab05395`). Removed `ClientServerSample`'s last remaining workaround too — the
+`networkSession_->Update();` call right after `HookSessionEvents()` — confirmed live
+it's genuinely unnecessary now. `xdotool` was unreliable on this shared desktop again
+this round (tried real keypresses, a fully isolated `Xvfb :77` display with no window
+manager, both failed identically — confirmed environmental, not a regression); fell
+back to this repo's own established debug-auto-trigger pattern (temporary, removed
+before commit) to verify live: session creation → immediate `GamerJoined` → tank
+spawn → render, no crash, no manual `Update()` needed. `ClientServerSample` now has
+**zero** of its original three DEFERRED.md workarounds. Updated `DEFERRED.md` item
+#21 (now ✅ resolved) and `missing.md`. Commit `ef1e930`, pushed to `develop`.
+
 **Not done this session:** re-attempting NetworkPrediction (#100)/PeerToPeer (#103)
-— both share the same three gaps and are now easier to port (2 of 3 workarounds no
-longer needed), but porting two new samples from scratch is a separate, larger task
-than this session's cleanup scope; a natural next step if the user wants it.
+— both share the same three gaps and are now easier to port than ever (all 3
+workarounds gone), but porting two new samples from scratch is a separate, larger
+task than this session's cleanup scope; a natural next step if the user wants it.
 
 Most recent full porting session (2026-07-06), in order:
 - Fixed `InputReporter`'s full-repo build failure: it read `GamePadCapabilities`
@@ -190,8 +206,8 @@ Most recent full porting session (2026-07-06), in order:
 Commits this session (newest first): `eee6769`, `155bc18`, `d9a2baf`, `580283c`,
 `4dd7ceb`, `d747356`. All pushed to `develop`.
 
-Commit from the newest follow-up session (see the top entry above): `3197b06`,
-pushed to `develop`.
+Commits from the newest follow-up session (see the top entry above): `3197b06`,
+`ef1e930`. Both pushed to `develop`.
 
 ---
 
@@ -423,17 +439,20 @@ No lint/format command and no automated test suite are configured in this repo.
      screenshot, not a thin line.
 
 3. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
-   - Goal: two of ClientServerSample's three workarounds are gone now (DEFERRED.md
-     #19/#20 fixed upstream in `cna` — see section 3's newest entry): a real
-     `GamerServicesComponent` can be constructed normally, and
-     `networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()` can be used
-     directly instead of a local tracking bool. Only the third workaround (one extra
-     `Update()` call right after hooking events, item #21) is still needed — and is
-     now understood to be the permanent, correct pattern, not a stopgap.
+   - Goal: all three of ClientServerSample's original workarounds are gone now
+     (DEFERRED.md #19/#20/#21 all fixed upstream in `cna`/`sharp-runtime` — see
+     section 3's newest entries): a real `GamerServicesComponent` can be constructed
+     normally, `networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()`
+     can be used directly instead of a local tracking bool, and `GamerJoined`
+     replays immediately on subscription (no manual `Update()` call needed right
+     after hooking events). These two new samples should need **zero**
+     networking-related workarounds — a good test of whether that claim actually
+     holds for their own `Update()` loop shape.
    - **Before starting:** make sure `../cna`'s checkout actually has these fixes —
      either `git -C ../cna checkout feature/net` (what this session used, not merged
      to `develop` yet) or check whether someone has since merged `feature/net` →
-     `develop` there.
+     `develop` there. Also confirm `../sharp-runtime` (relative to `../cna`) is on a
+     `develop` that includes commit `69661c2` (`EventHandler::SetReplayHook`).
    - Files: new `samples/NetworkPrediction/src/` or `samples/PeerToPeer/src/`;
      read `samples/ClientServerSample/missing.md` and DEFERRED.md items #19–21
      first.
