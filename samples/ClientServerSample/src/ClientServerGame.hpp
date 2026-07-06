@@ -18,7 +18,6 @@
 #include <Microsoft/Xna/Framework/GamerServices/GamerServicesComponent.hpp>
 #include <Microsoft/Xna/Framework/GamerServices/Gamer.hpp>
 #include <Microsoft/Xna/Framework/GamerServices/SignedInGamer.hpp>
-#include <Microsoft/Xna/Framework/GamerServices/SignedInGamerCollection.hpp>
 #include <Microsoft/Xna/Framework/Net/NetworkSession.hpp>
 #include <Microsoft/Xna/Framework/Net/NetworkSessionType.hpp>
 #include <Microsoft/Xna/Framework/Net/NetworkSessionProperties.hpp>
@@ -51,28 +50,24 @@ namespace ClientServer {
 
 class ClientServerGame : public Game {
 public:
-    ClientServerGame()
-        // Synthesizes one signed-in local profile, since CNA's Guide::ShowSignIn is a
-        // no-op that can never itself produce one (see missing.md) — done here so it
-        // exists before any Update() call could try to create/join a session.
-        : localSignedInGamer_(SignedInGamer::CreateInternal("Player", false, false, PlayerIndex::One)) {
+    ClientServerGame() {
         graphics_ = std::make_unique<GraphicsDeviceManager>(this);
         graphics_->setPreferredBackBufferWidthProperty(kScreenWidth);
         graphics_->setPreferredBackBufferHeightProperty(kScreenHeight);
 
         getContentProperty().setRootDirectoryProperty("Content");
 
-        // Deliberately NOT adding a GamerServicesComponent here, unlike the C# original
-        // (`Components.Add(new GamerServicesComponent(this));`). Confirmed by live
-        // testing (see missing.md) that doing so hangs every NetworkSession::Create/
-        // Find/Join call forever in an infinite busy-loop: CNA's
-        // GamerServicesDispatcher::Update() is a complete no-op, so once a
-        // GamerServicesComponent sets its `isInitialized_` flag, nothing ever
-        // satisfies the synchronous wrapper's completion-polling loop. Omitting it
-        // loses no functionality in this CNA implementation — GamerServicesComponent
-        // has no other observable effect here — but avoids the hang entirely.
-        Gamer::setSignedInGamersProperty(new SignedInGamerCollection(
-            SignedInGamerCollection::CreateInternal({&localSignedInGamer_})));
+        // Matches the C# original's own `Components.Add(new GamerServicesComponent(this));`.
+        // Previously omitted entirely: confirmed by live testing that doing so used to hang
+        // every NetworkSession::Create/Find/Join call forever (CNA's own
+        // GamerServicesDispatcher::Update() no-op never completed the synchronous wrapper's
+        // polling loop once a GamerServicesComponent existed). Fixed upstream in cna_net
+        // (Task 12.1, DEFERRED.md item #19) — this component is now safe to add, and its real
+        // Initialize() populates Gamer::SignedInGamers with 4 stub gamers before this game's
+        // first Update() call, so the manual SignedInGamers override this sample previously
+        // needed is gone too. See missing.md.
+        gamerServices_ = std::make_unique<GamerServicesComponent>(*this);
+        getComponentsProperty().Add(gamerServices_.get());
     }
 
     const std::string& GetTypeName() const override {
@@ -145,19 +140,10 @@ private:
 
     std::string errorMessage_;
 
-    // CNA workaround: NetworkGamer::IsHost is a hardcoded stub that always returns true
-    // (confirmed by reading cna/src/.../NetworkGamer.cpp — matches FNA's own stub, but
-    // means NetworkSession::IsHost/gamer.IsHost can't distinguish host from client here).
-    // Since this machine always knows whether *it* called Create() (host) or Join()
-    // (client), track that directly instead — see missing.md for the full writeup.
-    bool isHost_ = false;
-
     // Ownership for the Tank objects referenced by each NetworkGamer's Tag (std::any).
     std::vector<std::unique_ptr<Tank>> tanks_;
 
-    // Note: no GamerServicesComponent member — deliberately not constructed, see the
-    // constructor's comment.
-    SignedInGamer localSignedInGamer_;
+    std::unique_ptr<GamerServicesComponent> gamerServices_;
 
     std::optional<Texture2D> helpTexture_;
     float helpTimer_ = 0.0f;
@@ -181,13 +167,14 @@ private:
         try {
             networkSession_ = NetworkSession::Create(NetworkSessionType::SystemLink,
                                                       kMaxLocalGamers, kMaxGamers);
-            isHost_ = true;
             HookSessionEvents();
             // Flush the initial GamerJoin event(s) for our own local gamer(s) now,
-            // rather than waiting for the next Update() — see missing.md: CNA queues
-            // these instead of raising them synchronously during Create()/Join() like
-            // real XNA does, so without this, UpdateLocalGamer() below would read an
-            // empty Tag on the very first frame.
+            // rather than waiting for the next Update() — this is the permanent,
+            // correct pattern (not a stopgap): real XNA's GamerJoined replays itself
+            // immediately upon subscription for every gamer already in the session,
+            // which CNA's plain System::EventHandler<T> has no hook to reproduce (see
+            // cna_net's plan_net.md Task 12.3 investigation). Without this call,
+            // UpdateLocalGamer() below would read an empty Tag on the very first frame.
             networkSession_->Update();
         } catch (const System::Exception& e) {
             errorMessage_ = e.getMessageProperty();
@@ -209,7 +196,6 @@ private:
 
             // Join the first session we found.
             networkSession_ = NetworkSession::Join(&availableSessions[0]);
-            isHost_ = false;
             HookSessionEvents();
             // See CreateSession()'s comment: flush the initial GamerJoin event(s) now.
             networkSession_->Update();
@@ -262,7 +248,7 @@ private:
 
         // If we are the server, update all the tanks and transmit their latest
         // positions back out over the network.
-        if (isHost_) {
+        if (networkSession_->getIsHostProperty()) {
             UpdateServer();
         }
 
@@ -275,7 +261,7 @@ private:
 
         // Read any incoming network packets.
         for (LocalNetworkGamer* gamer : networkSession_->getLocalGamersProperty()) {
-            if (isHost_) {
+            if (networkSession_->getIsHostProperty()) {
                 ServerReadInputFromClients(gamer);
             } else {
                 ClientReadGameStateFromServer(gamer);
@@ -294,7 +280,7 @@ private:
 
         // Only send if we are not the server. There is no point sending packets to
         // ourselves, because we already know what they will contain!
-        if (!isHost_) {
+        if (!networkSession_->getIsHostProperty()) {
             // Write our latest input state into a network packet.
             packetWriter_.Write(localTank->TankInput);
             packetWriter_.Write(localTank->TurretInput);
@@ -422,10 +408,13 @@ private:
             Color labelColor = Color(0, 0, 0, 255);
             Vector2 labelOffset(100.0f, 150.0f);
 
-            // NOTE: gamer->getIsHostProperty() always returns true in CNA today (see
-            // missing.md) so it cannot be used to label the real remote host. Only tag
-            // *this machine's own* gamer, using the locally-tracked isHost_ flag.
-            if (isHost_ && gamer->getIsLocalProperty())
+            // Matches the C# original exactly: gamer->getIsHostProperty() is now real
+            // per-instance state (cna_net Task 12.2), correct for every *local* gamer.
+            // Residual, documented cna_net limitation: a *remote* gamer representing the
+            // actual host still reports IsHost == false as seen from a client machine (the
+            // wire roster carries no host flag), so a client won't see "(server)" on the
+            // host's own tank — this machine's own gamer is always labeled correctly.
+            if (gamer->getIsHostProperty())
                 label += " (server)";
 
             // Flash the gamertag to yellow when the player is talking.
