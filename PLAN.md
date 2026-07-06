@@ -163,8 +163,8 @@ in `ignored.md` (never gets a directory).
 
 | Category | Count | Where |
 |---|---|---|
-| Done (real port, builds) | 47 | this file |
-| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 11 | this file |
+| Done (real port, builds) | 48 | this file |
+| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 10 | this file |
 | 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 28 | this file |
 | Ignored — never gets a directory | 67 | `ignored.md` |
 | **Total** | **153** | |
@@ -279,7 +279,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 |---|---|---|---|
 | 050 | SimpleAnimation | `SimpleAnimation_4_0` | 🚧 Placeholder — see `samples/SimpleAnimation/missing.md` |
 | 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | 🚧 Placeholder — see `samples/CustomModelAnimation/missing.md` |
-| 052 | CustomModelClass | `CustomModelClassSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/CustomModelClass/missing.md` |
+| 052 | CustomModelClass | `CustomModelClassSample_4_0` | ✅ Done (ported 2026-07-06; renders correctly except the pre-existing CameraShake near-plane clipping bug, same asset) |
 | 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | 🚧 Placeholder — see `samples/CustomModelEffect/missing.md` |
 | 054 | SkinningSample | `SkinningSample_4_0` | 🚧 Placeholder — see `samples/SkinningSample/missing.md` |
 | 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | 🚧 Placeholder — see `samples/SkinnedModelExtensions/missing.md` |
@@ -401,13 +401,13 @@ Full per-directory listing with reasons: [`ignored.md`](ignored.md).
 | Phase 1 — Foundation | 12 | 10 | 0 | 1 | 1 |
 | Phase 2 — 2D Games | 18 | 16 | 0 | 2 | 0 |
 | Phase 3 — 3D Graphics | 19 | 1 | 5 | 13 | 0 |
-| Phase 4 — Models & Anim | 9 | 0 | 3 | 6 | 0 |
+| Phase 4 — Models & Anim | 9 | 1 | 2 | 6 | 0 |
 | Phase 5 — Audio | 2 | 2 | 0 | 0 | 0 |
 | Phase 6 — Full Games | 14 | 8 | 1 | 3 | 2 |
 | Phase 7 — Advanced / Misc | 10 | 8 | 0 | 1 | 1 |
 | Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 2 | 2 | 2 | 21 |
 | Everything else (archives/art/dup/non-code — see `ignored.md`) | 42 | 0 | 0 | 0 | 42 |
-| **Total** | **153** | **47** | **11** | **28** | **67** |
+| **Total** | **153** | **48** | **10** | **28** | **67** |
 
 ---
 

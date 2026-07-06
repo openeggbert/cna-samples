@@ -214,6 +214,15 @@ model loading and rendering, and `GraphicsDeviceManager.SupportedOrientations`/
   couldn't have distinguished "hung" from "this shared desktop's X server/input
   is being flaky again," which is exactly what made this one hard to diagnose at
   first.
+- **Ported CustomModelClass (#052)** — real `samples/CustomModelClass/src/` now
+  exists; 48th sample target wired in. Ported using stock `Model`/`BasicEffect`
+  instead of the C# original's own `CustomModel` replacement class (see item #18);
+  reused `tank.model.json` byte-for-byte from `samples/CameraShake/Content/`, no new
+  conversion. Builds/runs clean, but a screenshot showed the tank rendering as a thin
+  diagonal line — confirmed (side-by-side screenshot with CameraShake, which renders
+  the same asset) this is the *same* already-tracked near-plane clipping bug, not a
+  new one, and importantly **not CameraShake-specific** — see section 5 and section 8
+  item 3 for why this now matters for the other 8 unblocked lighting samples too.
 
 ### Previous session
 - Added `samples/NinjAcademy/` (#065), `samples/CardsStarterKit/` (#069),
@@ -313,8 +322,15 @@ CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) are blocked on:
   bug report earlier this session (Orientation). Fall back to build success + an
   idle-render screenshot when live interaction can't be confirmed.
 - **CONFIRMED, framework gap** — CameraShake has a near-plane clipping bug in the
-  EasyGL backend (a white stripe where geometry should render); not yet root-caused.
-  Exact file/function not yet identified — needs investigation first.
+  EasyGL backend (a thin diagonal line/dashes where the tank model should render);
+  not yet root-caused. Exact file/function not yet identified — needs investigation
+  first. **Confirmed 2026-07-06 to also affect CustomModelClass** (#052, ported this
+  session) — same `tank.model.json` asset, identical artifact in the identical
+  screen position when screenshotted side by side with CameraShake. Likely affects
+  any sample rendering this tank asset (or any `VertexPositionNormalTexture` model)
+  via the EasyGL backend, not just CameraShake specifically — worth re-checking once
+  fixed against both samples, and probably the other 8 newly-unblocked lighting
+  samples too before assuming any of them render correctly.
 - **CONFIRMED, framework gap** — the Vulkan backend discards the first of two
   `SpriteBatch.Begin()/End()` blocks issued in the same frame. The default EasyGL
   backend is unaffected; several samples (e.g. NinjAcademy, HoneycombRush) rely on
@@ -484,26 +500,51 @@ No lint/format command and no automated test suite are configured in this repo.
      shader pipeline for its bloom post-process) — not yet a "next pick", but no
      longer double-blocked.
 
-3. **Port any of 9 newly-unblocked Phase 3/4/6 lighting samples.** A live build+run
-   of `cna_test_easygl_basiceffect_combinations` (2026-07-06) proved CNA's
+3. **🔨 IN PROGRESS (2026-07-06): Port any of 11 currently-unblocked samples.** A
+   live build+run of `cna_test_easygl_basiceffect_combinations` proved CNA's
    `VertexPositionNormalTexture` lit-rendering path already works in the EasyGL
-   backend (case "(e) Directional lighting", exit code 0) — DEFERRED.md item #5 is
-   resolved for every sample that renders via `Content.Load<Model>` (all 9 below
-   do). None of these need any CNA change; each `missing.md` already has the
-   correction and exact call-site citations:
-   - **LensFlare (#041)**, **Graphics3D (#046)**, **PickingSample (#047)**,
-     **TrianglePicking (#048)**, **HeightmapCollision (#049)** — Phase 3, all
-     single-model-plus-lighting demos, likely similar effort to each other.
-   - **CustomModelClass (#052)**, **InverseKinematics (#057)**,
-     **ChaseCamera (#058)** — Phase 4, also unblocked; CustomModelClass's own
-     custom XNA content type should just be ported using the standard
-     `tools/obj2model.py` + stock `Model` (no CNA content-pipeline extensibility
-     exists — see item #18 — so don't try to replicate the C# original's custom
-     processor).
-   - **MarbleMaze (#061)** — Phase 6; port `Source/EX2_Polishing/End/` specifically
-     (the final polished build, not the earlier `EX1`/tutorial stages — see its
-     `missing.md`). No `.htm` exists for this one; do not fabricate one.
+   backend — DEFERRED.md item #5 is resolved for every sample that renders via
+   `Content.Load<Model>`. None of the 9 lighting ones below need any CNA change;
+   each `missing.md` already has the correction and exact call-site citations.
+   Discussed relative effort with the user (2026-07-06) before picking one — recorded
+   here so a future session doesn't have to re-derive it:
+   - **Simplest picks:** **CustomModelClass (#052)** — one tank model, no extra
+     logic (its own custom XNA content type should just be ported using the
+     standard `tools/obj2model.py` + stock `Model` — no CNA content-pipeline
+     extensibility exists, see item #18, so don't try to replicate the C#
+     original's custom processor). **LensFlare (#041)** — one terrain model + an
+     occlusion-query component to detect the sun behind it.
+   - **Moderate:** **InverseKinematics (#057)** — CCD algorithm on a cylinder chain;
+     has an optional avatar-IK half that's already confirmed non-blocking and can
+     just be skipped/stubbed. **ChaseCamera (#058)** — ship + ground models, a
+     spring-physics chase camera. **PickingSample (#047)** / **TrianglePicking
+     (#048)** — several models + ray-picking (per-triangle for the second).
+     **HeightmapCollision (#049)** — terrain + sphere, heightmap-based collision.
+   - **More code:** **Graphics3D (#046)** — ship with 3 lights plus its own small
+     2D UI (buttons/checkboxes), more surface area than the others.
+   - **Most involved:** **MarbleMaze (#061)** — a full physics-based marble-in-maze
+     game; port `Source/EX2_Polishing/End/` specifically (the final polished build,
+     not the earlier `EX1`/tutorial stages — see its `missing.md`). No `.htm`
+     exists for this one; do not fabricate one.
+   - **NetworkPrediction (#100)**, **PeerToPeer (#103)** — also unblocked (item 17),
+     but expect to need the same 3 workarounds ClientServerSample needed (no
+     `GamerServicesComponent`; track host locally; flush the session once after
+     hooking events) — see `samples/ClientServerSample/missing.md` and DEFERRED.md
+     items #19–21 first.
    - Verify per sample: `cmake --build cmake-build-debug --target <Name>_cna_samples`.
+   - **✅ CustomModelClass (#052) done (2026-07-06).** Builds and runs with 0
+     warnings, code is correct (ported using stock `Model`/`BasicEffect`, copied
+     `tank.model.json` straight from `samples/CameraShake/Content/` — no new asset
+     conversion). **But it visually renders as a thin diagonal line, not a tank** —
+     confirmed (screenshot side-by-side) this is the *exact same*, already-tracked
+     CameraShake near-plane-clipping bug (section 5), not a new regression from this
+     port. This means the near-plane clipping bug is **not CameraShake-specific** —
+     it affects this tank asset (and quite possibly any `VertexPositionNormalTexture`
+     model at this kind of camera distance) regardless of which sample renders it.
+     **Important for the remaining 8 lighting samples:** don't assume any of them
+     will visually render correctly just because they build and the lighting math
+     is proven (item #5) — screenshot each one and check for this same artifact
+     before considering it "done," the way CustomModelClass's port here did.
 
 4. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip `w<0` vertices the way DirectX does, so the ground/tank fully render.

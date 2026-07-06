@@ -1,31 +1,49 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
-accurate when first written this session, but a live build+run of `cna_test_
-easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
-lit path already works — case "(e) Directional lighting" passes (exit code 0).
-DEFERRED.md item #5 is marked resolved for `Model`-based samples. The port should
-just use the standard `tools/obj2model.py` conversion + stock `Model`/`BasicEffect`
-(CNA has no generic custom-`ContentTypeReader` extensibility to replicate this
-sample's own `CustomModel`/`CustomModelProcessor` faithfully anyway — see item #18)
-rather than trying to reproduce the C# original's custom content type. No CNA gap
-remains; this is now a normal porting candidate. (Kept the original write-up below.)
+**Status: ported 2026-07-06.** Builds with 0 warnings. Ported using CNA's stock
+`Model`/`BasicEffect` (see the item #5 write-up below) instead of replicating the
+C# original's own `CustomModel`/`ModelPart` class, since CNA has no build-time
+custom-`ContentProcessor` extensibility to reproduce `CustomModelProcessor`
+faithfully (item #18) — the runtime `CustomModel` class only ever draws stock
+`BasicEffect` geometry anyway, so a stock `Model` produces the same on-screen
+result. Copied the already-converted, already-proven `tank.model.json` (+ its 12
+per-mesh `.bin` files) directly from `samples/CameraShake/Content/` — no new asset
+conversion needed, byte-identical asset.
+
+## CNA gap (pre-existing, not introduced by this port): near-plane clipping renders the tank as a thin line, not the model
+**Confirmed live:** running this port shows a thin diagonal white line/dashes on
+the CornflowerBlue background instead of a recognizable tank. Before assuming this
+was a bug in the port, built and ran the already-shipped `CameraShake` sample (which
+renders the *same* `tank.model.json` asset) side by side — it shows the **exact
+same** thin-line artifact in the exact same screen position. This confirms the
+render defect is `cna`'s own EasyGL-backend rendering of this model/vertex format
+family, not anything introduced by this port. This is the same, already-tracked gap
+described in this repo's `NEXT.md` ("CameraShake has a near-plane clipping bug in
+the EasyGL backend... not yet root-caused") — not a new one. Not attempted to fix
+here, per this repo's convention of tracking framework-level rendering bugs
+centrally rather than re-diagnosing them per affected sample; see `NEXT.md` section
+8 ("Investigate CameraShake's near-plane clipping bug in the EasyGL backend") for
+the existing task. This sample should be re-screenshotted once that bug is fixed to
+confirm the tank actually renders.
 
 Source: `/rv/tmp/XNAGameStudio/Samples/CustomModelClassSample_4_0/
 {CustomModelSample/{CustomModel.cs, CustomModelSampleGame.cs}, CustomModelPipeline/
 {CustomModelContent.cs, CustomModelProcessor.cs}}`.
 
-## Blocker: BasicEffect per-vertex lighting (`EnableDefaultLighting`)
+## Blocker (historical, resolved): BasicEffect per-vertex lighting (`EnableDefaultLighting`)
 **XNA behaviour:** `CustomModel.cs:81` calls `effect.EnableDefaultLighting()` on the
 `BasicEffect` used by every model part before drawing it (`CustomModel.Draw()`,
 lines 72-106). The sample's whole point is demonstrating a simplified custom
 replacement for XNA's `Model` class, but it still renders through a real,
 lit `BasicEffect` — same class of gap as every other item #5 sample.
 
-**CNA port behaviour:** N/A yet (not ported).
+**CNA port behaviour:** Ported — `LoadContent()` iterates `model_->getMeshesProperty()`
+/ `mesh->getEffectsPropertyMutable()` and calls `EnableDefaultLighting()` on each
+`BasicEffect` once (a persistent effect property, not per-frame state, so calling it
+once at load time is equivalent to the original's per-`Draw()`-call placement).
 
 **Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
-in CNA; now resolved (see Status note above).
+in CNA; now resolved (see Status note above and DEFERRED.md item #5).
 
 **Note on why this is NOT also a bone-hierarchy (item #6) blocker, despite sharing
 `tank.fbx` with SimpleAnimation/SplitScreen:** confirmed by grep — unlike `Tank.cs`
@@ -49,3 +67,24 @@ call site) is the accurate one for this specific sample, confirmed directly agai
 the C# source above.
 
 **Tracked in:** DEFERRED.md item #5 (resolved).
+
+## No SpriteBatch/text in the original; F1 help overlay is a pure CNA addition
+**XNA behaviour:** N/A — the original has no `SpriteBatch`, no `SpriteFont`, no
+on-screen text at all; it just draws the rotating tank.
+**CNA port behaviour:** Added a `SpriteBatch` solely for the mandatory F1 help
+overlay (per CLAUDE.md) — no other UI. No font asset needed since the overlay is a
+pre-rendered PNG, not drawn text.
+**Root cause:** N/A — CNA-only addition, not a difference from the original's own
+behavior.
+**Tracked in:** not planned (by design, see CLAUDE.md's F1 Help Overlay section).
+
+## Verification
+**Confirmed live:** built cleanly (0 warnings). Ran under `SDL_VIDEODRIVER=x11` —
+process stays up with no crash. Screenshot shows only the pre-existing near-plane
+clipping artifact described above (confirmed identical to CameraShake's own, not a
+new regression) — the tank itself isn't visibly recognizable in the current
+screenshot as a result of that unrelated, already-tracked framework bug, not this
+port's own code. F1 help overlay and Escape/gamepad-Back exit were not separately
+exercised via synthetic input this session (same `xdotool` reliability caveat as
+other samples in this repo) but are straightforward, unconditional code paths with
+no dependency on the broken rendering above.
