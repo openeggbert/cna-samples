@@ -293,51 +293,51 @@ private:
 
         DrawValue(InputReporterResources::LeftThumbstickX, descPos,
                   Fmt3(sticks.getLeftProperty().X), valPos,
-                  cap.HasLeftXThumbStick, sticks.getLeftProperty().X != 0.f);
+                  cap.getHasLeftXThumbStickProperty(), sticks.getLeftProperty().X != 0.f);
         DrawValue(InputReporterResources::LeftThumbstickY, descPos,
                   Fmt3(sticks.getLeftProperty().Y), valPos,
-                  cap.HasLeftYThumbStick, sticks.getLeftProperty().Y != 0.f);
+                  cap.getHasLeftYThumbStickProperty(), sticks.getLeftProperty().Y != 0.f);
         DrawValue(InputReporterResources::RightThumbstickX, descPos,
                   Fmt3(sticks.getRightProperty().X), valPos,
-                  cap.HasRightXThumbStick, sticks.getRightProperty().X != 0.f);
+                  cap.getHasRightXThumbStickProperty(), sticks.getRightProperty().X != 0.f);
         DrawValue(InputReporterResources::RightThumbstickY, descPos,
                   Fmt3(sticks.getRightProperty().Y), valPos,
-                  cap.HasRightYThumbStick, sticks.getRightProperty().Y != 0.f);
+                  cap.getHasRightYThumbStickProperty(), sticks.getRightProperty().Y != 0.f);
 
         descPos.Y = descPos.Y + dataSpacing_;
         valPos.Y  = valPos.Y  + dataSpacing_;
 
         DrawValue(InputReporterResources::LeftTrigger, descPos,
                   Fmt3(triggers.getLeftProperty()), valPos,
-                  cap.HasLeftTrigger, triggers.getLeftProperty() != 0.f);
+                  cap.getHasLeftTriggerProperty(), triggers.getLeftProperty() != 0.f);
         DrawValue(InputReporterResources::RightTrigger, descPos,
                   Fmt3(triggers.getRightProperty()), valPos,
-                  cap.HasRightTrigger, triggers.getRightProperty() != 0.f);
+                  cap.getHasRightTriggerProperty(), triggers.getRightProperty() != 0.f);
 
         descPos.Y = descPos.Y + dataSpacing_;
         valPos.Y  = valPos.Y  + dataSpacing_;
 
         DrawValue(InputReporterResources::DPadUp, descPos,
                   BtnStr(dpad.getUpProperty()), valPos,
-                  cap.HasDPadUpButton, dpad.getUpProperty() == ButtonState::Pressed);
+                  cap.getHasDPadUpButtonProperty(), dpad.getUpProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::DPadDown, descPos,
                   BtnStr(dpad.getDownProperty()), valPos,
-                  cap.HasDPadDownButton, dpad.getDownProperty() == ButtonState::Pressed);
+                  cap.getHasDPadDownButtonProperty(), dpad.getDownProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::DPadLeft, descPos,
                   BtnStr(dpad.getLeftProperty()), valPos,
-                  cap.HasDPadLeftButton, dpad.getLeftProperty() == ButtonState::Pressed);
+                  cap.getHasDPadLeftButtonProperty(), dpad.getLeftProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::DPadRight, descPos,
                   BtnStr(dpad.getRightProperty()), valPos,
-                  cap.HasDPadRightButton, dpad.getRightProperty() == ButtonState::Pressed);
+                  cap.getHasDPadRightButtonProperty(), dpad.getRightProperty() == ButtonState::Pressed);
 
         descPos.Y = descPos.Y + dataSpacing_;
 
-        if (cap.HasLeftVibrationMotor) {
-            const char* msg = cap.HasRightVibrationMotor
+        if (cap.getHasLeftVibrationMotorProperty()) {
+            const char* msg = cap.getHasRightVibrationMotorProperty()
                 ? InputReporterResources::BothVibrationMotors
                 : InputReporterResources::LeftVibrationMotor;
             spriteBatch_->DrawString(*dataFont_, msg, descPos, descriptionColor);
-        } else if (cap.HasRightVibrationMotor) {
+        } else if (cap.getHasRightVibrationMotorProperty()) {
             spriteBatch_->DrawString(*dataFont_,
                 InputReporterResources::RightVibrationMotor, descPos, descriptionColor);
         } else {
@@ -351,45 +351,45 @@ private:
 
         DrawValue(InputReporterResources::A, descPos,
                   BtnStr(buttons.getAProperty()), valPos,
-                  cap.HasAButton, buttons.getAProperty() == ButtonState::Pressed);
+                  cap.getHasAButtonProperty(), buttons.getAProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::B, descPos,
                   BtnStr(buttons.getBProperty()), valPos,
-                  cap.HasBButton, buttons.getBProperty() == ButtonState::Pressed);
+                  cap.getHasBButtonProperty(), buttons.getBProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::X, descPos,
                   BtnStr(buttons.getXProperty()), valPos,
-                  cap.HasXButton, buttons.getXProperty() == ButtonState::Pressed);
+                  cap.getHasXButtonProperty(), buttons.getXProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::Y, descPos,
                   BtnStr(buttons.getYProperty()), valPos,
-                  cap.HasYButton, buttons.getYProperty() == ButtonState::Pressed);
+                  cap.getHasYButtonProperty(), buttons.getYProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::LeftShoulder, descPos,
                   BtnStr(buttons.getLeftShoulderProperty()), valPos,
-                  cap.HasLeftShoulderButton,
+                  cap.getHasLeftShoulderButtonProperty(),
                   buttons.getLeftShoulderProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::RightShoulder, descPos,
                   BtnStr(buttons.getRightShoulderProperty()), valPos,
-                  cap.HasRightShoulderButton,
+                  cap.getHasRightShoulderButtonProperty(),
                   buttons.getRightShoulderProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::LeftStick, descPos,
                   BtnStr(buttons.getLeftStickProperty()), valPos,
-                  cap.HasLeftStickButton,
+                  cap.getHasLeftStickButtonProperty(),
                   buttons.getLeftStickProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::RightStick, descPos,
                   BtnStr(buttons.getRightStickProperty()), valPos,
-                  cap.HasRightStickButton,
+                  cap.getHasRightStickButtonProperty(),
                   buttons.getRightStickProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::Start, descPos,
                   BtnStr(buttons.getStartProperty()), valPos,
-                  cap.HasStartButton, buttons.getStartProperty() == ButtonState::Pressed);
+                  cap.getHasStartButtonProperty(), buttons.getStartProperty() == ButtonState::Pressed);
         DrawValue(InputReporterResources::Back, descPos,
                   BtnStr(buttons.getBackProperty()), valPos,
-                  cap.HasBackButton, buttons.getBackProperty() == ButtonState::Pressed);
+                  cap.getHasBackButtonProperty(), buttons.getBackProperty() == ButtonState::Pressed);
 
         descPos.Y = descPos.Y + dataSpacing_;
         valPos.Y  = valPos.Y  + dataSpacing_;
 
         DrawValue(InputReporterResources::PacketNumber, descPos,
                   std::to_string(s.getPacketNumberProperty()), valPos,
-                  cap.IsConnected, false);
+                  cap.getIsConnectedProperty(), false);
     }
 
     void DrawValue(const std::string& description, V2& descPos,
