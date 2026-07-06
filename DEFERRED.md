@@ -638,33 +638,40 @@ for those three yet.
 
 ---
 
-## 21. Initial `GamerJoined` event is queued for the next `Update()`, not raised synchronously during `Create()`/`Join()` — investigated in depth, genuinely blocked
+## 21. Initial `GamerJoined` event is queued for the next `Update()`, not raised synchronously during `Create()`/`Join()` ✅ RESOLVED
 
-**Investigated 2026-07-06** in `cna`'s `feature/net` (Task 12.3) — **not fixed, and
-found not to be a simple fix.** Traced against this exact sample's real C# reference
+**Investigated 2026-07-06** in `cna`'s `feature/net` (Task 12.3) — initially found
+**not** to have a simple fix. Traced against this exact sample's real C# reference
 source (`ClientServerGame.cs`) and confirmed **both originally-proposed fix
-approaches below cannot actually work, and either would have been an active
+approaches below could not actually work, and either would have been an active
 regression**: subscription (`HookSessionEvents()`) always happens strictly *after*
 `Create()`/`Join()` already returned control to the caller (there is no way to
 subscribe any earlier — the session pointer doesn't exist yet), so raising the event
 any earlier than that fires into zero subscribers — including inside the constructor
 or inside `Create()`/`Join()`'s own wrapper before returning. Worse, doing so would
 have broken ClientServerSample's own already-working, live-verified workaround below,
-which depends on the event still being queued (not yet fired into a void) at the
+which depended on the event still being queued (not yet fired into a void) at the
 point it calls `Update()` right after subscribing.
 
 Real XNA's `NetworkSession.GamerJoined` is documented to replay itself immediately
 upon `+=` subscription for every gamer already present in the session — a "hot event
 with backlog replay" semantic that CNA's `System::EventHandler<T>` (a separate
-`sharp-runtime` repo, not `cna` itself) has no hook for. Implementing it needs either
-a generic addition to `EventHandler<T>` (a `sharp-runtime` change requiring that
-repo's own explicit user sign-off) or giving `NetworkSession::GamerJoined` a
-different, non-uniform event type (forbidden by `cna`'s own porting conventions:
-"do not invent a different event mechanism"). **No `cna` code changed for this item.**
-A doc comment was added on `NetworkSession::GamerJoined` explaining the required
-call-`Update()`-once-after-subscribing pattern is the permanent, correct way to use
-this API in C++, not a workaround to eventually remove. See `cna`'s `plan_net.md` Task
-12.3 for the full investigation.
+`sharp-runtime` repo, not `cna` itself) had no hook for.
+
+**Resolved same day, after the user reviewed this exact analysis and approved a
+`sharp-runtime` change:** `EventHandler<T>` gained a generic, opt-in
+`SetReplayHook()` (`sharp-runtime` `develop`, commit `69661c2`) — every other
+`EventHandler<T>` in the codebase that never calls it behaves exactly as before, so
+this isn't the one-off/non-uniform special case that was ruled out above.
+`NetworkSession`'s constructor (`cna`'s `feature/net`, commit `ab05395`) now sets this
+hook so `GamerJoined += handler` immediately replays for every gamer already in the
+session, matching real XNA. ClientServerSample's `networkSession_->Update();`
+workaround (right after `HookSessionEvents()` in both `CreateSession()`/
+`JoinSession()`) was removed and confirmed live to still work correctly with no
+crash (see `samples/ClientServerSample/missing.md`'s Verification section for the
+full account, including how `xdotool` input unreliability was ruled out as the cause
+of anything via a controlled debug-auto-trigger test). See `cna`'s `plan_net.md` Task
+12.3 for the full investigation and fix.
 
 **What is missing:** in real XNA, `NetworkSession.Create()`/`.Join()` synchronously
 establish the initial local gamer(s) and raise `GamerJoined` for each one as part of
@@ -728,4 +735,4 @@ confirmed for those two yet.
 | 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |
 | 19 | GamerServicesDispatcher::Update() no-op hangs NetworkSession::Create/Find/Join | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06) |
 | 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06; scoped remote-host-IsHost limitation remains, see item) |
-| 21 | Initial GamerJoined event queued, not synchronous | cna | S | ClientServerSample (workaround kept: extra session.Update() call — now understood to be the permanent, correct pattern, not a stopgap), NetworkPrediction, PeerToPeer | investigated 2026-07-06, genuinely blocked (needs a sharp-runtime decision) |
+| 21 | Initial GamerJoined event queued, not synchronous | cna + sharp-runtime | S | ClientServerSample, NetworkPrediction, PeerToPeer | ✅ done (fixed 2026-07-06 via sharp-runtime EventHandler<T>::SetReplayHook(), user-approved) |

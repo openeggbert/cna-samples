@@ -1,20 +1,18 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: ported 2026-07-06; cleaned up 2026-07-06 after `cna`'s Phase 12 fixes.**
-Builds with 0 warnings. Porting this (the first of the 4 newly-unblocked networking
-samples) surfaced **three real CNA gaps** beyond the "NetworkSession exists and is
-tested" resolution already recorded in DEFERRED.md item #17 — see DEFERRED.md items
-#19–21 for the full writeups. **Two of the three (#19, #20) are now fixed upstream in
-`cna`** (`feature/net`, commits `08171ac`/`81f10b5`) — this port's workarounds for them
-were removed and the real APIs used directly instead (see each section below). **The
-third (#21) was investigated in depth and found to require either a `sharp-runtime`
-change or acceptance that the workaround is the permanent, correct pattern — it is
-kept, not a temporary stopgap.** Live-verified via screenshot after the cleanup (real
-`xdotool` keypresses this time, not a debug auto-trigger — see Verification section):
-menu screen renders, `A` creates a session, the tank spawns and renders with the
-correct `"Stub Gamer (server)"` label (populated by the real `GamerServicesComponent`,
-not the previously-manually-synthesized `"Player"` identity), and `Right` arrow moves
-it — end to end, no crash.
+**Status: ported 2026-07-06; cleaned up in full 2026-07-06 after `cna`'s Phase 12
+fixes.** Builds with 0 warnings. Porting this (the first of the 4 newly-unblocked
+networking samples) surfaced **three real CNA gaps** beyond the "NetworkSession
+exists and is tested" resolution already recorded in DEFERRED.md item #17 — see
+DEFERRED.md items #19–21 for the full writeups. **All three are now fixed upstream in
+`cna`/`sharp-runtime`** (`feature/net` commits `08171ac`/`81f10b5`/`ab05395`;
+`sharp-runtime` `develop` commit `69661c2`) — this port's workarounds for all three
+were removed and the real APIs used directly instead (see each section below); item
+#21's fix required a `sharp-runtime` change, which the user explicitly reviewed and
+approved. Live-verified: session creation, tank spawn/render with the correct
+`"Stub Gamer (server)"` label (real `GamerServicesComponent` identity, not the old
+manually-synthesized `"Player"`), and movement all work end-to-end, no crash, with
+**zero** of the three original workarounds remaining.
 
 Source: `/rv/tmp/XNAGameStudio/Samples/ClientServerSample_4_0/ClientServer/
 {ClientServerGame.cs, Tank.cs}`.
@@ -98,40 +96,43 @@ test-suite level instead (`NetworkSessionTests.cpp`'s
 **Tracked in:** DEFERRED.md item #20 — resolved (with the scoped remote-host-IsHost
 limitation noted above, tracked as a known gap, not a new item).
 
-## Investigated, NOT fixed (genuinely blocked): initial `GamerJoined` event is queued for next frame, not raised synchronously
+## ✅ FIXED (was: investigated, genuinely blocked): initial `GamerJoined` event is queued for next frame, not raised synchronously
 **XNA behaviour:** `NetworkSession.Create()`/`.Join()` synchronously establish the
 initial local gamer(s) and raise `GamerJoined` for each as part of that same call —
 by the time `Create()` returns, `e.Gamer.Tag = new Tank(...)` (set inside the
 `GamerJoined` handler) has already run.
 
-**CNA port behaviour:** confirmed live — CNA's `NetworkSession` constructor *queues*
-a `GamerJoin` event per initial gamer instead of raising it immediately; the queue is
+**CNA port behaviour, before the fix:** CNA's `NetworkSession` constructor *queued*
+a `GamerJoin` event per initial gamer instead of raising it immediately; the queue was
 only drained by `NetworkSession::Update()`.
 
-**Investigated in `cna`'s `feature/net`, Task 12.3 — found genuinely blocked, not a
-simple fix:** traced against this exact sample's real C# source
-(`ClientServerGame.cs`) and confirmed neither of the two originally-considered fixes
-(raise inside the constructor; drain the queue before `Create()`/`Join()` return) can
-actually work — subscription (`HookSessionEvents()`) always happens *after*
-`Create()`/`Join()` already returned, so firing the event any earlier fires into zero
-subscribers, and either "fix" would have **broken this very port's own workaround**
-below (which relies on the event still being queued at the point it calls
-`Update()`). Real XNA's `GamerJoined` is documented to replay itself immediately upon
-`+=` subscription for every already-present gamer; CNA's `System::EventHandler<T>`
-(a separate, `sharp-runtime` repo) has no hook for that, and adding one needs either
-a `sharp-runtime` change (requires explicit user sign-off per that repo's own rule)
-or a project-forbidden custom event type.
+**Investigated in `cna`'s `feature/net`, Task 12.3 — found genuinely blocked at first,
+then fixed with the user's explicit sign-off:** traced against this exact sample's
+real C# source (`ClientServerGame.cs`) and confirmed neither of the two
+originally-considered fixes (raise inside the constructor; drain the queue before
+`Create()`/`Join()` return) could work on their own — subscription
+(`HookSessionEvents()`) always happens *after* `Create()`/`Join()` already returned,
+so firing the event any earlier fires into zero subscribers. Real XNA's `GamerJoined`
+is documented to replay itself immediately upon `+=` subscription for every
+already-present gamer; CNA's `System::EventHandler<T>` (a separate, `sharp-runtime`
+repo) had no hook for that. **The user reviewed this exact analysis and approved a
+`sharp-runtime` change**: `EventHandler<T>` gained an opt-in `SetReplayHook()` (generic,
+not a one-off hack — every other `EventHandler<T>` in the codebase is unaffected), and
+`NetworkSession`'s constructor now uses it so `GamerJoined += handler` immediately
+replays for every gamer already in the session, matching real XNA.
 
-**Port-side workaround — kept, and now understood to be the permanent, correct
-pattern, not a stopgap:** `CreateSession()`/`JoinSession()` each call
-`networkSession_->Update();` once, immediately after `HookSessionEvents()` —
-draining the queued initial `GamerJoin` event(s) synchronously before returning
-control to the normal per-frame loop, matching what real XNA does implicitly.
-Confirmed live: with this one extra call, session creation → tank spawn → render all
-work correctly with no crash.
+**Port-side change:** removed the `networkSession_->Update();` call that used to be
+needed right after `HookSessionEvents()` in both `CreateSession()` and
+`JoinSession()` — no longer necessary, since `HookSessionEvents()`'s own `+=` now
+delivers the initial join synchronously by itself. **Verified live**: since
+`xdotool` proved unreliable again on this shared desktop this round (see this file's
+own `Verification` section's history of the same issue), used this repo's own
+established fallback — a temporary debug auto-trigger calling `CreateSession()` after
+30 frames, removed before commit — and confirmed session creation → tank spawn →
+render all still work correctly with **no** manual `Update()` call, no crash, over a
+multi-second run.
 
-**Tracked in:** DEFERRED.md item #21 — investigated, will stay open pending the
-user's `sharp-runtime` decision; not expected to change at the sample level.
+**Tracked in:** DEFERRED.md item #21 — resolved.
 
 ## Windows Phone branch dropped, desktop keyboard/gamepad branch ported as-is
 **XNA behaviour:** No `#if WINDOWS_PHONE` branch exists in this sample at all —
@@ -249,3 +250,28 @@ purpose-built out-of-band port-passing test harness for this specific sample, mi
 `cna`'s own two-process test) should confirm `JoinSession()` + multi-gamer tank-state
 sync end-to-end within `ClientServerSample` itself, if that level of proof is ever
 needed beyond what the `cna` test suite already covers.
+
+**2026-07-06, same-day follow-up, after item #21's `sharp-runtime` fix landed:**
+rebuilt against `cna`'s `feature/net` tip (fast-forwarded the same local `../cna`
+checkout to commit `ab05395`, which itself pulled in the just-updated
+`sharp-runtime` `develop` at `69661c2` via `../sharp-runtime` relative to `cna`) — 0
+warnings, clean link. Removed the last remaining workaround (the
+`networkSession_->Update();` call right after `HookSessionEvents()` in both
+`CreateSession()`/`JoinSession()`).
+`xdotool` input was unreliable again this round — confirmed genuinely environmental,
+not a code regression, by testing three ways: real shared-desktop keypresses (failed
+across several retries and process restarts), a completely isolated `Xvfb :77`
+display with no window manager (failed identically, ruling out shared-desktop
+focus-stealing specifically), and finally this repo's own established fallback for
+exactly this situation — a temporary debug auto-trigger (`CreateSession()` called
+automatically after 30 frames, deleted before commit, diff-reviewed to confirm a
+clean revert). The auto-trigger run **confirmed the fix live**: session creation →
+`GamerJoined` fires (no manual `Update()` call anymore) → tank spawns labeled
+`"Stub Gamer (server)"` → renders correctly, stable over a multi-second run, no
+crash. This is the strongest possible proof for this specific change: if the removed
+`Update()` call had still been necessary, `UpdateLocalGamer()`'s `std::any_cast<Tank*>`
+on the local gamer's `Tag` would have thrown `std::bad_any_cast` on the very first
+`UpdateNetworkSession()` call (the exact failure mode item #21 originally described) —
+it didn't.
+`ClientServerSample` now has **zero** of its original three DEFERRED.md workarounds
+(#19, #20, #21 all resolved upstream).

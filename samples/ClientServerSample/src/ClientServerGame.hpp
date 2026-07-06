@@ -167,15 +167,12 @@ private:
         try {
             networkSession_ = NetworkSession::Create(NetworkSessionType::SystemLink,
                                                       kMaxLocalGamers, kMaxGamers);
+            // HookSessionEvents() no longer needs a manual Update() call afterward: cna_net's
+            // NetworkSession now replays GamerJoined immediately for every already-present local
+            // gamer the instant GamerJoined += runs (matching real XNA's own documented
+            // subscribe-time replay behavior — see cna_net's plan_net.md Task 12.3, fixed via a
+            // new sharp-runtime EventHandler<T>::SetReplayHook()).
             HookSessionEvents();
-            // Flush the initial GamerJoin event(s) for our own local gamer(s) now,
-            // rather than waiting for the next Update() — this is the permanent,
-            // correct pattern (not a stopgap): real XNA's GamerJoined replays itself
-            // immediately upon subscription for every gamer already in the session,
-            // which CNA's plain System::EventHandler<T> has no hook to reproduce (see
-            // cna_net's plan_net.md Task 12.3 investigation). Without this call,
-            // UpdateLocalGamer() below would read an empty Tag on the very first frame.
-            networkSession_->Update();
         } catch (const System::Exception& e) {
             errorMessage_ = e.getMessageProperty();
         }
@@ -196,9 +193,8 @@ private:
 
             // Join the first session we found.
             networkSession_ = NetworkSession::Join(&availableSessions[0]);
+            // See CreateSession()'s comment: no manual Update() needed anymore either.
             HookSessionEvents();
-            // See CreateSession()'s comment: flush the initial GamerJoin event(s) now.
-            networkSession_->Update();
         } catch (const System::Exception& e) {
             errorMessage_ = e.getMessageProperty();
         }
