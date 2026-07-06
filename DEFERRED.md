@@ -99,32 +99,49 @@ indexed and non-indexed triangle list / strip draws (honouring `startIndex` /
 
 ---
 
-## 5. VertexPositionNormal (3D lit rendering)
+## 5. VertexPositionNormal (3D lit rendering) — ✅ RESOLVED for Model-based samples (2026-07-06)
 
-**What is missing:**
-XNA's `VertexPositionNormal` struct and a corresponding lit shader in the backend.
-The Primitives3D port uses `VertexPositionColor` as a workaround (flat shading only).
+**Corrected 2026-07-06:** this item claimed CNA had no lit-shader path for
+per-vertex-normal 3D rendering at all. A live check found that's no longer true:
+`VertexPositionNormalTexture` (position+normal+texcoord — the vertex format
+`ContentManager.cpp`'s `ModelTypeReader` already produces for any `.model.json`
+with normal data, confirmed by reading the reader's `SetData` dispatch) has a real,
+**tested and passing** directional-lighting path in the EasyGL backend: built and
+ran `cna_test_easygl_basiceffect_combinations` live — case "(e) Directional
+lighting — VertexPositionNormalTexture, white tex, red light → reddish pixel"
+passes (exit code 0). The Vulkan backend also has a dedicated
+`lit_textured3d.{vert,frag}.glsl` shader pair. This unblocks all 9 samples
+previously listed here, since every one of them renders via `Content.Load<Model>`
+(confirmed by grep of each one's own C# original) → `VertexPositionNormalTexture` →
+this now-working lit path, not a bare, texture-less vertex struct:
+**LensFlareSample** (#041), **Graphics3DSample** (#046, `Spaceship.cs` loads
+`content.Load<Model>("Models/spaceship")` — note lowercase `content` local var
+masked this from a naive `Content.Load` grep), **PickingSample** (#047 — its own
+dead-code `GeometricPrimitive.cs`/bare `VertexPositionNormal` struct is *not*
+compiled into the `.csproj`; the real runtime path is `Content.Load<Model>`),
+**TrianglePickingSample** (#048), **HeightmapCollisionSample** (#049),
+**CustomModelClassSample** (#052, loads via `Content.Load<CustomModel>` — a
+sample-defined custom content type; port can just use the standard
+`tools/obj2model.py` conversion + stock `Model` like every other sample, since
+CNA has no generic custom-`ContentTypeReader` extensibility anyway — see item 18),
+**InverseKinematics** (#057), **ChaseCamera** (#058), and **MarbleMaze**'s (#061)
+EX2/End build. Update each sample's `missing.md`/`PLAN.md` status and re-attempt
+porting.
 
-**Where to implement:**
-- Add `VertexPositionNormal.hpp` to `cna/include/Microsoft/Xna/Framework/Graphics/`
-- Add a normal-lit GLSL shader to the EasyGL backend
-- Extend `VertexBuffer::SetData` to accept `VertexPositionNormal*`
+**Still open — Primitives3D specifically:** Primitives3D's original C# ships its
+**own**, sample-authored, texture-**less** `VertexPositionNormal` struct
+(`Primitives3D/VertexPositionNormal.cs`, its own `IVertexType` — not a built-in XNA
+type) for its procedurally-generated primitives (sphere/cylinder/etc. have no UV
+data). CNA has no texture-less normal-lit vertex format, so this specific sample
+still can't get real per-vertex lighting without either (a) a small CNA addition
+(a `VertexPositionNormal` variant + wiring it into the same lit shader), or (b) a
+port-side workaround (assign a dummy/unused texcoord to every vertex and use the
+already-working `VertexPositionNormalTexture` instead) — the port-side workaround
+is likely the pragmatic choice given `VertexPositionNormalTexture` is proven and no
+second sample needs a texture-less variant.
 
-**Blocked samples:** Primitives3D (lighting), and all samples using `BasicEffect`
-with per-vertex lighting (`.LightingEnabled = true` / `.EnableDefaultLighting()`).
-Confirmed by direct source audit (2026-07-05) that this is the *actual* blocker —
-not a custom `.fx` shader — for: **LensFlareSample** (terrain lighting),
-**Graphics3DSample** (`Spaceship.cs`, 3 directional lights), **PickingSample**
-(defines its own `VertexPositionNormal`), **TrianglePickingSample**,
-**HeightmapCollisionSample**, **CustomModelClassSample**, **InverseKinematics**,
-**ChaseCamera**, and **MarbleMaze**'s EX2/End tutorial stage — none of these nine
-have a single custom `.fx` file; they were previously assumed blocked on item 11
-(shader pipeline) by association with the rest of Phase 3/4, which was inaccurate.
-(NormalMapping/HeightmapCollision/BillboardSample as originally listed here *also*
-ship a custom `.fx`, so item 11 is their primary blocker regardless of lighting —
-item 5 alone would not unblock them.)
-
-**Effort:** L
+**Effort:** — (done in `cna` for the Model-based case) / S (Primitives3D-specific
+workaround, port-side, no CNA change needed)
 
 ---
 
@@ -403,52 +420,44 @@ attempting the rest.
 
 ---
 
-## 16. Microphone capture (`Microsoft.Xna.Framework.Audio.Microphone`)
+## 16. Microphone capture (`Microsoft.Xna.Framework.Audio.Microphone`) ✅ RESOLVED
 
-**What is missing:**
-CNA has no `Microphone` class and no audio-capture-device support at all (only
-playback, via SDL3_mixer — see item 7). XNA's `Microphone` API enumerates capture
-devices, opens one at a chosen sample rate, and delivers raw PCM via a
-`BufferReady` event / `GetData()`.
+**Corrected 2026-07-06:** this item was added in the same session that wrote
+`samples/MicrophoneEcho/missing.md`, based on general SDL3 capability knowledge
+rather than an actual check of `cna`'s current source — a live check the same day
+found `Microphone` fully implemented (`src/Microsoft/Xna/Framework/Audio/
+Microphone.cpp`, 252 lines, `include/.../Audio/{Microphone,MicrophoneState,
+NoMicrophoneConnectedException}.hpp`, real tests), merged via `feature/audio` into
+`develop` on 2026-07-04 (commits like "wire Microphone::GetData()/GetQueuedBytes()
+to the real stream") — **two days before this item was written**. No CNA gap
+remains for MicrophoneEcho (#098); update `samples/MicrophoneEcho/missing.md` and
+re-attempt the port.
 
-**Where to implement:** `cna/include/Microsoft/Xna/Framework/Audio/Microphone.hpp` +
-backend. SDL3 itself already supports capture devices (`SDL_OpenAudioDevice` with
-`iscapture`/the newer recording-device APIs), independent of SDL3_mixer, so this is
-plausible to add without a new external dependency — unlike, say, GamerServices
-networking (item 17), which needs a real transport, not just an SDL wrapper.
-
-**Blocked samples:** MicrophoneEcho (#098) — captures microphone input and plays it
-back through a `DynamicSoundEffectInstance` (loopback echo).
-
-**Effort:** M
+**Effort:** — (done in `cna`)
 
 ---
 
-## 17. Multiplayer networking (`Microsoft.Xna.Framework.Net` / `GamerServices.NetworkSession`)
+## 17. Multiplayer networking (`Microsoft.Xna.Framework.Net` / `GamerServices.NetworkSession`) ✅ RESOLVED
 
-**What is missing:**
-`NetworkSession`, `NetworkSessionType` (`SystemLink`/`PlayerMatch`/`Ranked`),
-`GamerServicesComponent`, `AvailableNetworkSessionCollection`, and related gamer/
-session-property types do not exist anywhere in `cna/include` or `cna/src` (confirmed
-by grep — zero matches). This is XNA's session-discovery-and-lockstep multiplayer
-layer built on top of Xbox LIVE/Games for Windows Live in the original, but the
-*technique* each sample demonstrates (LAN session create/find/join, client-server
-authority, input prediction/lag compensation, peer-to-peer topology) is generic
-networking, not Xbox-Live-account-specific — a from-scratch CNA-native
-`NetworkSession`-alike (e.g. plain UDP/TCP sockets discovering LAN peers via
-broadcast, mirroring the public `NetworkSession` surface XNA samples call into)
-could plausibly stand in for it without needing any real Xbox Live/GfWL service.
+**Corrected 2026-07-06:** this item was added in the same session that wrote the
+NetRumble/ClientServerSample/NetworkPrediction/PeerToPeer placeholders, based on
+the C# originals' API usage without actually checking `cna`'s current source for
+whether it already implements `GamerServices`/`Net` — a live check the same day
+found a full, real implementation: `include/Microsoft/Xna/Framework/Net/{
+NetworkSession,NetworkSessionType,NetworkSessionProperties,AvailableNetworkSession,
+AvailableNetworkSessionCollection,...}.hpp`, `NetworkSession.cpp` (836 lines),
+`GamerServices/{GamerServicesComponent,AvatarRenderer,...}`, real LAN discovery via
+`CNA::Internal::Net::ENetDiscoveryService`, and `NetworkSessionType` including
+`SystemLink` (exactly what these 4 samples use) — merged via `feature/net` into
+`develop` on 2026-07-04, **two days before this item was written**.
 
-**Blocked samples:** NetRumble (#062, also needs item 11's shader pipeline for its
-bloom post-process — double-blocked), ClientServerSample (#091), NetworkPrediction
-(#100), PeerToPeer (#103). (NGSMSample and SplitScreen's `_4_0` sibling
-`GSMSample_4_0_PHONE`/`_Mango` variants also touch `GamerServices`, but are excluded
-for unrelated reasons — see `ignored.md`.)
+No CNA networking gap remains for ClientServerSample (#091), NetworkPrediction
+(#100), or PeerToPeer (#103) — update their `missing.md` files and re-attempt
+porting. NetRumble (#062) is now only single-blocked, by item 11 (its 4 custom
+`.fx` shaders, including the bloom post-process) — update its `missing.md` to drop
+the networking half of its "double-blocked" framing.
 
-**Effort:** L/XL — real engine-level feature work (a session/transport layer), not
-just content conversion. Recommend prototyping against ClientServerSample first (the
-simplest of the four — a single authoritative server, no prediction/lockstep) before
-NetworkPrediction/PeerToPeer/NetRumble.
+**Effort:** — (done in `cna`)
 
 ---
 
@@ -495,7 +504,7 @@ extensibility yet).
 | 2 | SpriteFont loading | cna | L | many | ✅ done |
 | 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D | ✅ done |
 | 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D | ✅ done |
-| 5 | VertexPositionNormal + lit shader | cna | L | many |
+| 5 | VertexPositionNormal + lit shader | cna | L | LensFlare, Graphics3D, PickingSample, TrianglePicking, HeightmapCollision, CustomModelClass, InverseKinematics, ChaseCamera, MarbleMaze | ✅ done for Model-based samples (2026-07-06); Primitives3D still needs a texture-less variant or port workaround |
 | 6 | Model asset conversion, static geometry (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
 | 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
@@ -506,6 +515,6 @@ extensibility yet).
 | 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
 | 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
 | 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample, TiltPerspective (scope decision, not blocked); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
-| 16 | Microphone capture | cna | M | MicrophoneEcho | not started |
-| 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | NetRumble, ClientServerSample, NetworkPrediction, PeerToPeer | not started |
+| 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
+| 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
 | 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |

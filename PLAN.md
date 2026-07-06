@@ -164,15 +164,24 @@ in `ignored.md` (never gets a directory).
 | Category | Count | Where |
 |---|---|---|
 | Done (real port, builds) | 45 | this file |
-| Placeholder (`<Name>.htm` + `missing.md`, blocked on a CNA gap or scope decision) | 41 | this file |
+| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 13 | this file |
+| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 28 | this file |
 | Ignored — never gets a directory | 67 | `ignored.md` |
 | **Total** | **153** | |
 
-Of the 41 placeholders: 5 predate this sweep (ReachGraphicsDemo, Spacewar,
-ColorReplacement, BloomSample, SplitScreen) and 36 were added in one pass across
-Phase 3, Phase 4, the remaining Phase 6 samples, and 6 of the 27 "Deferred — Phone
-Hardware" appendix samples — see each `missing.md` for the specific `DEFERRED.md`
-item blocking it.
+Of the 41 placeholder-or-unblocked directories: 5 predate this sweep
+(ReachGraphicsDemo, Spacewar, ColorReplacement, BloomSample, SplitScreen) and 36
+were added in one pass across Phase 3, Phase 4, the remaining Phase 6 samples, and
+6 of the 27 "Deferred — Phone Hardware" appendix samples. Of those 36, **13 turned
+out to already be unblocked** when their cited `DEFERRED.md` gap was actually
+checked against `cna`'s live source on 2026-07-06 (see `NEXT.md` section 3 for the
+full story): MicrophoneEcho (#098), ClientServerSample (#091), NetworkPrediction
+(#100), PeerToPeer (#103) — item 17 (networking) — and LensFlare (#041),
+Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
+HeightmapCollision (#049), CustomModelClass (#052), InverseKinematics (#057),
+ChaseCamera (#058), MarbleMaze (#061) — item 5 (lit 3D rendering). NetRumble
+(#062) went from double- to single-blocked (item 11 remains). See each
+`missing.md` for the specific `DEFERRED.md` item.
 
 ---
 
@@ -180,7 +189,9 @@ item blocking it.
 
 Status legend: ✅ Done · 🔨 In progress · ⬜ Todo (no directory yet) ·
 🚧 Placeholder (`samples/<Name>/<Name>.htm` + `missing.md` exist, blocked on a CNA
-gap — see `DEFERRED.md`) · ❌ Ignored (never gets a directory — see `ignored.md`)
+gap — see `DEFERRED.md`) · 🔓 Unblocked (placeholder exists but its CNA gap has
+since been resolved — ready to port, no CNA change needed) ·
+❌ Ignored (never gets a directory — see `ignored.md`)
 
 ---
 
@@ -248,15 +259,15 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | 038 | ShadowMapping | `ShadowMappingSample_4_0` | 🚧 Placeholder — see `samples/ShadowMapping/missing.md` |
 | 039 | BillboardSample | `BillboardSample_4_0` | 🚧 Placeholder — see `samples/BillboardSample/missing.md` |
 | 040 | InstancedModel | `InstancedModelSample_4_0` | 🚧 Placeholder — see `samples/InstancedModel/missing.md` |
-| 041 | LensFlare | `LensFlareSample_4_0` | 🚧 Placeholder — see `samples/LensFlare/missing.md` |
+| 041 | LensFlare | `LensFlareSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/LensFlare/missing.md` |
 | 042 | ShatterEffect | `ShatterEffectSample_4_0` | 🚧 Placeholder — see `samples/ShatterEffect/missing.md` |
 | 043 | Particles3D | `Particles3DSample_4_0` | 🚧 Placeholder — see `samples/Particles3D/missing.md` |
 | 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ✅ Done |
 | 045 | XmlParticles | `XmlParticles_4_0` | 🚧 Placeholder — see `samples/XmlParticles/missing.md` |
-| 046 | Graphics3D | `Graphics3DSample_4_0` | 🚧 Placeholder — see `samples/Graphics3D/missing.md` |
-| 047 | PickingSample | `PickingSample_4_0` | 🚧 Placeholder — see `samples/PickingSample/missing.md` |
-| 048 | TrianglePicking | `TrianglePickingSample_4_0` | 🚧 Placeholder — see `samples/TrianglePicking/missing.md` |
-| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | 🚧 Placeholder — see `samples/HeightmapCollision/missing.md` |
+| 046 | Graphics3D | `Graphics3DSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/Graphics3D/missing.md` |
+| 047 | PickingSample | `PickingSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/PickingSample/missing.md` |
+| 048 | TrianglePicking | `TrianglePickingSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/TrianglePicking/missing.md` |
+| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/HeightmapCollision/missing.md` |
 
 ---
 
@@ -268,13 +279,13 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 |---|---|---|---|
 | 050 | SimpleAnimation | `SimpleAnimation_4_0` | 🚧 Placeholder — see `samples/SimpleAnimation/missing.md` |
 | 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | 🚧 Placeholder — see `samples/CustomModelAnimation/missing.md` |
-| 052 | CustomModelClass | `CustomModelClassSample_4_0` | 🚧 Placeholder — see `samples/CustomModelClass/missing.md` |
+| 052 | CustomModelClass | `CustomModelClassSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/CustomModelClass/missing.md` |
 | 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | 🚧 Placeholder — see `samples/CustomModelEffect/missing.md` |
 | 054 | SkinningSample | `SkinningSample_4_0` | 🚧 Placeholder — see `samples/SkinningSample/missing.md` |
 | 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | 🚧 Placeholder — see `samples/SkinnedModelExtensions/missing.md` |
 | 056 | CPUSkinning | `CPUSkinningSample_4_0` | 🚧 Placeholder — see `samples/CPUSkinning/missing.md` |
-| 057 | InverseKinematics | `InverseKinematics_4_0` | 🚧 Placeholder — see `samples/InverseKinematics/missing.md` |
-| 058 | ChaseCamera | `ChaseCamera_4_0` | 🚧 Placeholder — see `samples/ChaseCamera/missing.md` |
+| 057 | InverseKinematics | `InverseKinematics_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/InverseKinematics/missing.md` |
+| 058 | ChaseCamera | `ChaseCamera_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/ChaseCamera/missing.md` |
 
 ---
 
@@ -296,8 +307,8 @@ Complete games and starter kits — the most demanding ports.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 061 | MarbleMaze | `MarbleMaze_4_0` | 🚧 Placeholder — see `samples/MarbleMaze/missing.md` |
-| 062 | NetRumble | `NetRumble_4_0` | 🚧 Placeholder — see `samples/NetRumble/missing.md` |
+| 061 | MarbleMaze | `MarbleMaze_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/MarbleMaze/missing.md` |
+| 062 | NetRumble | `NetRumble_4_0` | 🚧 Placeholder — networking unblocked 2026-07-06, still needs DEFERRED.md item 11 (shaders); see `samples/NetRumble/missing.md` |
 | 063 | HoneycombRush | `HoneycombRush_4_0` | ✅ Done |
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ❌ Ignored — see `ignored.md` |
 | 065 | NinjAcademy | `NinjAcademy_4_0` | ✅ Done |
@@ -347,18 +358,18 @@ excluded — see `ignored.md` for the reason each one will never get a directory
 | 088 | BingMaps | `BingMaps_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
 | 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
 | 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool, not a `Game`) |
-| 091 | ClientServerSample | `ClientServerSample_4_0` | 🚧 Placeholder — see `samples/ClientServerSample/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 091 | ClientServerSample | `ClientServerSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port, see `samples/ClientServerSample/missing.md` |
 | 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
 | 093 | CurveEditor | `CurveEditor_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool) |
 | 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
 | 095 | GeolocationSample | `GeolocationSample_4_0` | ❌ Ignored — see `ignored.md` (phone GPS hardware, no SDL equivalent) |
 | 096 | InvitesSample | `InvitesSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live account service) |
 | 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | ❌ Ignored — see `ignored.md` (WP7 teaching lab, not a standalone sample) |
-| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | 🚧 Placeholder — see `samples/MicrophoneEcho/missing.md` (DEFERRED.md item 16, microphone capture) |
+| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 16 resolved in `cna`) — ready to port, see `samples/MicrophoneEcho/missing.md` |
 | 099 | ModelImporterSample | `ModelImporterSample_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
-| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | 🚧 Placeholder — see `samples/NetworkPrediction/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port, see `samples/NetworkPrediction/missing.md` |
 | 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
-| 103 | PeerToPeer | `PeerToPeerSample_4_0` | 🚧 Placeholder — see `samples/PeerToPeer/missing.md` (DEFERRED.md item 17, NetworkSession-alike) |
+| 103 | PeerToPeer | `PeerToPeerSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port, see `samples/PeerToPeer/missing.md` |
 | 104 | PerformanceUtility | `PerformanceUtility_4_0` | ❌ Ignored — see `ignored.md` (utility library, no standalone executable) |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | ❌ Ignored — see `ignored.md` (Windows Phone push notification service) |
 | 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | ❌ Ignored — see `ignored.md` (phone media library API) |
@@ -385,18 +396,18 @@ Full per-directory listing with reasons: [`ignored.md`](ignored.md).
 
 ## Phase Status Overview
 
-| Phase | Samples | Done | Placeholder | Ignored |
-|---|---|---|---|---|
-| Phase 1 — Foundation | 12 | 10 | 1 | 1 |
-| Phase 2 — 2D Games | 18 | 16 | 2 | 0 |
-| Phase 3 — 3D Graphics | 19 | 1 | 18 | 0 |
-| Phase 4 — Models & Anim | 9 | 0 | 9 | 0 |
-| Phase 5 — Audio | 2 | 2 | 0 | 0 |
-| Phase 6 — Full Games | 14 | 8 | 4 | 2 |
-| Phase 7 — Advanced / Misc | 10 | 8 | 1 | 1 |
-| Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 0 | 6 | 21 |
-| Everything else (archives/art/dup/non-code — see `ignored.md`) | 42 | 0 | 0 | 42 |
-| **Total** | **153** | **45** | **41** | **67** |
+| Phase | Samples | Done | 🔓 Unblocked | 🚧 Placeholder | Ignored |
+|---|---|---|---|---|---|
+| Phase 1 — Foundation | 12 | 10 | 0 | 1 | 1 |
+| Phase 2 — 2D Games | 18 | 16 | 0 | 2 | 0 |
+| Phase 3 — 3D Graphics | 19 | 1 | 5 | 13 | 0 |
+| Phase 4 — Models & Anim | 9 | 0 | 3 | 6 | 0 |
+| Phase 5 — Audio | 2 | 2 | 0 | 0 | 0 |
+| Phase 6 — Full Games | 14 | 8 | 1 | 3 | 2 |
+| Phase 7 — Advanced / Misc | 10 | 8 | 0 | 1 | 1 |
+| Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 0 | 4 | 2 | 21 |
+| Everything else (archives/art/dup/non-code — see `ignored.md`) | 42 | 0 | 0 | 0 | 42 |
+| **Total** | **153** | **45** | **13** | **28** | **67** |
 
 ---
 

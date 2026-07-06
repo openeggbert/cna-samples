@@ -1,9 +1,12 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: not yet ported.** This directory only holds this write-up (plus a verbatim
-copy of `3DGraphics.htm`) so the CNA-side blocker is documented where a future
-porting session will look. No `src/`/`CMakeLists.txt` exist yet — see CLAUDE.md's
-"Adding a new sample" steps for what's still needed once the gap below is fixed.
+**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
+accurate when first written this session, but a live build+run of `cna_test_
+easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
+lit path (exactly what `content.Load<Model>("Models/spaceship")` produces) already
+works — case "(e) Directional lighting" passes (exit code 0). DEFERRED.md item #5
+is marked resolved for `Model`-based samples. No CNA gap remains; this is now a
+normal, straightforward porting candidate. (Kept the original write-up below.)
 
 Source: `/rv/tmp/XNAGameStudio/Samples/Graphics3DSample_4_0/Sample3DGraphics/Sample3DGraphics/Models/Spaceship.cs`.
 
@@ -27,7 +30,9 @@ port); there is no `VertexPositionNormal` vertex struct and no per-vertex/per-pi
 GLSL shader in the EasyGL backend, so neither `LightingEnabled` nor
 `PreferPerPixelLighting` has anything to render with.
 
-**Root cause:** Missing `VertexPositionNormal` struct + normal-lit shader in CNA
-(DEFERRED.md item #5), not a missing asset-conversion pipeline.
+**Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
+in CNA; now resolved (see Status note above). Note: `PreferPerPixelLighting` may
+still be a no-op if CNA's implementation doesn't distinguish per-vertex vs.
+per-pixel — verify and note in missing.md if so once ported.
 
-**Tracked in:** DEFERRED.md item #5
+**Tracked in:** DEFERRED.md item #5 (resolved)

@@ -1,10 +1,12 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: not yet ported.** This directory only holds this write-up (plus a verbatim
-copy of `ChaseCamera.htm`) so the CNA-side blocker is documented in the same place a
-future porting session will look. No `src/`/`CMakeLists.txt` exist yet — see
-CLAUDE.md's "Adding a new sample" steps for what's still needed once the CNA gap
-below is fixed.
+**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
+accurate when first written this session, but a live build+run of `cna_test_
+easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
+lit path already works — case "(e) Directional lighting" passes (exit code 0).
+DEFERRED.md item #5 is marked resolved for `Model`-based samples. No CNA gap
+remains; this is now a normal, straightforward porting candidate. (Kept the
+original write-up below.)
 
 Source: `/rv/tmp/XNAGameStudio/Samples/ChaseCamera_4_0/
 {ChaseCamera/{ChaseCamera.cs, ChaseCameraGame.cs, Ship.cs},
@@ -30,11 +32,10 @@ path — same class of gap as every other item #5 sample.
 
 **CNA port behaviour:** N/A yet (not ported).
 
-**Root cause:** CNA has no `VertexPositionNormal` vertex type or matching normal-lit
-GLSL shader yet, so `BasicEffect.EnableDefaultLighting()` has nothing to render either
-model with (see DEFERRED.md item #5's full text for the engine-level detail).
+**Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
+in CNA; now resolved (see Status note above).
 
-**Tracked in:** DEFERRED.md item #5.
+**Tracked in:** DEFERRED.md item #5 (resolved).
 
 ## Secondary asset work (not a hard blocker, standard conversion): `Ship.fbx` / `Ground.x`
 `DrawModel()` uses the generic `transforms[mesh.ParentBone.Index]` /

@@ -1,10 +1,15 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: not yet ported.** This directory only holds this write-up (plus a verbatim
-copy of `CustomModel.htm`) so the CNA-side blocker is documented in the same place a
-future porting session will look. No `src/`/`CMakeLists.txt` exist yet — see
-CLAUDE.md's "Adding a new sample" steps for what's still needed once the CNA gap
-below is fixed.
+**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
+accurate when first written this session, but a live build+run of `cna_test_
+easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
+lit path already works — case "(e) Directional lighting" passes (exit code 0).
+DEFERRED.md item #5 is marked resolved for `Model`-based samples. The port should
+just use the standard `tools/obj2model.py` conversion + stock `Model`/`BasicEffect`
+(CNA has no generic custom-`ContentTypeReader` extensibility to replicate this
+sample's own `CustomModel`/`CustomModelProcessor` faithfully anyway — see item #18)
+rather than trying to reproduce the C# original's custom content type. No CNA gap
+remains; this is now a normal porting candidate. (Kept the original write-up below.)
 
 Source: `/rv/tmp/XNAGameStudio/Samples/CustomModelClassSample_4_0/
 {CustomModelSample/{CustomModel.cs, CustomModelSampleGame.cs}, CustomModelPipeline/
@@ -19,12 +24,8 @@ lit `BasicEffect` — same class of gap as every other item #5 sample.
 
 **CNA port behaviour:** N/A yet (not ported).
 
-**Root cause:** CNA has no `VertexPositionNormal` vertex type or a normal-lit GLSL
-shader in the backend yet, so `BasicEffect.EnableDefaultLighting()`/`LightingEnabled`
-has nothing to render with for per-vertex-lit geometry (see DEFERRED.md item #5's
-full text for the engine-level detail — `VertexPositionNormal.hpp` doesn't exist,
-`VertexBuffer::SetData` isn't extended for it, and the EasyGL backend has no lit
-shader for it).
+**Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
+in CNA; now resolved (see Status note above).
 
 **Note on why this is NOT also a bone-hierarchy (item #6) blocker, despite sharing
 `tank.fbx` with SimpleAnimation/SplitScreen:** confirmed by grep — unlike `Tank.cs`
@@ -47,4 +48,4 @@ shared `tank.fbx` asset" rather than a per-sample source audit; item #5's own se
 call site) is the accurate one for this specific sample, confirmed directly against
 the C# source above.
 
-**Tracked in:** DEFERRED.md item #5.
+**Tracked in:** DEFERRED.md item #5 (resolved).

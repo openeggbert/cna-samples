@@ -13,18 +13,25 @@ naming (`Microsoft::Xna::Framework::*`). The ported samples double as integratio
 for CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
 **Current phase:** The great majority of readily-portable samples are done — 45 sample
-targets are wired into the root `CMakeLists.txt` and build. Every other XNA 4.0 sample
-worth tracking now has a `samples/<Name>/` placeholder directory (`<Name>.htm` +
-`missing.md`, no source yet) documenting exactly which CNA gap blocks it — 41 total,
-see `PLAN.md`'s Sample Count Summary. The 67 samples that will never be ported (not
-real XNA 4.0 games, WinForms/content-pipeline tools, redundant training-kit
-duplicates, or tied to a platform CNA won't ever target) are catalogued in
-`ignored.md` instead. Remaining un-ported samples are blocked on real CNA engine work
-(an HLSL→GLSL shader pipeline, skeletal animation playback, a `NetworkSession`-alike,
-microphone capture, or — for exactly one sample, CustomModelEffect — a content-
-pipeline processor CNA has no equivalent of at all) or, for AccelerometerSample
-(#084)/TiltPerspective (#107), a product/scope decision rather than a technical
-gap — see section 4.
+targets are wired into the root `CMakeLists.txt` and build. **13 more are unblocked
+and ready to port right now, with zero remaining CNA gap:** MicrophoneEcho (#098),
+ClientServerSample (#091), NetworkPrediction (#100), PeerToPeer (#103) (item 17,
+networking, resolved), and LensFlare (#041), Graphics3D (#046), PickingSample
+(#047), TrianglePicking (#048), HeightmapCollision (#049), CustomModelClass (#052),
+InverseKinematics (#057), ChaseCamera (#058), MarbleMaze (#061) (item 5, lit 3D
+rendering, resolved) — both gaps were checked live against `cna`'s current source
+on 2026-07-06 (see section 3), not assumed. NetRumble (#062) went from double- to
+single-blocked (still needs item 11's shaders). The remaining 28 placeholder
+samples have a real CNA gap: an HLSL→GLSL shader pipeline (item 11, the biggest
+bucket) or skeletal animation playback (item 13) are the two big ones, plus, for
+exactly one sample (CustomModelEffect), a content-pipeline processor CNA has no
+equivalent of at all (item 18). The 67 samples that will never be ported (not real
+XNA 4.0 games, WinForms/content-pipeline tools, redundant training-kit duplicates,
+or tied to a platform CNA won't ever target) are catalogued in `ignored.md`
+instead. AccelerometerSample (#084)/TiltPerspective (#107) remain blocked on a
+product/scope decision rather than a technical gap, and a similar scope decision
+now applies to 5 previously "permanently ignored" Avatar samples now that `cna` has
+an opt-in substitute-body rendering path — see section 4 and section 8.
 
 **Key architectural decisions:**
 - One executable per sample; no shared sample library. Each `samples/<Name>/` directory
@@ -139,11 +146,49 @@ model loading and rendering, and `GraphicsDeviceManager.SupportedOrientations`/
   gap than shader/model conversion, found while documenting CustomModelEffect, which
   bakes a reflection cubemap via a custom build-time MSBuild processor chain CNA has
   no equivalent of at all).
-- **Not yet done this session** (next up): audit all 45 already-ported samples'
-  `missing.md` files for completeness — the user's ask was that every sample,
-  ported or not, should have its CNA gaps fully documented, and the 45 existing ones
-  were written at various points over many sessions without this session's more
-  rigorous direct-source-audit standard.
+- Audited all 45 already-ported samples' `missing.md` files against their C#
+  originals and current `cna` source (dispatched as 7 more parallel batches).
+  Incident along the way: one sub-agent misread `git status` (this repo has many
+  concurrent Claude sessions active — normal, not a rogue process) and ran
+  `git checkout` on 31 files it didn't own, discarding 6 other batches' completed
+  work. Caught immediately, confirmed the 36 placeholder dirs/other files were
+  untouched, and fully re-ran the 6 affected batches — all since verified intact.
+  Saved a memory about this hazard for future sessions.
+- **Correction (2026-07-06, prompted by the user directly asking how blockers were
+  verified):** DEFERRED.md items #16 (microphone) and #17 (networking) were written
+  earlier this same session based on general capability reasoning, not an actual
+  check of `../cna`'s current source. A live check afterward found both already
+  fully implemented — `Microphone`/`DynamicSoundEffectInstance` (merged via `cna`'s
+  `feature/audio` branch, 2026-07-04) and `NetworkSession`/`GamerServicesComponent`/
+  `SystemLink` LAN discovery (merged via `feature/net`, 2026-07-04) — **two days
+  before** these items were written. Both marked ✅ resolved; MicrophoneEcho (#098),
+  ClientServerSample (#091), NetworkPrediction (#100), and PeerToPeer (#103) are now
+  unblocked (updated their `missing.md`/PLAN.md status), and NetRumble (#062) is now
+  single- rather than double-blocked. Separately (same live check), found `cna` has
+  grown a real, working `AvatarRenderer::EnableRealRenderingEXT` substitute-body
+  rendering path — reopening the 5 "permanently ignored" Avatar samples as a scope
+  decision rather than a hard "never" (see `ignored.md`).
+- **Second correction, same conversation (2026-07-06):** re-verifying every
+  DEFERRED.md blocker live (not just the two just-added ones) turned up a third,
+  bigger stale item: **#5 (VertexPositionNormal / lit 3D rendering)** — this one was
+  *pre-existing* content from an even earlier session, not written this session,
+  and it already had exact C#-side file:line citations. Its claim about the CNA
+  side ("no lit shader for per-vertex-normal rendering") had simply gone stale —
+  a live build+run of `cna_test_easygl_basiceffect_combinations` proved
+  `VertexPositionNormalTexture` directional lighting already works (case "(e)",
+  exit 0). This unblocked all 9 samples item #5 named: LensFlare (#041),
+  Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
+  HeightmapCollision (#049), CustomModelClass (#052), InverseKinematics (#057),
+  ChaseCamera (#058), MarbleMaze (#061) — all confirmed to render via
+  `Content.Load<Model>` (not a bare, texture-less vertex struct), so they get the
+  now-working lit path automatically. Primitives3D remains the one exception (its
+  own procedural geometry has no texcoords) — see its `missing.md`.
+  **Revised lesson:** even *pre-existing* DEFERRED.md content with good citations
+  can go stale, because "CNA doesn't support X" is a claim about a fast-moving
+  sibling repo, not a fact about the frozen C# original — it has an implicit
+  timestamp. Before relying on *any* DEFERRED.md blocker (not just ones written
+  this session) to justify "not portable," re-verify it live if the placeholder is
+  actually going to gate a porting decision.
 
 ### Previous session
 - Added `samples/NinjAcademy/` (#065), `samples/CardsStarterKit/` (#069),
@@ -359,34 +404,91 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-1. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
+1. **Port MicrophoneEcho (#098) — the best next pick.** `cna`'s `feature/audio`
+   branch (merged into `develop` 2026-07-04) added a full, real `Microphone` +
+   `DynamicSoundEffectInstance` implementation — DEFERRED.md item #16 is resolved,
+   confirmed via direct `../cna` source read on 2026-07-06 (not assumed). This is a
+   small, self-contained sample with **no remaining CNA gap at all**.
+   - Files: new `samples/MicrophoneEcho/src/`; see `samples/MicrophoneEcho/missing.md`
+     for the exact XNA API surface to port (`Microphone.All`/`GetData()`/
+     `BufferReady`, `DynamicSoundEffectInstance` loopback, `DrawUserPrimitives`
+     waveform — none of it blocked).
+   - Verify: `cmake --build cmake-build-debug --target MicrophoneEcho_cna_samples`.
+
+2. **Port ClientServerSample (#091), NetworkPrediction (#100), and/or PeerToPeer
+   (#103) — also unblocked.** `cna`'s `feature/net` branch (merged 2026-07-04) added
+   a full `NetworkSession`/`GamerServicesComponent`/`SystemLink` LAN-discovery
+   implementation — DEFERRED.md item #17 is resolved, confirmed the same way.
+   ClientServerSample is the simplest of the three (single authoritative server, no
+   prediction/lockstep) — start there.
+   - Files: new `samples/ClientServerSample/src/`; see its `missing.md`.
+   - Verify: `cmake --build cmake-build-debug --target ClientServerSample_cna_samples`;
+     run two instances on the same LAN segment to confirm session discovery/join.
+   - Note: NetRumble (#062) is now only single-blocked (still needs item #11's
+     shader pipeline for its bloom post-process) — not yet a "next pick", but no
+     longer double-blocked.
+
+3. **Port any of 9 newly-unblocked Phase 3/4/6 lighting samples.** A live build+run
+   of `cna_test_easygl_basiceffect_combinations` (2026-07-06) proved CNA's
+   `VertexPositionNormalTexture` lit-rendering path already works in the EasyGL
+   backend (case "(e) Directional lighting", exit code 0) — DEFERRED.md item #5 is
+   resolved for every sample that renders via `Content.Load<Model>` (all 9 below
+   do). None of these need any CNA change; each `missing.md` already has the
+   correction and exact call-site citations:
+   - **LensFlare (#041)**, **Graphics3D (#046)**, **PickingSample (#047)**,
+     **TrianglePicking (#048)**, **HeightmapCollision (#049)** — Phase 3, all
+     single-model-plus-lighting demos, likely similar effort to each other.
+   - **CustomModelClass (#052)**, **InverseKinematics (#057)**,
+     **ChaseCamera (#058)** — Phase 4, also unblocked; CustomModelClass's own
+     custom XNA content type should just be ported using the standard
+     `tools/obj2model.py` + stock `Model` (no CNA content-pipeline extensibility
+     exists — see item #18 — so don't try to replicate the C# original's custom
+     processor).
+   - **MarbleMaze (#061)** — Phase 6; port `Source/EX2_Polishing/End/` specifically
+     (the final polished build, not the earlier `EX1`/tutorial stages — see its
+     `missing.md`). No `.htm` exists for this one; do not fabricate one.
+   - Verify per sample: `cmake --build cmake-build-debug --target <Name>_cna_samples`.
+
+4. **Investigate CameraShake's near-plane clipping bug in the EasyGL backend.**
    - Goal: clip `w<0` vertices the way DirectX does, so the ground/tank fully render.
    - Files: likely `cna/src/.../EasyGL/EasyGLGraphicsBackend.cpp` (clipping/projection
      path) — exact location not yet confirmed, needs investigation first.
    - Verify: run `./cmake-build-debug/samples/CameraShake/CameraShake_cna_samples`,
      confirm the white stripe is gone.
 
-2. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+5. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin()/End()` in the same frame must not discard the first.
    - Files: `cna/src/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend; confirm all
      layers draw (not just the last `Begin/End` block's sprites).
 
-3. **Decide the scope for AccelerometerSample (#084) / TiltPerspective (#107), then
+6. **Decide the scope for AccelerometerSample (#084) / TiltPerspective (#107), then
    port if approved.**
    - Goal: get an explicit go/no-go from the user on inventing a keyboard-tilt fallback
      (see section 4a) before spending the effort.
    - Files (if approved): new `samples/AccelerometerSample/`, `samples/TiltPerspective/`.
    - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`.
 
-4. **Run a controlled interactive pass on RolePlayingGame (#070).**
+7. **New scope decision (found 2026-07-06): reconsider the 5 ignored Avatar samples**
+   (#085 AvatarAnimationBlending, #086 AvatarMultipleAnimations, #087 AvatarShadows,
+   #094 CustomAvatarAnimation, #101 ObjectPlacementOnAvatar). `cna` has grown an
+   opt-in `AvatarRenderer::EnableRealRenderingEXT` path (`cna/docs/
+   avatar-real-rendering-ext.md`) that renders a real GPU-skinned mesh from a
+   MakeHuman+Mixamo substitute body (not a reproduction of Microsoft's proprietary,
+   permanently-gone Xbox Avatar art — a stand-in, same spirit as Yacht/SnowShovel's
+   keyboard-for-accelerometer substitution). Porting these onto that substitute is
+   now *technically* possible; whether it's worth doing is a product call, not
+   decided here. See `ignored.md`'s Avatar entries for detail.
+   - Goal: get an explicit go/no-go from the user before spending any effort here.
+
+8. **Run a controlled interactive pass on RolePlayingGame (#070).**
    - Goal: confirm a real keyboard-driven playthrough — walk into a portal/chest/NPC,
      trigger and resolve one combat — once `xdotool`/input reliability is confirmed.
    - Files: `samples/RolePlayingGame/src/Session/Session.hpp`, `CombatEngine`-related
      headers (read-only verification, not expected to need code changes).
    - Verify: manual playthrough with screenshot evidence at each step.
 
-5. **(User-owned, tracked here for visibility)** Add per-mesh `ModelBone` support to
+9. **(User-owned, tracked here for visibility)** Add per-mesh `ModelBone` support to
    CNA's `.model.json` reader.
    - Goal: unblock SplitScreen (#076), TankOnHeightmap (#074), SimpleAnimation (#050).
    - Files: `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`'s
@@ -394,28 +496,30 @@ No lint/format command and no automated test suite are configured in this repo.
    - Verify: `samples/SplitScreen/` (currently only `missing.md` + `.htm`, no source)
      can be built and renders independently-posed tank parts.
 
-6. **Audit all 45 already-ported samples' `missing.md` for completeness.**
-   - Goal: every sample — ported or not — should fully document what it's missing vs.
-     CNA (not just what was known/written at port time), so gaps can be picked up and
-     fixed in a `cna` session without re-deriving them from scratch.
-   - Files: `samples/<Name>/missing.md` for all 45 done samples. Compare each against
-     its XNA C# original (`/rv/tmp/XNAGameStudio/Samples/...`) and the current `cna`
-     source, the same way this session's 36 placeholder `missing.md` files were
-     produced (direct grep/read, not assumption).
-   - Verify: spot-check a handful of the updated files cite concrete file:line
-     evidence rather than restating what CLAUDE.md already says is a known pattern.
+**Done this session:** audited all 45 already-ported samples' `missing.md` for
+completeness against their C# originals and current `cna` source (see section 3).
 
 ---
 
 ## 9. Do not do yet
 
-- **Do not start a Phase 3 (3D shader) sample** without first building an HLSL→GLSL
+- **Do not start a custom-`.fx`-shader sample** (BloomSample, DistortionSample,
+  NonPhotoRealistic, NormalMapping, PerPixelLighting, VertexLighting,
+  ShadowMapping, BillboardSample, InstancedModel, ShatterEffect, Particles3D,
+  XmlParticles, ShipGame, NetRumble) without first building an HLSL→GLSL
   `.shader.json` workflow in `cna` (DEFERRED.md item 11) — no tooling exists yet.
+  This does **not** apply to the 9 lit-`BasicEffect`-only samples in section 8 item
+  3 (LensFlare, Graphics3D, PickingSample, TrianglePicking, HeightmapCollision,
+  CustomModelClass, InverseKinematics, ChaseCamera, MarbleMaze) — those are
+  unblocked (item 5 resolved), not shader samples.
 - **Do not start a skeletal-animation Phase 4 sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item 13).
 - **Do not invent a keyboard-tilt input scheme for AccelerometerSample/TiltPerspective**
-  without an explicit scope decision from the user first (section 8, item 3).
+  without an explicit scope decision from the user first (section 8, item 6).
+- **Do not start porting any of the 5 ignored Avatar samples onto the new
+  `EnableRealRenderingEXT` substitute-body path** without an explicit scope decision
+  from the user first (section 8, item 7).
 - **Do not add a shared `samples/common/` library**, even where two samples' code looks
   structurally similar.
 - **Do not edit `cna`/`sharp-runtime` source** without confirming scope with the user
@@ -424,7 +528,7 @@ No lint/format command and no automated test suite are configured in this repo.
   beforehand, and do not conclude "no visible effect" means a code bug without first
   checking the sample's own state (section 5).
 - **No broad refactors or unrelated cleanup** while the CameraShake/Vulkan bugs
-  (section 8, items 1–2) are open.
+  (section 8, items 4–5) are open.
 - **Do not regenerate existing font atlases or `.model.json` assets** unless there is a
   confirmed rendering bug — regenerating is cheap but pointless churn otherwise.
 - **Do not add a directory under `samples/` for anything listed in `ignored.md`** —

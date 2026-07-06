@@ -144,11 +144,11 @@ Older XNA API versions; this repo ports the XNA Game Studio **4.0** collection o
 
 | # | Name | Source Directory | Reason |
 |---|---|---|---|
-| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | Renders the Xbox LIVE Avatar body using Microsoft's proprietary Avatar content system (`AvatarRenderer`/`AvatarAnimation`) — that content was retired with the original Xbox Avatars marketplace and cannot be reproduced |
-| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | Same Xbox LIVE Avatar system dependency as #085 |
-| 087 | AvatarShadows | `AvatarShadows_4_0` | Same Xbox LIVE Avatar system dependency as #085 |
-| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | Same Xbox LIVE Avatar system dependency as #085 |
-| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Same Xbox LIVE Avatar system dependency as #085 |
+| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | Renders the Xbox LIVE Avatar body using Microsoft's proprietary Avatar content system (`AvatarRenderer`/`AvatarAnimation`) — that content was retired with the original Xbox Avatars marketplace and cannot be reproduced. **Reconsider (2026-07-06):** `cna` has since grown an opt-in `AvatarRenderer::EnableRealRenderingEXT` path (`docs/avatar-real-rendering-ext.md`, `tools/avatar_asset_pipeline/convert_avatar.py`) that renders a real GPU-skinned mesh from a MakeHuman+Mixamo asset instead of the real (permanently unavailable) Xbox body — explicitly *not* a reproduction of the original art. Porting this sample onto that substitute body is now technically possible; whether it's worth doing (same class of call as `AccelerometerSample`'s keyboard-tilt scope decision) is a product decision, not settled here — see `PLAN.md`/`NEXT.md` |
+| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | Same Xbox LIVE Avatar system dependency as #085 — same EXT-path reconsideration applies |
+| 087 | AvatarShadows | `AvatarShadows_4_0` | Same Xbox LIVE Avatar system dependency as #085 — same EXT-path reconsideration applies |
+| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | Same Xbox LIVE Avatar system dependency as #085 — same EXT-path reconsideration applies |
+| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | Same Xbox LIVE Avatar system dependency as #085 — same EXT-path reconsideration applies |
 | 088 | BingMaps | `BingMaps_4_0` | Requires a Bing Maps Web API subscription key / the (long-deprecated) Bing Maps Silverlight/AJAX control — an external web service, not a CNA framework capability |
 | 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | Same Bing Maps external-service dependency as #088 |
 | 095 | GeolocationSample | `GeolocationSample_4_0` | Real phone GPS hardware; unlike the accelerometer (SDL_Sensor covers that generically, see `AccelerometerSample` below), SDL has no portable geolocation API to build on |

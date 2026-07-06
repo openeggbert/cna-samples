@@ -70,9 +70,23 @@ light.  Vertices carry position + normal (`VertexPositionNormal`), and the shade
 computes per-fragment lighting (diffuse + specular), giving the primitives a 3D
 shaded appearance.
 
-**CNA port behaviour:** `VertexPositionNormal` is not supported by CNA.  The port
-uses `VertexPositionColor` with white vertex colors.  The colored 3D shader applies
-no lighting — all faces are rendered at the same brightness (flat white).
+**CNA port behaviour:** A bare, texture-less `VertexPositionNormal` is still not
+supported by CNA.  The port uses `VertexPositionColor` with white vertex colors.
+The colored 3D shader applies no lighting — all faces are rendered at the same
+brightness (flat white).
 
-**Tracked in:** DEFERRED.md item 5 — requires adding `VertexPositionNormal` vertex
-type and a normal-lit GLSL shader to the EasyGL backend.
+**Update (2026-07-06):** CNA's lit rendering path is otherwise real and working —
+`VertexPositionNormalTexture` (position+normal+texcoord) has a tested, passing
+directional-lighting shader in the EasyGL backend (`cna_test_easygl_basiceffect_
+combinations`, case (e), confirmed by a live build+run). This unblocked 9 other
+Model-based samples (see DEFERRED.md item 5). Primitives3D is the one exception
+still open, because its primitives are procedurally generated with **no** texture
+coordinates (mirroring the C# original's own sample-authored, texture-less
+`VertexPositionNormal` struct) — so it doesn't fit the now-working textured format
+as-is. The pragmatic fix no longer needs a CNA engine change: assign a dummy/unused
+texcoord (e.g. `(0,0)`) to every generated vertex and switch this port to
+`VertexPositionNormalTexture` + the already-working lit shader, rather than waiting
+for CNA to add a texture-less variant.
+
+**Tracked in:** DEFERRED.md item 5 (Model-based case resolved; this sample needs
+the port-side `VertexPositionNormalTexture` workaround above, effort S).

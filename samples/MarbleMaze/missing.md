@@ -1,9 +1,14 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: not yet ported.** This directory only holds this write-up so the CNA-side
-blocker is documented in the same place a future porting session will look. No
-`src/`/`CMakeLists.txt` exist yet — see CLAUDE.md's "Adding a new sample" steps for
-what's still needed once the CNA gap below is fixed.
+**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
+accurate when first written this session, but a live build+run of `cna_test_
+easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
+lit path (exactly what this sample's `Content.Load<Model>` calls produce) already
+works — case "(e) Directional lighting" passes (exit code 0). DEFERRED.md item #5
+is marked resolved for `Model`-based samples. No CNA gap remains; this is now a
+normal, straightforward porting candidate (target `Source/EX2_Polishing/End/` as
+noted below). No `src/`/`CMakeLists.txt` exist yet — see CLAUDE.md's "Adding a new
+sample" steps. (Kept the original write-up below.)
 
 Source: `/rv/tmp/XNAGameStudio/Samples/MarbleMaze_4_0/`.
 
@@ -57,15 +62,10 @@ All three call sites loop `foreach (BasicEffect effect in mesh.Effects)` and cal
 `effect.EnableDefaultLighting()` — no custom `.fx` shader is involved anywhere in
 this sample; the entire renderer is stock `BasicEffect` with lighting turned on.
 
-**CNA port behaviour:** N/A yet (not ported). CNA lacks `VertexPositionNormal` and a
-corresponding lit shader path in the EasyGL backend — see DEFERRED.md item #5, which
-already lists "MarbleMaze's EX2/End tutorial stage" by name as one of the nine
-samples blocked by this exact gap (confirmed by direct source audit, not by
-association with the unrelated custom-shader item #11).
+**CNA port behaviour:** Resolved 2026-07-06 — see Status note at the top of this
+file. CNA's `VertexPositionNormalTexture` lit path is real and tested.
 
-**Root cause:** CNA's `VertexPositionColor`-only 3D path (used as a flat-shading
-workaround by the already-ported Primitives3D sample) has no equivalent of XNA's
-`VertexPositionNormal` + a normal-lit GLSL shader, so `BasicEffect.EnableDefaultLighting()`
-has nothing to render with per-vertex normals.
+**Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
+in CNA; now resolved.
 
-**Tracked in:** DEFERRED.md item #5.
+**Tracked in:** DEFERRED.md item #5 (resolved).

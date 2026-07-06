@@ -1,9 +1,17 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: not yet ported.** This directory only holds this write-up (plus a verbatim
-copy of `MicrophoneEcho.htm`) so the CNA-side blocker is documented where a future
-porting session will look. No `src/`/`CMakeLists.txt` exist yet — see CLAUDE.md's
-"Adding a new sample" steps for what's still needed once the gap below is fixed.
+**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker described
+below (no CNA `Microphone`/audio-capture support) was accurate when first written
+this same session, but a live check of `../cna` right after found it had already
+been resolved: `Microphone` (`src/Microsoft/Xna/Framework/Audio/Microphone.cpp`, 252
+lines — `getAllProperty()`/`getDefaultProperty()`/`BufferReady`/`GetData()`/
+`getStateProperty()`, matching the surface this sample calls into) and
+`DynamicSoundEffectInstance` are both real, tested implementations, merged via
+`cna`'s `feature/audio` branch on 2026-07-04 — two days before this file's first
+version claimed the gap. DEFERRED.md item #16 is marked resolved. No CNA gap
+remains; this is now a normal, straightforward porting candidate — see
+CLAUDE.md's "Adding a new sample" steps. (Kept the original blocker write-up below
+for reference/history.)
 
 Source: `/rv/tmp/XNAGameStudio/Samples/MicrophoneEchoSample_4_0/MicrophoneEchoSample/MicrophoneEchoSampleGame.cs`.
 
