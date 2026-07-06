@@ -12,16 +12,17 @@ XNA Game Studio samples total) to CNA C++, preserving the original class hierarc
 naming (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests
 for CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** The great majority of readily-portable samples are done — 45 sample
-targets are wired into the root `CMakeLists.txt` and build. **13 more are unblocked
-and ready to port right now, with zero remaining CNA gap:** MicrophoneEcho (#098),
-ClientServerSample (#091), NetworkPrediction (#100), PeerToPeer (#103) (item 17,
-networking, resolved), and LensFlare (#041), Graphics3D (#046), PickingSample
-(#047), TrianglePicking (#048), HeightmapCollision (#049), CustomModelClass (#052),
-InverseKinematics (#057), ChaseCamera (#058), MarbleMaze (#061) (item 5, lit 3D
-rendering, resolved) — both gaps were checked live against `cna`'s current source
-on 2026-07-06 (see section 3), not assumed. NetRumble (#062) went from double- to
-single-blocked (still needs item 11's shaders). The remaining 28 placeholder
+**Current phase:** The great majority of readily-portable samples are done — 46 sample
+targets are wired into the root `CMakeLists.txt` and build (MicrophoneEcho #098 was
+added this session, see section 3). **12 more are unblocked and ready to port right
+now, with zero remaining CNA gap:** ClientServerSample (#091), NetworkPrediction
+(#100), PeerToPeer (#103) (item 17, networking, resolved), and LensFlare (#041),
+Graphics3D (#046), PickingSample (#047), TrianglePicking (#048), HeightmapCollision
+(#049), CustomModelClass (#052), InverseKinematics (#057), ChaseCamera (#058),
+MarbleMaze (#061) (item 5, lit 3D rendering, resolved) — both gaps were checked
+live against `cna`'s current source on 2026-07-06 (see section 3), not assumed.
+NetRumble (#062) went from double- to single-blocked (still needs item 11's
+shaders). The remaining 28 placeholder
 samples have a real CNA gap: an HLSL→GLSL shader pipeline (item 11, the biggest
 bucket) or skeletal animation playback (item 13) are the two big ones, plus, for
 exactly one sample (CustomModelEffect), a content-pipeline processor CNA has no
@@ -189,6 +190,9 @@ model loading and rendering, and `GraphicsDeviceManager.SupportedOrientations`/
   timestamp. Before relying on *any* DEFERRED.md blocker (not just ones written
   this session) to justify "not portable," re-verify it live if the placeholder is
   actually going to gate a porting decision.
+- **Ported MicrophoneEcho (#098)** — real `samples/MicrophoneEcho/src/` now exists
+  (was a placeholder minutes earlier). See section 8 item 1 for full detail. 46th
+  sample target now wired into the root `CMakeLists.txt`.
 
 ### Previous session
 - Added `samples/NinjAcademy/` (#065), `samples/CardsStarterKit/` (#069),
@@ -404,16 +408,22 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-1. **Port MicrophoneEcho (#098) — the best next pick.** `cna`'s `feature/audio`
+1. **✅ DONE (2026-07-06): Port MicrophoneEcho (#098).** `cna`'s `feature/audio`
    branch (merged into `develop` 2026-07-04) added a full, real `Microphone` +
-   `DynamicSoundEffectInstance` implementation — DEFERRED.md item #16 is resolved,
-   confirmed via direct `../cna` source read on 2026-07-06 (not assumed). This is a
-   small, self-contained sample with **no remaining CNA gap at all**.
-   - Files: new `samples/MicrophoneEcho/src/`; see `samples/MicrophoneEcho/missing.md`
-     for the exact XNA API surface to port (`Microphone.All`/`GetData()`/
-     `BufferReady`, `DynamicSoundEffectInstance` loopback, `DrawUserPrimitives`
-     waveform — none of it blocked).
-   - Verify: `cmake --build cmake-build-debug --target MicrophoneEcho_cna_samples`.
+   `DynamicSoundEffectInstance` implementation — DEFERRED.md item #16 resolved,
+   confirmed via direct `../cna` source read. Ported `samples/MicrophoneEcho/src/
+   MicrophoneEchoGame.hpp` line-for-line against the C# original's desktop branch.
+   Builds with 0 warnings; live-verified via screenshot (`SDL_VIDEODRIVER=x11`) —
+   CornflowerBlue background, instruction/status text render correctly, status text
+   read "Default Device is Stopped" (CNA found a real capture device on this
+   machine), and the `BasicEffect`/`VertexPositionColor`/`DrawUserPrimitives`
+   waveform line-strip renders (flat, matching silence before recording starts).
+   Pressing 'A' to start recording didn't visibly change status in a follow-up
+   screenshot — not confirmed as a bug, matches this repo's known
+   `feedback_xdotool_shared_desktop` input-delivery limitation (see
+   `samples/MicrophoneEcho/missing.md`'s Verification section); a future session
+   with reliable local input should confirm the full record/playback loop.
+   PLAN.md status flipped to ✅ Done; root `CMakeLists.txt` line uncommented.
 
 2. **Port ClientServerSample (#091), NetworkPrediction (#100), and/or PeerToPeer
    (#103) — also unblocked.** `cna`'s `feature/net` branch (merged 2026-07-04) added

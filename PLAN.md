@@ -163,8 +163,8 @@ in `ignored.md` (never gets a directory).
 
 | Category | Count | Where |
 |---|---|---|
-| Done (real port, builds) | 45 | this file |
-| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 13 | this file |
+| Done (real port, builds) | 46 | this file |
+| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 12 | this file |
 | 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 28 | this file |
 | Ignored — never gets a directory | 67 | `ignored.md` |
 | **Total** | **153** | |
@@ -175,9 +175,9 @@ were added in one pass across Phase 3, Phase 4, the remaining Phase 6 samples, a
 6 of the 27 "Deferred — Phone Hardware" appendix samples. Of those 36, **13 turned
 out to already be unblocked** when their cited `DEFERRED.md` gap was actually
 checked against `cna`'s live source on 2026-07-06 (see `NEXT.md` section 3 for the
-full story): MicrophoneEcho (#098), ClientServerSample (#091), NetworkPrediction
-(#100), PeerToPeer (#103) — item 17 (networking) — and LensFlare (#041),
-Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
+full story): MicrophoneEcho (#098, ported the same day), ClientServerSample (#091),
+NetworkPrediction (#100), PeerToPeer (#103) — item 17 (networking) — and
+LensFlare (#041), Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
 HeightmapCollision (#049), CustomModelClass (#052), InverseKinematics (#057),
 ChaseCamera (#058), MarbleMaze (#061) — item 5 (lit 3D rendering). NetRumble
 (#062) went from double- to single-blocked (item 11 remains). See each
@@ -365,7 +365,7 @@ excluded — see `ignored.md` for the reason each one will never get a directory
 | 095 | GeolocationSample | `GeolocationSample_4_0` | ❌ Ignored — see `ignored.md` (phone GPS hardware, no SDL equivalent) |
 | 096 | InvitesSample | `InvitesSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live account service) |
 | 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | ❌ Ignored — see `ignored.md` (WP7 teaching lab, not a standalone sample) |
-| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 16 resolved in `cna`) — ready to port, see `samples/MicrophoneEcho/missing.md` |
+| 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | ✅ Done (ported 2026-07-06) |
 | 099 | ModelImporterSample | `ModelImporterSample_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
 | 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port, see `samples/NetworkPrediction/missing.md` |
 | 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
@@ -405,9 +405,9 @@ Full per-directory listing with reasons: [`ignored.md`](ignored.md).
 | Phase 5 — Audio | 2 | 2 | 0 | 0 | 0 |
 | Phase 6 — Full Games | 14 | 8 | 1 | 3 | 2 |
 | Phase 7 — Advanced / Misc | 10 | 8 | 0 | 1 | 1 |
-| Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 0 | 4 | 2 | 21 |
+| Deferred appendix (phone/Avatar/WinForms/Live) | 27 | 1 | 3 | 2 | 21 |
 | Everything else (archives/art/dup/non-code — see `ignored.md`) | 42 | 0 | 0 | 0 | 42 |
-| **Total** | **153** | **45** | **13** | **28** | **67** |
+| **Total** | **153** | **46** | **12** | **28** | **67** |
 
 ---
 
