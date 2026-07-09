@@ -303,7 +303,7 @@ driven cursor/name-label interaction was not exercised via synthetic input
 this session (same `xdotool` reliability caveat noted throughout this repo).
 See `samples/PickingSample/missing.md` for the complete account.
 
-Commit this session: `<PICKING_COMMIT_HASH>`, pushed to `develop`.
+Commit this session: `c58652e`, pushed to `develop`.
 
 **Newest session (2026-07-09, same-day follow-up):** Ported **Graphics3D
 (#046)**, picked interactively (user asked "which sample next" after LensFlare
