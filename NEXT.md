@@ -359,7 +359,7 @@ overlay uses the standard `tools/gen_help_png.py` path with no one-off variant
 needed (`HeightmapCollision.htm`'s table has the standard 3 columns). See
 `samples/HeightmapCollision/missing.md` for the complete account.
 
-Commit this session: see git log (pushed to `develop`).
+Commit this session: `e15c287`, pushed to `develop`.
 
 **Previous session (2026-07-09, third same-day follow-up):** Ported
 **TrianglePicking (#048)**, section 8 task 6's recommended next candidate — a
