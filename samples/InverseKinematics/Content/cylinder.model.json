@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "cylinder",
+      "vertices": "cylinder_verts.bin",
+      "indices": "cylinder_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

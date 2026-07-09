@@ -1023,6 +1023,140 @@ call itself is a single line per backend on both EasyGL and Vulkan).
 
 ---
 
+## 26. `ModelTypeReader::Read()` uploads corrupted vertex data for every stride-32 `.model.json` (vtable-size mismatch) — likely the true cause of the "near-plane-clipping" bug family
+
+**Found while porting InverseKinematics (2026-07-10).** A straightforward first port of
+this sample's `cylinder.x` (converted via `assimp export` + `tools/obj2model.py`, the
+exact same pipeline already proven for CameraShake/PerformanceMeasuring/Graphics3D) built
+and loaded without error — confirmed via debug instrumentation: `Content.Load<Model>
+("cylinder")` produced exactly 1 mesh, 1 `ModelMeshPart` (418 vertices, 190 primitives),
+and a correctly-linked `BasicEffect` — but **the model never rendered**, at any camera
+distance/scale, with `RasterizerState::CullNone`, with lighting forced off, and even
+reduced to a single full-scale, identity-world, unlit, un-textured triangle drawn through
+the exact same `Model`/`ModelMesh::Draw()` path. A hand-built triangle at the same scale
+and **PickingSample's own already-shipped, already-working `Cylinder.model.json`** (loaded
+fresh into this sample's own code) **both failed to render the same way**, ruling out this
+mesh's own data, the camera, and render state as the cause. A large model
+(HeightmapCollision's `sphere.model.json`, 3252 vertices) rendered *correctly* through the
+identical code path at every scale tested (including scaled down to match the failing
+tests' size) — the key clue that the *reader*, not any one sample's own code or a specific
+asset, was responsible, and that it was somehow size/vertex-count sensitive.
+
+**Root cause, confirmed by direct source read plus a standalone `sizeof()` probe:** every
+vertex struct in CNA (`VertexPositionColor`, `VertexPositionTexture`,
+`VertexPositionColorTexture`, `VertexPositionNormalTexture`) publicly inherits from the
+polymorphic `Microsoft::Xna::Framework::Graphics::IVertexType`
+(`include/Microsoft/Xna/Framework/Graphics/IVertexType.hpp`:
+`virtual ~IVertexType() = default;` plus a pure virtual
+`getVertexDeclarationProperty()`), so every instance carries an 8-byte vtable pointer that
+XNA's own "clean" (unpadded) vertex layouts never had. A standalone `sizeof(T)` probe
+(`#include`s only `cna`'s own headers, no linking against any implementation needed since
+layout is fully determined by the declarations) confirms this live:
+
+```
+sizeof(VertexPositionColor)         = 40   (XNA/clean size: 16)
+sizeof(VertexPositionTexture)       = 32   (XNA/clean size: 20)
+sizeof(VertexPositionColorTexture)  = 56   (XNA/clean size: 24)
+sizeof(VertexPositionNormalTexture) = 40   (XNA/clean size: 32)
+```
+
+`ModelTypeReader::Read()` (`cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`,
+the "Meshes" parsing loop) selects which typed `VertexBuffer::SetData` overload to call
+for a mesh by comparing the `.model.json`-declared `"vertexStride"` (always one of the
+*clean* XNA sizes 16/20/24/32, since every conversion tool in this repo —
+`tools/obj2model.py`, `tools/fbx_ascii2model.py` — writes the tightly-packed layout, not
+the padded/vtable-inflated one) against `sizeof(...)` of these now-inflated structs:
+
+```cpp
+if (stride == static_cast<int>(sizeof(Graphics::VertexPositionColor)))        // 40, never 16
+    vb->SetData(reinterpret_cast<const Graphics::VertexPositionColor*>(vertBytes.data()), numVertices);
+else if (stride == static_cast<int>(sizeof(Graphics::VertexPositionNormalTexture))) // 40, never 32
+    vb->SetData(reinterpret_cast<const Graphics::VertexPositionNormalTexture*>(vertBytes.data()), numVertices);
+else if (stride == static_cast<int>(sizeof(Graphics::VertexPositionColorTexture)))  // 56, never 24
+    vb->SetData(reinterpret_cast<const Graphics::VertexPositionColorTexture*>(vertBytes.data()), numVertices);
+else if (stride == static_cast<int>(sizeof(Graphics::VertexPositionTexture)))       // 32 !!
+    vb->SetData(reinterpret_cast<const Graphics::VertexPositionTexture*>(vertBytes.data()), numVertices);
+```
+
+None of the declared "clean" stride values (16/20/24/32) equal their *intended* struct's
+real (vtable-inflated) size any more — **except** `"vertexStride": 32`, the value **every**
+`Content.Load<Model>`-based sample in this entire repo uses (since `obj2model.py`/
+`fbx_ascii2model.py` only ever emit `VertexPositionNormalTexture` data), which
+*accidentally* equals `sizeof(VertexPositionTexture)` (also 32, by coincidence of the
+specific field-count/padding arithmetic — a real `VertexPositionTexture` is
+8-byte-vtable + 12-byte `Position` + 8-byte `TextureCoordinate` = 28, padded up to 32 for
+4-byte alignment). So the reader always silently dispatches to the **wrong** branch: it
+`reinterpret_cast`s the raw, vtable-free file bytes (laid out as `position[12] +
+normal[12] + texcoord[8]`, no vtable, exactly matching what the offline tools wrote) as an
+array of real, vtable-shifted `VertexPositionTexture` objects, and reads each vertex's
+`.Position`/`.TextureCoordinate` fields from the **wrong byte offsets** relative to the
+source buffer (a real `VertexPositionTexture` object has its vtable pointer at offset 0,
+`Position` at offset 8, `TextureCoordinate` at offset 20 — none of which match the file's
+actual offsets 0/12/24) — silently corrupting the position/texcoord data uploaded to the
+GPU for **every single stride-32 `.model.json` in this entire repository**, not just this
+one sample's asset.
+
+**Why this is very likely the true root cause of the long-tracked "near-plane-clipping"
+bug family (section 4/5 of NEXT.md, this item's own predecessor investigations across
+CameraShake/CustomModelClass/LensFlare/Graphics3D/PickingSample/TrianglePicking):** a
+corrupted, effectively-arbitrary per-vertex byte-offset reinterpretation of a mesh's own
+position data would produce exactly the two symptoms already observed and attributed to
+"near-plane clipping" — a degenerate thin line (if the corrupted positions still land
+roughly in the same region of space, just scrambled) or full invisibility (if the
+corrupted positions land far outside the view frustum) — and does so *without* needing any
+actual clip-space/projection defect at all. No prior session ever directly inspected the
+EasyGL clipping code itself before attributing the symptom to it; this bug, by contrast,
+is confirmed by direct source read and a live `sizeof()` probe, and directly, reproducibly
+fixed here by bypassing the reader entirely (see below). **Not re-attributed with 100%
+certainty this session** — conclusively settling it for the *other* affected samples would
+mean re-testing `tank.model.json`/`terrain.model.json`/the spaceship's converted `.obj`
+through the same typed-`SetData` bypass used here, which is out of this task's own scope —
+but this is flagged as by far the most likely explanation, and a natural, well-scoped next
+step for whoever picks up section 8 task 2 (the "investigate near-plane clipping" task)
+next: **read this item first**, and try the bypass in one already-affected sample
+(CameraShake is the smallest) before assuming the bug is really in clip-space math.
+
+**Where to implement (if fixed in `cna`):**
+`cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`'s `ModelTypeReader::Read()`
+needs to compare the declared `"vertexStride"` against the *intended* XNA-clean size of
+each vertex type (16/20/24/32 — i.e. hardcoded constants, or a `sizeof` computed over a
+`memcpy`-friendly bitwise-equivalent plain-data mirror struct with no `IVertexType` base),
+not `sizeof()` of the actual (vtable-carrying) `Graphics::VertexPositionXxx` types
+directly. Every other `SetData` call site that already constructs real, normal C++ vertex
+objects field-by-field (not via `reinterpret_cast` on a raw byte blob) — e.g.
+`HeightmapCollision`'s `Terrain.hpp`, `GeneratedGeometry`'s `Terrain.hpp`, this sample's
+own new `CylinderModel.hpp` — is entirely unaffected by this bug, since normal C++
+member-access always resolves through the real (inflated) layout correctly; the bug is
+specific to `ModelTypeReader::Read()`'s stride-comparison-then-`reinterpret_cast` pattern.
+
+**Workaround used in InverseKinematics (#057):** `samples/InverseKinematics/src/
+CylinderModel.hpp` (NOXNA) reads `cylinder_verts.bin`/`cylinder_idx.bin` (produced once,
+offline, by the *unchanged* `tools/obj2model.py`) directly and constructs real,
+normally-initialized C++ `VertexPositionNormalTexture` objects (field-by-field, not a
+`reinterpret_cast`), then uploads them through the same typed `VertexBuffer::SetData(const
+VertexPositionNormalTexture*, count)` overload `ModelTypeReader` was trying (and failing)
+to reach. Confirmed live: renders correctly (a lit, visibly shaded, 20-link cylinder chain
+curling toward a target, exactly as expected) where the equivalent `Content.Load<Model>`
+path rendered nothing at any scale/distance tried. See `samples/InverseKinematics/
+missing.md` for the full write-up including every isolation step performed (sphere vs.
+triangle vs. cylinder, scale sweeps, camera-distance sweeps, cull-mode sweeps, lighting
+on/off).
+
+**Blocked samples:** every `Content.Load<Model>`-based sample in this repo is *affected*
+(their vertex data is silently corrupted), though most still render *something*
+recognizable enough that this wasn't caught before (a corrupted-but-similar-magnitude
+reinterpretation of a smoothly-varying, roughly-symmetric mesh like a sphere can still
+look "sphere-ish", just distorted) — this item doesn't retroactively mark any of them as
+newly broken, it re-attributes *why* the already-known thin-line/invisibility symptom
+happens. InverseKinematics (#057) worked around it completely via `CylinderModel.hpp`.
+
+**Effort:** S (the fix itself, once someone opens `ModelTypeReader::Read()`, is a few
+constants) — most of the actual work is verifying the fix against every already-shipped
+Model-based sample's screenshots to confirm no regression, since this reader is shared by
+all of them.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -1052,3 +1186,4 @@ call itself is a single line per backend on both EasyGL and Vulkan).
 | 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
+| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp) | not started |

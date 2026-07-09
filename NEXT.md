@@ -14,17 +14,15 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 53 samples are fully ported and wired into the root
-`CMakeLists.txt`. 3 more are confirmed unblocked (no remaining CNA gap) and ready
-to port (InverseKinematics, ChaseCamera, MarbleMaze — see section 8 task 6; this
-count was previously stale at "6," not updated as LensFlare/Graphics3D/
-PickingSample/TrianglePicking/HeightmapCollision were ported across several
-sessions — corrected here). 28 placeholder directories exist for samples still
-genuinely blocked on real CNA engine work (custom shaders, skeletal animation, one
-content-pipeline gap). 67 catalogued directories are permanently out of scope and listed in
-`ignored.md` (not XNA 4.0, not a runnable `Game`, redundant duplicates, or tied to
-a platform CNA won't target). See `PLAN.md`'s Sample Count Summary table for exact
-per-category counts.
+**Current phase:** 54 samples are fully ported and wired into the root
+`CMakeLists.txt`. 2 more are confirmed unblocked (no remaining CNA gap) and ready
+to port (ChaseCamera, MarbleMaze — see section 8 task 6; InverseKinematics was
+the third and is now ported, see section 3). 28 placeholder directories exist for
+samples still genuinely blocked on real CNA engine work (custom shaders, skeletal
+animation, one content-pipeline gap). 67 catalogued directories are permanently out
+of scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
+duplicates, or tied to a platform CNA won't target). See `PLAN.md`'s Sample Count
+Summary table for exact per-category counts.
 
 **Important architectural decisions:**
 - One executable per sample; no shared sample library. Each `samples/<Name>/`
@@ -101,6 +99,49 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **InverseKinematics (#057) ported** (2026-07-10) — the Cyclic Coordinate Descent
+  (CCD) inverse-kinematics algorithm, demonstrated via a 20-link chain of cylinder
+  models reaching for a billboarded "cat" sprite (plus a faithfully-ported, but
+  legitimately inert, Xbox LIVE avatar IK demo — see below). Builds 0 warnings,
+  runs 9+ seconds with no crash. **Found and worked around a major, previously
+  undiagnosed CNA bug**, likely the true root cause of the long-tracked
+  "near-plane-clipping" bug family (section 4): `ModelTypeReader::Read()`
+  (`ContentManager.cpp`) picks a typed `VertexBuffer::SetData` overload by
+  comparing a `.model.json`'s declared `"vertexStride"` (always one of XNA's
+  clean, unpadded sizes — 16/20/24/32) against `sizeof()` of CNA's own vertex
+  structs — but every one of those structs now inherits from the polymorphic
+  `IVertexType`, adding an 8-byte vtable pointer that inflates their real sizes to
+  40/32/56/40 respectively (confirmed live via a standalone `sizeof()` probe).
+  `"vertexStride": 32` — the value every `Content.Load<Model>`-based sample in
+  this repo uses — *accidentally* equals `sizeof(VertexPositionTexture)` (also
+  32, by coincidence), so the reader always dispatches to the *wrong* overload
+  and reinterprets the raw (vtable-free) file bytes as vtable-shifted
+  `VertexPositionTexture` objects, reading position/texcoord data from the wrong
+  byte offsets — silently corrupting every stride-32 model's vertex data
+  repo-wide, not just this sample's. Found via systematic isolation: a
+  straightforward `cylinder.model.json` port built and loaded correctly (1 mesh,
+  418 vertices, verified via debug instrumentation) but never rendered at any
+  camera distance/scale/cull-mode; a hand-built triangle and even PickingSample's
+  own already-shipped `Cylinder.model.json` both failed the same way through this
+  sample's code, while HeightmapCollision's `sphere.model.json` (3252 vertices)
+  rendered correctly at every scale tested — isolating the reader, not any one
+  asset, as the cause. Worked around with a new `CylinderModel.hpp` (NOXNA) that
+  reads the already-converted `cylinder_verts.bin`/`cylinder_idx.bin` directly and
+  constructs real C++ `VertexPositionNormalTexture` objects field-by-field (not a
+  `reinterpret_cast` on a raw blob), then uploads via the same typed `SetData`
+  overload the reader was trying to reach — confirmed live this renders correctly
+  (a lit, visibly-shaded, correctly-curling 20-link chain). Filed as new
+  DEFERRED.md item #26, with a strong (but not 100%-confirmed-for-other-samples)
+  suspicion this explains the thin-line/invisibility symptom for every other
+  affected sample too — see section 4 and item #26 for the full reasoning and a
+  recommended next step (try the same bypass on CameraShake's `tank.model.json`
+  before assuming the bug is really in clip-space math). The avatar half of the
+  sample (`AvatarRenderer`) is ported faithfully but renders nothing — confirmed
+  by direct source read that `AvatarRenderer::State` is permanently
+  `Unavailable` off a signed-in Xbox LIVE/Games-for-Windows-Live session, exactly
+  what the C# original's own `UpdateAvatarIK()`/`DrawAvatar()` already guard
+  against — not a CNA gap. See `samples/InverseKinematics/missing.md` for the
+  complete account.
 - **HeightmapCollision (#049) ported** (2026-07-10) — a rolling ball on a
   procedurally-generated terrain, with the camera and ball both queried against a
   `HeightMapInfo` height-lookup class. Builds 0 warnings, runs 7+ seconds with no
@@ -282,6 +323,105 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-10, follow-up):** Ported **InverseKinematics (#057)**,
+section 8 task 6's last remaining candidate from the original 3-sample list
+(ChaseCamera and MarbleMaze are now the only ones left — see section 8). This
+session's real engineering content ended up being a significant, previously
+undiagnosed CNA bug discovery, not the IK/CCD math itself (which is pure
+application-level code, unrelated to any `Model`/bone-hierarchy machinery — the
+task brief's concern about DEFERRED.md item #6's multi-bone gap turned out to be
+a non-issue: the cylinder chain is 20 draws of one single-bone rigid model with
+per-draw world matrices computed entirely in game code, and the sample's second
+IK demo, driving an Xbox LIVE `AvatarRenderer`, is a real, working CNA type that
+just faithfully never renders off a signed-in Xbox LIVE session, matching real
+XNA/FNA exactly, not a CNA gap).
+
+The actual discovery: a straightforward first port (`cylinder.x` →
+`cylinder.model.json` via `assimp export` + `tools/obj2model.py`, the exact
+pipeline already proven for CameraShake/PerformanceMeasuring/Graphics3D) built
+cleanly and loaded without error (confirmed via debug instrumentation: 1 mesh,
+418 vertices, 190 primitives, a correctly-linked `BasicEffect`) but **never
+rendered**, at any camera distance, object scale, cull mode, or lighting
+setting — even reduced to a single full-scale, identity-world, unlit, untextured
+triangle drawn through the exact same `Model`/`ModelMesh::Draw()` path used by
+every other Model-based sample in this repo. Systematic isolation (documented in
+full in `samples/InverseKinematics/missing.md`) ruled out this sample's own code,
+camera setup, and asset data one at a time: a hand-built triangle at the same
+scale failed identically; **PickingSample's own already-shipped, already-working
+`Cylinder.model.json`** failed identically when loaded fresh into this sample's
+code; but **HeightmapCollision's `sphere.model.json` (3252 vertices) rendered
+correctly** through the exact same code path at every scale tested (including
+scaled down to match the failing tests' size) — the key data point that
+something in the *reader itself*, correlated with mesh size/complexity, not any
+one sample's code or asset, was responsible.
+
+Root-caused by direct source read plus a standalone `sizeof()` probe compiled
+against `cna`'s own headers: every CNA vertex struct
+(`VertexPositionColor`/`VertexPositionTexture`/`VertexPositionColorTexture`/
+`VertexPositionNormalTexture`) now publicly inherits from the polymorphic
+`IVertexType` (a virtual destructor plus a pure virtual method), adding an
+8-byte vtable pointer XNA's own "clean" layouts never had — confirmed live:
+`sizeof(VertexPositionColor)=40` (not 16), `sizeof(VertexPositionTexture)=32`
+(not 20), `sizeof(VertexPositionColorTexture)=56` (not 24),
+`sizeof(VertexPositionNormalTexture)=40` (not 32).
+`ModelTypeReader::Read()`'s `if (stride == sizeof(VertexPositionNormalTexture))
+... else if (stride == sizeof(VertexPositionTexture)) ...`-style dispatch
+compares the `.model.json`-declared *clean* stride (always 32 for every
+`Content.Load<Model>`-based sample in this repo, since `obj2model.py`/
+`fbx_ascii2model.py` only ever emit `VertexPositionNormalTexture` data) against
+these now-inflated sizes — and `32` *accidentally* equals
+`sizeof(VertexPositionTexture)`'s own inflated size (a coincidence of the
+specific field-count/padding arithmetic), so the reader always silently
+dispatches to the **wrong** overload, `reinterpret_cast`ing the raw (vtable-free)
+file bytes as if they were vtable-shifted `VertexPositionTexture` objects and
+reading Position/TextureCoordinate from the wrong byte offsets — corrupting the
+uploaded vertex data for **every stride-32 `.model.json` in this entire repo**,
+not just this sample's.
+
+This is very likely the true root cause of the long-tracked
+"near-plane-clipping-family" bug (section 4) — a corrupted, essentially
+arbitrary per-vertex byte-offset reinterpretation would produce exactly the two
+symptoms already observed (a degenerate thin line, or full invisibility)
+without requiring any actual clip-space/projection defect, and no prior session
+ever directly inspected the EasyGL clipping code itself before attributing the
+symptom to it. **Not re-confirmed with 100% certainty for the other affected
+samples this session** (would need re-testing `tank.model.json`/
+`terrain.model.json` through the same bypass, out of this task's scope) — filed
+as new DEFERRED.md item #26 with a clear recommendation for whoever picks up
+section 8 task 2 next: try the bypass on CameraShake (the smallest affected
+sample) before assuming the bug is really in clip-space math.
+
+Worked around in this port with a new `samples/InverseKinematics/src/
+CylinderModel.hpp` (NOXNA): reads the already-converted `cylinder_verts.bin`/
+`cylinder_idx.bin` directly and constructs real, normally-initialized C++
+`VertexPositionNormalTexture` objects field-by-field (not via
+`reinterpret_cast`), then uploads them through the same typed
+`VertexBuffer::SetData(const VertexPositionNormalTexture*, count)` overload
+`ModelTypeReader` was trying (and failing) to reach — the same shape of
+workaround already established by `HeightmapCollision`'s/`GeneratedGeometry`'s
+own `Terrain.hpp` for a different `.model.json` gap, and further proof (since
+their terrain already goes through this exact typed overload and renders
+correctly) that the typed `SetData` path itself was never the problem.
+
+Confirmed live via screenshot: the 20-link cylinder chain renders correctly,
+**lit** (a visible shading gradient along the chain — this sample does not hit
+the "flat white, no shading" finding from PickingSample/TrianglePicking/
+HeightmapCollision, since `CylinderModel.hpp` bypasses the "no per-mesh texture
+in `.model.json`" gap entirely by not using `.model.json` at all), correctly
+curling from the origin toward the cat's live position every frame — direct
+confirmation the CCD IK algorithm itself computes correct, live bone rotations.
+The billboarded cat and HUD text render correctly. Builds 0 warnings; ran 9+
+seconds with no crash across two separate runs. F1 help overlay verified via
+this repo's established temporary-debug-auto-trigger pattern (`helpTimer_`
+forced on, screenshotted, reverted before commit). This sample's own camera
+sits only ~5 units from the action (`cameraRadius=5`, `near=1`, `far=1000`) —
+much closer even than HeightmapCollision's ~155 units — and shows no near-plane
+artifact at all, consistent with (though not proof of) the item #26
+re-attribution above. See `samples/InverseKinematics/missing.md` for the
+complete account.
+
+Commit this session: see git log for the exact hash, pushed to `develop`.
 
 **Newest session (2026-07-10):** Ported **HeightmapCollision (#049)**, section 8
 task 6's recommended next candidate — a rolling ball on a heightmap-generated
@@ -758,6 +898,33 @@ session's own changes:
   Not done this session (out of scope for the task that found it — porting
   LensFlare); see section 8 for a dedicated task.
 
+**Update 2026-07-10: likely re-attributed — read DEFERRED.md item #26 before
+investigating this as a clipping bug.** While porting InverseKinematics, a
+different, concretely-confirmed bug was found: `ModelTypeReader::Read()`
+(`ContentManager.cpp`) picks a vertex-upload code path by comparing a
+`.model.json`'s declared (clean, XNA-sized) `"vertexStride"` against `sizeof()`
+of CNA's own vertex structs — but every one of those structs now inherits from
+the polymorphic `IVertexType`, inflating their real sizes by an 8-byte vtable
+pointer (confirmed live: `sizeof(VertexPositionNormalTexture)` is 40, not the
+clean 32 every conversion tool declares). `"vertexStride": 32` (used by every
+`Content.Load<Model>`-based sample in this repo) *accidentally* collides with
+`sizeof(VertexPositionTexture)`'s own inflated size (also 32), so the reader
+always uploads every model's vertex data through the *wrong* typed overload,
+`reinterpret_cast`-reading position/texcoord fields from the wrong byte offsets
+— corrupting every stride-32 model's geometry repo-wide. A corrupted,
+essentially arbitrary per-vertex reinterpretation is a far more complete
+explanation for the exact two symptoms below (thin line / full invisibility)
+than an actual clip-space defect, and no prior session investigating this bug
+ever directly opened the EasyGL clipping code to confirm the "suspected cause"
+bullet below. **Not confirmed with certainty for tank.model.json/
+terrain.model.json specifically** (that would need re-running one of them
+through the same bypass used in `samples/InverseKinematics/src/
+CylinderModel.hpp` — a fast, cheap first step recommended before any further
+clip-space investigation). See DEFERRED.md item #26 and `samples/
+InverseKinematics/missing.md` for the full write-up. The rest of this section
+is kept as originally written, for full historical context on how the symptom
+was originally characterized:
+
 The previously-tracked rendering bug (near-plane clipping) is still open and is now
 confirmed on a **third** independent asset, and with a **second distinct visible
 symptom**:
@@ -801,9 +968,9 @@ symptom**:
   again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
   full invisibility is the same bug at a different camera distance, not a
   separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 3 more samples (InverseKinematics, ChaseCamera,
-  MarbleMaze — LensFlare, Graphics3D, PickingSample, TrianglePicking, and
-  HeightmapCollision are now all ported, see section 8) are otherwise unblocked and
+- **Why it matters now:** 2 more samples (ChaseCamera, MarbleMaze — LensFlare,
+  Graphics3D, PickingSample, TrianglePicking, HeightmapCollision, and
+  InverseKinematics are now all ported, see section 8) are otherwise unblocked and
   portable, but **should not be assumed to render correctly** just because they
   build — each needs its own screenshot check for this same artifact once
   ported (and, per the above, "renders nothing" is now just as suspect as "shows
@@ -813,8 +980,13 @@ symptom**:
   (see section 3); HeightmapCollision's own port, by contrast, confirmed neither
   symptom at all — its camera sits only ~155 units from its subject, well under
   the ~1000+ unit distances where the bug has been observed, a useful negative
-  data point on the distance-dependence theory (task 2's own reasoning). Also,
-  PickingSample surfaced a separate, angle-independent
+  data point on the distance-dependence theory (task 2's own reasoning).
+  InverseKinematics's own port also confirmed neither symptom (camera only ~5
+  units away) but for a different reason than distance alone — see the
+  DEFERRED.md item #26 update above; its cylinder chain bypasses
+  `ModelTypeReader` entirely via `CylinderModel.hpp`, so it was never exposed to
+  the corrupted-vertex-upload bug in the first place regardless of distance.
+  Also, PickingSample surfaced a separate, angle-independent
   "flat white, no shading" finding (also confirmed again by TrianglePicking) —
   don't conflate the two; see `samples/PickingSample/missing.md` and
   `samples/TrianglePicking/missing.md`.
@@ -844,17 +1016,25 @@ Secondary, lower-urgency items (not blocking, just open):
 
 ## 5. Known bugs and limitations
 
-- **CONFIRMED BUG, unfixed** — EasyGL near-plane clipping renders certain
-  `Model`-based geometry (confirmed: `tank.model.json` at CameraShake's and
-  CustomModelClass's ~1059-unit camera distance, `terrain.model.json` at
-  LensFlare's) as a degenerate thin line instead of the model — **and, confirmed
-  2026-07-09 via Graphics3D, the same bug renders geometry as fully invisible at
-  longer (~3523-unit) camera distances**, isolated by direct asset-swap testing
-  to be the camera distance, not the asset or drawing code. See section 4 for
-  full detail. Confirmed on three independently-converted assets across two
-  distinct visible symptoms; likely affects other models/samples too — don't
-  assume "renders nothing" means something else is broken without checking this
-  first.
+- **CONFIRMED BUG, unfixed, likely MIS-DIAGNOSED as clipping — read DEFERRED.md
+  item #26 first** — EasyGL near-plane clipping renders certain `Model`-based
+  geometry (confirmed: `tank.model.json` at CameraShake's and CustomModelClass's
+  ~1059-unit camera distance, `terrain.model.json` at LensFlare's) as a
+  degenerate thin line instead of the model — **and, confirmed 2026-07-09 via
+  Graphics3D, the same bug renders geometry as fully invisible at longer
+  (~3523-unit) camera distances**, isolated by direct asset-swap testing to be
+  the camera distance, not the asset or drawing code. See section 4 for full
+  detail. **Update 2026-07-10:** a concretely-confirmed, different bug was found
+  while porting InverseKinematics — `ModelTypeReader::Read()` uploads corrupted
+  vertex data for every stride-32 `.model.json` (an `IVertexType` vtable
+  inflates every CNA vertex struct's `sizeof()` past the clean XNA size the
+  format declares, causing the reader to upload through the wrong typed
+  overload) — which is a far more complete explanation for a thin
+  line/full-invisibility symptom than an actual clip-space defect that no prior
+  session ever directly confirmed by reading the clipping code itself. Not yet
+  re-confirmed on `tank.model.json` specifically, but strongly suspected to be
+  the same bug — see DEFERRED.md item #26 and try that fix before investigating
+  `EasyGLGraphicsBackend.cpp`'s clipping path.
 - **CONFIRMED BUG, unfixed** — the EasyGL backend never applies
   `BlendState.ColorWriteChannels` (no `glColorMask` call anywhere in
   `EasyGLGraphicsBackend.cpp`, confirmed via direct grep). Found via LensFlare's
@@ -1057,17 +1237,29 @@ clarification to item #23.
      then `cmake --build cmake-build-debug -j$(nproc)` (full aggregate) to
      confirm no other sample hits the same `Viewport.x`/`.y` pattern.
 
-2. **Investigate the EasyGL near-plane clipping bug itself (section 4).**
-   - Goal: clip `w<0` vertices correctly so tank/terrain/spaceship models render
-     fully instead of degenerating to a thin line (moderate camera distance) or
-     disappearing entirely (longer camera distance — confirmed 2026-07-09 via
-     Graphics3D that this is the *same* bug, not a separate one). Now confirmed
-     on three independent assets (`tank.model.json`, `terrain.model.json`,
-     `spaceship`-via-`.obj`), raising confidence this is a real shared
-     clipping/projection bug, not an asset artifact.
-   - Files: likely `cna/src/CNA/Internal/Backends/EasyGL/
-     EasyGLGraphicsBackend.cpp` (clipping/projection path) — exact location not
-     yet confirmed.
+2. **Investigate the EasyGL near-plane clipping bug itself (section 4) — READ
+   DEFERRED.md item #26 FIRST, try that fix before assuming clip-space math.**
+   - Goal: get tank/terrain/spaceship models to render fully instead of
+     degenerating to a thin line (moderate camera distance) or disappearing
+     entirely (longer camera distance). **Strong new lead (2026-07-10, found
+     while porting InverseKinematics):** `ModelTypeReader::Read()`
+     (`ContentManager.cpp`) almost certainly uploads corrupted vertex data for
+     every stride-32 `.model.json` in this repo, due to an `IVertexType` vtable
+     inflating `sizeof()` of every CNA vertex struct past the clean XNA sizes
+     the `.model.json` format declares — see DEFERRED.md item #26 for the full
+     mechanism, confirmed via a live `sizeof()` probe and a working fix
+     (`samples/InverseKinematics/src/CylinderModel.hpp`, which bypasses the
+     reader and renders correctly where the equivalent `Content.Load<Model>`
+     path rendered nothing). **Recommended first step, cheaper than opening
+     `EasyGLGraphicsBackend.cpp` cold:** apply the same
+     `ModelTypeReader::Read()` fix item #26 describes (compare declared stride
+     against the *intended* clean XNA size, not `sizeof()` of the polymorphic
+     struct) and re-run CameraShake — if the tank suddenly renders fully, this
+     was never a clipping bug at all.
+   - Files: `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`
+     (`ModelTypeReader::Read()`, item #26's fix) first; only look at
+     `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`
+     (clipping/projection path) if the item #26 fix doesn't resolve it.
    - Verify: run `CameraShake_cna_samples`, `CustomModelClass_cna_samples`,
      `LensFlare_cna_samples`, and `Graphics3D_cna_samples` under
      `SDL_VIDEODRIVER=x11`; confirm the tank/ground/terrain/spaceship are fully
@@ -1112,16 +1304,19 @@ clarification to item #23.
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port one of the 3 remaining unblocked lighting samples**
-   (InverseKinematics, ChaseCamera, MarbleMaze).
-   PickingSample (#047), TrianglePicking (#048), and HeightmapCollision (#049),
-   previously in this list, are now all ported — see section 3.
+6. **Port one of the 2 remaining unblocked lighting samples**
+   (ChaseCamera, MarbleMaze).
+   PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049), and
+   InverseKinematics (#057), previously in this list, are now all ported — see
+   section 3.
    - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking/
-     HeightmapCollision — port using stock `Model`/`BasicEffect`,
-     screenshot-verify, expect (per task 2) either the thin-line or
-     fully-invisible near-plane-clipping symptom depending on camera distance;
-     that alone is not a reason to suspect a new bug. Also expect the "flat
-     white, no shading gradient" finding PickingSample/TrianglePicking/
+     HeightmapCollision/InverseKinematics — port using stock `Model`/
+     `BasicEffect`, screenshot-verify, expect (per task 2 — **now updated with a
+     strong new lead, DEFERRED.md item #26, likely explaining this whole
+     symptom family as a vertex-upload corruption bug, not real clipping**)
+     either the thin-line or fully-invisible symptom depending on camera
+     distance; that alone is not a reason to suspect a new bug. Also expect the
+     "flat white, no shading gradient" finding PickingSample/TrianglePicking/
      HeightmapCollision surfaced (DEFERRED.md item #6's addendum) on any model
      whose original relied on a texture for material color/shading contrast —
      not a new bug to re-diagnose, just a known consequence of `.model.json`
@@ -1130,13 +1325,21 @@ clarification to item #23.
      nuance HeightmapCollision found (item #6's second addendum) — build that
      mesh directly at runtime with a real 32-bit `IndexBuffer` instead, the same
      way `Terrain.hpp` does, rather than routing it through `Content.Load<Model>`.
+     If the model doesn't render at all even at reasonable camera distance/scale,
+     don't assume it's the thin-line/invisibility bug automatically — consider
+     item #26's vertex-corruption explanation first (a quick, cheap test:
+     bypass `Content.Load<Model>` the same way `samples/InverseKinematics/src/
+     CylinderModel.hpp` does, reading the already-converted `_verts.bin`/
+     `_idx.bin` directly and constructing real typed vertex objects, to see if
+     that alone fixes it).
    - Notes from a quick asset survey (not yet re-verified per sample, just
      source/asset inspection):
-     - **ChaseCamera**, **InverseKinematics** — each needs one `.x`-format model
-       (`Ground.x`, `cylinder.x` respectively) that neither `tools/
-       fbx_ascii2model.py` nor `tools/obj2model.py` reads directly; would need
-       an `assimp`/Blender `.x`→`.obj` conversion step first (both tools do
-       support `.x` import, unlike the old-binary-FBX case Graphics3D hit).
+     - **ChaseCamera** — needs one `.x`-format model (`Ground.x`) that neither
+       `tools/fbx_ascii2model.py` nor `tools/obj2model.py` reads directly;
+       needs an `assimp`/Blender `.x`→`.obj` conversion step first (both tools
+       do support `.x` import, unlike the old-binary-FBX case Graphics3D hit;
+       confirmed straightforward for InverseKinematics's own `cylinder.x` via
+       plain `assimp export cylinder.x cylinder.obj`, no Blender needed).
      - **MarbleMaze** — much larger source tree (140 files); only a specific
        subdirectory (`Source/EX2_Polishing/End/`) is likely the actual port
        target per its `missing.md` — recommend doing this one last.
