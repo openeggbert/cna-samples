@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "p1_wedge_geo1",
+      "vertices": "Ship_p1_wedge_geo1_verts.bin",
+      "indices": "Ship_p1_wedge_geo1_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

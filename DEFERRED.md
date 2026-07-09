@@ -1150,6 +1150,27 @@ look "sphere-ish", just distorted) — this item doesn't retroactively mark any 
 newly broken, it re-attributes *why* the already-known thin-line/invisibility symptom
 happens. InverseKinematics (#057) worked around it completely via `CylinderModel.hpp`.
 
+**Update 2026-07-10 (ChaseCamera, #058): independently confirmed a third and fourth time, on
+two more assets, at both size extremes.** Per this task's own brief, the normal
+`Content.Load<Model>("Ship")`/`Content.Load<Model>("Ground")` path was tried and
+screenshot-tested *before* assuming this bug applied — confirmed live: a solid
+CornflowerBlue screen with only 2D HUD text visible, neither model rendered, no crash, across
+two screenshots 3 seconds apart, at this sample's own ~4031-unit initial camera distance
+(even farther than Graphics3D's ~3523-unit spaceship). Worked around with a new
+`samples/ChaseCamera/src/RawModel.hpp` (NOXNA, same bypass shape as `CylinderModel.hpp`/
+`Terrain.hpp`, generalized to also bind a real `Texture2D` to the `BasicEffect`) — confirmed
+live this renders both models correctly, fully textured and shaded. This is the third and
+fourth `.model.json` asset independently confirmed to hit this exact bug:
+`Ship_p1_wedge_geo1.model.json` (32458 vertices, 16118 triangles — two orders of magnitude
+larger than InverseKinematics' 418-vertex cylinder) and `Ground.model.json` (6 vertices, 2
+triangles — the smallest mesh yet tested through this bug), at both a much larger and a much
+smaller vertex count than the first confirmation, further reinforcing this is a structural
+reader defect uncorrelated with mesh size/complexity/source format (Ship.fbx converted via
+`tools/fbx_ascii2model.py`; Ground.x converted via `assimp export` + `tools/obj2model.py`).
+See `samples/ChaseCamera/missing.md` for the full account, including a separate (non-#26)
+per-asset triangle-winding quirk found in `Ground.x`'s `assimp export` conversion, needing
+`RasterizerState::CullNone` for that one mesh.
+
 **Effort:** S (the fix itself, once someone opens `ModelTypeReader::Read()`, is a few
 constants) — most of the actual work is verifying the fix against every already-shipped
 Model-based sample's screenshots to confirm no regression, since this reader is shared by
@@ -1186,4 +1207,4 @@ all of them.
 | 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
-| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp) | not started |
+| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets) | not started |

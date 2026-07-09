@@ -14,10 +14,11 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 54 samples are fully ported and wired into the root
-`CMakeLists.txt`. 2 more are confirmed unblocked (no remaining CNA gap) and ready
-to port (ChaseCamera, MarbleMaze — see section 8 task 6; InverseKinematics was
-the third and is now ported, see section 3). 28 placeholder directories exist for
+**Current phase:** 55 samples are fully ported and wired into the root
+`CMakeLists.txt`. 1 more is confirmed unblocked (no remaining CNA gap) and ready
+to port (MarbleMaze — see section 8 task 6; ChaseCamera and InverseKinematics were
+the other two candidates from the original list and are now both ported, see
+section 3). 28 placeholder directories exist for
 samples still genuinely blocked on real CNA engine work (custom shaders, skeletal
 animation, one content-pipeline gap). 67 catalogued directories are permanently out
 of scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
@@ -99,6 +100,47 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **ChaseCamera (#058) ported** (2026-07-10) — a spring-physics chase camera
+  (`ChaseCamera.hpp`, pure `Vector3`/`Matrix` math ported directly, no CNA gaps)
+  following a ship (`Ship.hpp`, simple flight physics + mouse/keyboard/gamepad
+  input) flying over a large checkered ground plane. Builds 0 warnings, runs 8+
+  seconds with no crash across three separate runs. **A third and fourth
+  independent confirmation of DEFERRED.md item #26's `ModelTypeReader`
+  vertex-corruption bug**, per this task's own brief to test empirically rather
+  than assume: a temporary test build using plain `Content.Load<Model>("Ship")`/
+  `Content.Load<Model>("Ground")` (converted via `tools/fbx_ascii2model.py` and
+  `assimp export` + `tools/obj2model.py` respectively — both ordinary stride-32
+  `.model.json` files, no load-time error) rendered **nothing at all** — a solid
+  CornflowerBlue screen with only 2D HUD text visible, confirmed via two
+  screenshots 3 seconds apart, no crash — at this sample's own ~4031-unit initial
+  camera distance (even farther than Graphics3D's ~3523-unit spaceship, which
+  showed the same "fully invisible" symptom). Worked around with a new
+  `samples/ChaseCamera/src/RawModel.hpp` (NOXNA), the same bypass shape as
+  InverseKinematics' `CylinderModel.hpp`/HeightmapCollision's `Terrain.hpp`,
+  generalized to also bind a real `Texture2D` directly to the `BasicEffect` (the
+  same side benefit `Terrain.hpp` already established) — confirmed live via
+  screenshot: both the ship (`ShipDiffuse.png`, 32458 vertices — two orders of
+  magnitude larger than InverseKinematics' 418-vertex cylinder) and the ground
+  (`Checker.png`, only 6 vertices — the smallest mesh yet tested through this
+  bug) render correctly, fully textured and shaded, at both size extremes. This
+  independently reinforces item #26's hypothesis a third and fourth time, on two
+  more assets converted through two different pipelines (FBX and `assimp`
+  `.x`→`.obj`), uncorrelated with mesh size/complexity. Separately found (not a
+  #26 symptom): `Ground.x`'s `assimp export` conversion re-emits its two
+  triangles wound the opposite way from CNA's default
+  `RasterizerState::CullCounterClockwise`, so the ground was fully back-face
+  culled even after the `RawModel.hpp` fix — isolated live by temporarily
+  forcing `RasterizerState::CullNone` around only the ground's draw call, which
+  alone made it appear; kept as a permanent, documented per-asset adjustment
+  (mirroring the same winding accommodation `HeightmapCollision`'s/
+  `GeneratedGeometry`'s own `Terrain.hpp` already needed for their runtime-built
+  meshes, just the first time seen on an `assimp`-round-tripped `.x` asset
+  specifically). F1 help overlay and ship-movement/camera-spring-physics both
+  verified live via this repo's established temporary debug-auto-trigger pattern
+  (removed before commit) — `xdotool getactivewindow` showed a different real
+  user window had focus throughout, so no synthetic keypresses were sent, per
+  this repo's own shared-desktop `xdotool` caveat. See
+  `samples/ChaseCamera/missing.md` for the complete account.
 - **InverseKinematics (#057) ported** (2026-07-10) — the Cyclic Coordinate Descent
   (CCD) inverse-kinematics algorithm, demonstrated via a 20-link chain of cylinder
   models reaching for a billboarded "cat" sprite (plus a faithfully-ported, but
@@ -323,6 +365,88 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-10, second follow-up):** Ported **ChaseCamera (#058)**,
+section 8 task 6's next candidate after InverseKinematics — a spring-physics chase
+camera (`ChaseCamera.cs`, pure `Vector3`/`Matrix` math with no CNA API surface
+beyond what every other 3D sample already uses) following a ship (`Ship.cs`,
+simple flight physics driven by keyboard/gamepad/mouse) flying over a large
+checkered ground plane. `MarbleMaze` is now the only sample left from the
+original 3-candidate list (see section 8).
+
+This session's task brief specifically flagged DEFERRED.md item #26 (the
+`ModelTypeReader` vertex-corruption bug found while porting InverseKinematics)
+and asked for an empirical test, not an assumption, before treating this
+sample's own models as affected. That test was done first: a temporary build
+using plain `Content.Load<Model>("Ship")`/`Content.Load<Model>("Ground")` (`Ship.fbx`
+converted directly via `tools/fbx_ascii2model.py`; `Ground.x` converted via
+`assimp export Ground.x Ground.obj` + `tools/obj2model.py`, exactly the pipeline
+this task's brief suggested and already proven for InverseKinematics' own
+`cylinder.x`) built and loaded without error but rendered **nothing at all** — a
+solid CornflowerBlue screen with only 2D HUD text visible, confirmed via two
+screenshots taken 3 seconds apart, no crash. This sample's own initial camera
+distance is `sqrt(2000^2 + 3500^2) ≈ 4031` units
+(`DesiredPositionOffset = (0, 2000, 3500)`) — even farther than Graphics3D's
+~3523-unit spaceship, which showed the identical "fully invisible" symptom.
+
+Worked around with a new `samples/ChaseCamera/src/RawModel.hpp` (NOXNA) — the
+same bypass shape as InverseKinematics' `CylinderModel.hpp` and
+HeightmapCollision's/GeneratedGeometry's `Terrain.hpp`: reads the
+already-converted `_verts.bin`/`_idx.bin` sidecars directly and constructs real,
+normally-initialized C++ `VertexPositionNormalTexture` objects (not a
+`reinterpret_cast` on a raw byte blob), uploaded through the same typed
+`VertexBuffer::SetData` overload `ModelTypeReader` was trying (and failing) to
+reach — generalized this time to also bind a real `Texture2D` directly to the
+`BasicEffect` (the same side benefit `Terrain.hpp` already established, since
+`.model.json` has no per-mesh texture field). Confirmed live via screenshot:
+both the ship (`Ship_p1_wedge_geo1`: 32458 vertices, 16118 triangles — two
+orders of magnitude larger than InverseKinematics' 418-vertex cylinder) and the
+ground (`Ground`: only 6 vertices, 2 triangles — the smallest mesh yet tested
+through this bug) now render correctly, fully textured (`ShipDiffuse.png`/
+`Checker.png`) and shaded. **This is a third and fourth independent
+confirmation of DEFERRED.md item #26's hypothesis, on two more assets converted
+through two different pipelines (FBX and `assimp` `.x`→`.obj`), at both a much
+larger and a much smaller vertex count than the first confirmation** — stated
+explicitly, as this task's brief requested, since it further reinforces that
+this bug is a structural reader defect uncorrelated with mesh size, complexity,
+or source format, not something specific to InverseKinematics' own cylinder
+asset.
+
+A second, separate (non-#26) issue surfaced after switching to `RawModel.hpp`:
+the ship rendered correctly immediately, but the ground still didn't appear at
+all. Isolated live by temporarily forcing `RasterizerState::CullNone` around
+only the ground's draw call — confirmed this alone made the full checkered
+ground plane appear, with no other change. Root cause: `assimp export
+Ground.x Ground.obj` re-emits the `.x` file's two triangles wound the opposite
+way from CNA's default `RasterizerState::CullCounterClockwise`, so the ground
+was being fully back-face-culled even with correct, uncorrupted vertex data.
+This is the same class of per-asset winding accommodation
+`HeightmapCollision`'s/`GeneratedGeometry`'s own `Terrain.hpp` already needed
+for their runtime-built terrain meshes — not a new bug, just the first time
+it's shown up on an `assimp`-round-tripped `.x` asset specifically rather than
+a hand-built runtime mesh. `Ship.fbx` (converted directly via
+`tools/fbx_ascii2model.py`, no `assimp` round-trip) needed no such adjustment.
+Kept as a permanent, documented `RasterizerState::CullNone`/
+`CullCounterClockwise` toggle around only the ground's draw call in the final
+port, not a global culling change.
+
+Builds 0 warnings (verified via a from-scratch rebuild — object file removed,
+rebuilt, output grepped for "warning"/"error", none found). Ran under
+`SDL_VIDEODRIVER=x11` for 8+ seconds across three separate runs with no crash.
+F1 help overlay and ship-movement/camera-spring-physics were both verified live
+via this repo's established temporary debug-auto-trigger pattern (`helpTimer_`
+forced to 10.0f and `Ship::Update()`'s `thrustAmount` forced to 1.0f, both
+reverted before commit) — the help panel renders the correct 4-row control
+table extracted from `ChaseCamera.htm`, and two screenshots 4 seconds apart show
+the ship visibly moving forward with the chase camera visibly lagging/springing
+behind it, confirming `ChaseCamera::Update()`'s ported spring-damper math
+(`force = -Stiffness*stretch - Damping*velocity`) computes live, correct
+results. `xdotool getactivewindow` showed a different real user window had
+focus throughout this session (this repo's known shared-desktop caveat — section
+5), so no synthetic keypresses were sent to the sample's own window. See
+`samples/ChaseCamera/missing.md` for the complete account.
+
+Commit this session: see git log for the exact hash, pushed to `develop`.
 
 **Newest session (2026-07-10, follow-up):** Ported **InverseKinematics (#057)**,
 section 8 task 6's last remaining candidate from the original 3-sample list
@@ -968,11 +1092,11 @@ symptom**:
   again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
   full invisibility is the same bug at a different camera distance, not a
   separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 2 more samples (ChaseCamera, MarbleMaze — LensFlare,
-  Graphics3D, PickingSample, TrianglePicking, HeightmapCollision, and
-  InverseKinematics are now all ported, see section 8) are otherwise unblocked and
-  portable, but **should not be assumed to render correctly** just because they
-  build — each needs its own screenshot check for this same artifact once
+- **Why it matters now:** 1 more sample (MarbleMaze — LensFlare, Graphics3D,
+  PickingSample, TrianglePicking, HeightmapCollision, InverseKinematics, and
+  ChaseCamera are now all ported, see section 8) is otherwise unblocked and
+  portable, but **should not be assumed to render correctly** just because it
+  builds — it needs its own screenshot check for this same artifact once
   ported (and, per the above, "renders nothing" is now just as suspect as "shows
   a thin line" — don't assume a blank frame means something else is wrong
   without checking camera distance against this bug first). PickingSample's and
@@ -986,6 +1110,12 @@ symptom**:
   DEFERRED.md item #26 update above; its cylinder chain bypasses
   `ModelTypeReader` entirely via `CylinderModel.hpp`, so it was never exposed to
   the corrupted-vertex-upload bug in the first place regardless of distance.
+  **ChaseCamera's own port went further: it empirically confirmed (not just
+  assumed) that its own Ship/Ground models hit the exact "fully invisible"
+  symptom at its ~4031-unit camera distance, then confirmed the item #26 bypass
+  (`RawModel.hpp`) fixes it completely** — a third and fourth independent
+  confirmation of item #26's hypothesis, on two more assets at both size
+  extremes (32458 vertices and 6 vertices) — see `samples/ChaseCamera/missing.md`.
   Also, PickingSample surfaced a separate, angle-independent
   "flat white, no shading" finding (also confirmed again by TrianglePicking) —
   don't conflate the two; see `samples/PickingSample/missing.md` and
@@ -1304,49 +1434,49 @@ clarification to item #23.
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port one of the 2 remaining unblocked lighting samples**
-   (ChaseCamera, MarbleMaze).
-   PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049), and
-   InverseKinematics (#057), previously in this list, are now all ported — see
-   section 3.
+6. **Port the last remaining unblocked lighting sample: MarbleMaze.**
+   PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
+   InverseKinematics (#057), and ChaseCamera (#058), previously in this list,
+   are now all ported — see section 3.
    - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking/
-     HeightmapCollision/InverseKinematics — port using stock `Model`/
-     `BasicEffect`, screenshot-verify, expect (per task 2 — **now updated with a
-     strong new lead, DEFERRED.md item #26, likely explaining this whole
-     symptom family as a vertex-upload corruption bug, not real clipping**)
-     either the thin-line or fully-invisible symptom depending on camera
-     distance; that alone is not a reason to suspect a new bug. Also expect the
-     "flat white, no shading gradient" finding PickingSample/TrianglePicking/
-     HeightmapCollision surfaced (DEFERRED.md item #6's addendum) on any model
-     whose original relied on a texture for material color/shading contrast —
-     not a new bug to re-diagnose, just a known consequence of `.model.json`
-     having no per-mesh texture field. If a future sample's `.model.json` mesh
-     ever exceeds 65535 vertices, also expect the newer 16-bit-index-only
-     nuance HeightmapCollision found (item #6's second addendum) — build that
-     mesh directly at runtime with a real 32-bit `IndexBuffer` instead, the same
-     way `Terrain.hpp` does, rather than routing it through `Content.Load<Model>`.
-     If the model doesn't render at all even at reasonable camera distance/scale,
-     don't assume it's the thin-line/invisibility bug automatically — consider
-     item #26's vertex-corruption explanation first (a quick, cheap test:
-     bypass `Content.Load<Model>` the same way `samples/InverseKinematics/src/
-     CylinderModel.hpp` does, reading the already-converted `_verts.bin`/
-     `_idx.bin` directly and constructing real typed vertex objects, to see if
-     that alone fixes it).
-   - Notes from a quick asset survey (not yet re-verified per sample, just
-     source/asset inspection):
-     - **ChaseCamera** — needs one `.x`-format model (`Ground.x`) that neither
-       `tools/fbx_ascii2model.py` nor `tools/obj2model.py` reads directly;
-       needs an `assimp`/Blender `.x`→`.obj` conversion step first (both tools
-       do support `.x` import, unlike the old-binary-FBX case Graphics3D hit;
-       confirmed straightforward for InverseKinematics's own `cylinder.x` via
-       plain `assimp export cylinder.x cylinder.obj`, no Blender needed).
-     - **MarbleMaze** — much larger source tree (140 files); only a specific
-       subdirectory (`Source/EX2_Polishing/End/`) is likely the actual port
-       target per its `missing.md` — recommend doing this one last.
-   - Files: new `samples/<Name>/src/`; read that sample's existing
-     `missing.md` first.
-   - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples`, run
-     under `SDL_VIDEODRIVER=x11`, screenshot.
+     HeightmapCollision/InverseKinematics/ChaseCamera — port using stock
+     `Model`/`BasicEffect` (or a `RawModel.hpp`-style bypass if
+     `Content.Load<Model>` renders nothing — see below), screenshot-verify,
+     expect (per task 2 — **DEFERRED.md item #26, now independently confirmed
+     FOUR times across InverseKinematics' and ChaseCamera's own assets, at
+     vertex counts from 6 to 32458 — treat any stride-32 `.model.json` in this
+     repo as presumptively affected, not just a hypothesis**) either the
+     thin-line or fully-invisible symptom depending on camera distance; that
+     alone is not a reason to suspect a new bug. Also expect the "flat white, no
+     shading gradient" finding PickingSample/TrianglePicking/HeightmapCollision
+     surfaced (DEFERRED.md item #6's addendum) on any model whose original
+     relied on a texture for material color/shading contrast, **unless** you
+     bypass `Content.Load<Model>` and bind a real `Texture2D` directly to the
+     `BasicEffect` the way ChaseCamera's `RawModel.hpp`/HeightmapCollision's
+     `Terrain.hpp` both do — in that case expect fully textured/shaded
+     rendering instead. If a future sample's `.model.json` mesh ever exceeds
+     65535 vertices, also expect the newer 16-bit-index-only nuance
+     HeightmapCollision found (item #6's second addendum) — build that mesh
+     directly at runtime with a real 32-bit `IndexBuffer` instead, the same way
+     `Terrain.hpp` does, rather than routing it through `Content.Load<Model>`.
+     **Recommended approach given item #26's now-strong confirmation record:**
+     don't wait to see a blank screen before bypassing — go straight to a
+     `RawModel.hpp`-style loader (read the `tools/obj2model.py`/
+     `tools/fbx_ascii2model.py`-produced `_verts.bin`/`_idx.bin` directly,
+     construct real `VertexPositionNormalTexture` objects field-by-field, upload
+     via the typed `VertexBuffer::SetData` overload, bind a real `Texture2D`)
+     for any mesh this sample needs to actually render, and only fall back to
+     plain `Content.Load<Model>` if a quick empirical test shows it actually
+     renders correctly (worth still doing the empirical test once, the way
+     ChaseCamera's port did, for one more repo-wide data point — but budget for
+     the bypass being needed).
+   - Note: MarbleMaze has a much larger source tree (140 files); only a
+     specific subdirectory (`Source/EX2_Polishing/End/`) is likely the actual
+     port target per its `missing.md` — read that file first.
+   - Files: new `samples/MarbleMaze/src/`; read `samples/MarbleMaze/missing.md`
+     first.
+   - Verify: `cmake --build cmake-build-debug --target MarbleMaze_cna_samples`,
+     run under `SDL_VIDEODRIVER=x11`, screenshot.
 
 7. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
    - Goal: all three of ClientServerSample's original workarounds are gone now
@@ -1412,9 +1542,10 @@ clarification to item #23.
   ShadowMapping, BillboardSample, InstancedModel, ShatterEffect, Particles3D,
   XmlParticles, ShipGame, NetRumble) without first building an HLSL→GLSL
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
-  yet. This does **not** apply to the 5 remaining lit-`BasicEffect`-only samples
-  (LensFlare, Graphics3D, and PickingSample are now ported — section 8, task 6)
-  — those need no shader work.
+  yet. This does **not** apply to the lit-`BasicEffect`-only samples (LensFlare,
+  Graphics3D, PickingSample, TrianglePicking, HeightmapCollision,
+  InverseKinematics, and ChaseCamera are now ported; MarbleMaze is the last one
+  left — section 8, task 6) — those need no shader work.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).
