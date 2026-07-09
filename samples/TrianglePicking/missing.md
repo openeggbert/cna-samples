@@ -1,36 +1,323 @@
 # Missing / Differences from XNA 4.0 original
 
-**Status: UNBLOCKED, not yet ported — corrected 2026-07-06.** The blocker below was
-accurate when first written this session, but a live build+run of `cna_test_
-easygl_basiceffect_combinations` right after found CNA's `VertexPositionNormalTexture`
-lit path (exactly what `Content.Load<Model>` produces here) already works — case
-"(e) Directional lighting" passes (exit code 0). DEFERRED.md item #5 is marked
-resolved for `Model`-based samples. No CNA gap remains; this is now a normal,
-straightforward porting candidate. (Kept the original write-up below.)
+**Status: ported 2026-07-09.** Builds with 0 warnings. Ported using CNA's stock
+`Model`/`BasicEffect`/`DrawableGameComponent`, `Viewport::Unproject`,
+`Ray`/`BoundingSphere::Intersects`/`CreateFromPoints`, and a hand-ported
+Moller-Trumbore ray-triangle intersection test, with no CNA-side API gaps for the
+sample's own per-triangle picking *logic* — the one real gap found (no way to read
+per-triangle vertex data back out of a loaded `Model` at runtime) was fully worked
+around at the tooling level, not the sample level; see below. Confirmed live for 7+
+seconds with no crash; real (non-forced) mouse-driven picking confirmed working via
+screenshot. Several rendering findings this session are pre-existing CNA framework
+gaps already tracked for sibling samples, not introduced by this port.
 
-Source: `/rv/tmp/XNAGameStudio/Samples/TrianglePickingSample_4_0/TrianglePickingSample/Game.cs`.
+Source: `/rv/tmp/XNAGameStudio/Samples/TrianglePickingSample_4_0/TrianglePickingSample/
+{Game.cs, Cursor.cs}` and `TrianglePickingPipeline/TrianglePickingProcessor.cs`.
+Close sibling of PickingSample (#047, same original author, several byte-identical
+FBX assets — see below) but replaces its simpler per-object `BoundingSphere`-only
+test with a real per-triangle geometry test, matching the source's own doc comment
+("Sample showing how to implement per-triangle picking... implements a ray-to-
+triangle intersection method").
 
-## Blocker: `BasicEffect.EnableDefaultLighting()` on the picked FBX models
+## Per-triangle vertex data: no CNA equivalent of `Model.Tag`/custom `ContentProcessor`, and no `VertexBuffer`/`IndexBuffer.GetData()` either — worked around at the tooling level (new DEFERRED.md item #25)
+**XNA behaviour:** `TrianglePickingProcessor` (a custom `ModelProcessor` subclass,
+`[ContentProcessor]`-attributed) runs at content-**build** time. It chains to the
+base `ModelProcessor.Process()`, then recursively walks the input node tree
+(`FindVertices()`), reading each mesh's absolute-transformed vertex positions in
+triangle order (3 per triangle, expanded from the raw index buffer), and stores that
+flat `Vector3[]` — plus a `BoundingSphere.CreateFromPoints(vertices)` computed over
+the same list — in a `Dictionary<string,object>` attached to the built `Model`'s
+`Tag` property. `Game.cs`'s `RayIntersectsModel()` reads both back from `model.Tag`
+at runtime for its picking test.
+**CNA port behaviour:** CNA has neither a `Model.Tag` equivalent nor any custom-
+`ContentProcessor` extensibility point (pre-existing gap, DEFERRED.md item #18), so
+the *build-time* half of the original's approach isn't directly portable. The
+task brief for this port suggested a fallback: read the data back from the model's
+already-loaded `VertexBuffer`/`IndexBuffer` at runtime instead. Investigated this
+directly by reading both classes' headers in full
+(`cna/include/Microsoft/Xna/Framework/Graphics/{VertexBuffer,IndexBuffer}.hpp`) —
+**confirmed neither class has a `GetData()` method of any kind**: every data-transfer
+method on both is a `SetData`/`SetDataRaw`/`SetDataWithOptions` *upload* path (grep
+for `GetData` in either header: zero matches). So that fallback isn't available
+either — this is a genuine, narrower CNA gap than item #18 (a sample could in
+principle re-derive its own picking data from an already-loaded `Model`'s buffers at
+runtime with no custom content pipeline involved at all, and still couldn't, because
+there is no way to read a GPU buffer's contents back out through the public API).
+Filed as **new DEFERRED.md item #25**.
+**Workaround applied:** since this repo's whole asset story is "convert once,
+offline, into a static runtime format" (item #18's own framing) rather than XNA's
+build-time `ContentProcessor` chaining, extended `tools/fbx_ascii2model.py` (which
+already parses every mesh's raw triangle/vertex data to build `.model.json`'s own
+`_verts.bin`/`_idx.bin` files) with an optional `--picking <output.bin>` flag: from
+that same already-parsed per-mesh data, it additionally writes one flat binary
+sidecar per model (`<Model>_picking.bin` — triangle-expanded `float32 x,y,z`
+positions only, no normal/uv, concatenated across every mesh block in the source FBX
+in mesh-then-triangle order) — this exactly mirrors `FindVertices()`'s own traversal
+order. `samples/TrianglePicking/src/TrianglePickingData.hpp` reads this file back at
+`LoadContent()` time into a `std::vector<Vector3>`, and
+`BoundingSphere::CreateFromPoints()` (already implemented in CNA) is called on it
+directly — reproducing exactly what `TrianglePickingProcessor.Process()` computes and
+stores in `Model.Tag`, just generated by this repo's own offline tooling instead of a
+custom MSBuild content processor. Generated `--picking` sidecars for the 4 on-table
+models (`Sphere`, `Cats`, `P2Wedge`, `Cylinder` — the only ones the original ever
+picking-tests); `Table` doesn't need one since it's never a picking target in the
+original either.
+**Root cause:** CNA has no build-time custom-`ContentProcessor` extensibility
+(pre-existing, item #18) and, confirmed this session, no `VertexBuffer`/
+`IndexBuffer.GetData()` runtime readback path either (new gap).
+**Tracked in:** DEFERRED.md item #25 (new); item #18 (pre-existing, related but
+distinct — see item #25's own text for why they're not the same gap).
 
-**XNA behaviour:** `DrawModel()` (`Game.cs:588-603`) loops over every loaded model's
-`mesh.Effects` (all **stock** `BasicEffect` instances, drawing the `table` and the
-`ModelFilenames` FBX models via `Content.Load<Model>`, `Game.cs:175,186`) and calls
-`effect.EnableDefaultLighting();` at `Game.cs:595`, followed by
-`effect.PreferPerPixelLighting = true;` at `Game.cs:596`. The sample's own content
-pipeline addition, `TrianglePickingProcessor` (a plain `ModelProcessor` subclass in
-`TrianglePickingPipeline/TrianglePickingProcessor.cs`), only extracts per-triangle
-vertex/index data for the ray-triangle intersection test — it defines no custom
-shader or vertex format. Confirmed via direct source audit: **zero custom `.fx` files
-anywhere in this sample** — all lighting is done through the stock `BasicEffect`, not
-a hand-written shader.
+## Asset conversion: 5 FBX models, all plain ASCII, byte-identical to PickingSample's own assets
+**XNA behaviour:** `Content.Load<Model>("Sphere"/"Cats"/"P2Wedge"/"Cylinder")` and
+`Content.Load<Model>("Table")` load `Sphere.fbx`/`Cats.fbx`/`P2Wedge.fbx`/
+`Cylinder.fbx`/`table.FBX` via the FBX content-pipeline importer, each processed
+through the sample's custom `TrianglePickingProcessor` (see above) instead of the
+stock `ModelProcessor`.
+**CNA port behaviour:** confirmed via `cmp` that all 5 source FBX files in this
+sample's own `Content/` directory are **byte-identical** to PickingSample's
+(`Sphere.fbx`, `Cats.fbx`≡`Cats.FBX`, `Cylinder.fbx`, `P2Wedge.fbx`≡`P2Wedge.FBX`,
+`table.FBX`) — same original author/sample family, confirmed rather than assumed.
+Converted independently into this sample's own `Content/` directory anyway (no
+shared `samples/common/` library, per `CLAUDE.md`), via `tools/fbx_ascii2model.py`
+(plus its new `--picking` option for the 4 on-table models — see above); all 5 are
+plain ASCII FBX 6.1, no `assimp`/Blender/`ufbx` intermediate step needed (unlike
+Graphics3D's old binary FBX). Mesh counts/names match PickingSample's own findings
+exactly: `table.FBX` has 5 meshes (`TableTop`/`BackLeftLeg`/`BackRightLeg`/
+`FrontLeftLeg`/`FrontRightLeg`); the other 4 files have exactly 1 mesh each
+(`Sphere01`, `Box01`, `p2_wedge_geo`, `pCylinder1`).
+**Root cause:** N/A — straightforward conversion, no CNA gap.
+**Tracked in:** not planned.
 
-**CNA port behaviour:** N/A yet (not ported). CNA's `BasicEffect` currently only
-supports flat/unlit rendering with `VertexPositionColor` (as used by the Primitives3D
-port); there is no `VertexPositionNormal` vertex struct and no per-vertex/per-pixel-lit
-GLSL shader in the EasyGL backend, so neither `EnableDefaultLighting()` nor
-`PreferPerPixelLighting` has anything to render with.
+## `Table` asset name case mismatch (Windows case-insensitivity vs. Linux) — same precedent as PickingSample
+**XNA behaviour:** `Game.cs`'s `LoadContent()` calls `Content.Load<Model>("Table")`
+(capital T), even though the source file is `table.FBX` (lowercase). This only
+worked in the original because Windows/NTFS content-pipeline output paths are
+case-insensitive.
+**CNA port behaviour:** kept the literal `Content.Load<Model>("Table")` call in
+`TrianglePickingGame.hpp` unchanged (matching the C# source exactly) and named the
+converted asset files `Table.model.json`/`Table_*_verts.bin`/`Table_*_idx.bin`
+(capital T) to match, since CNA runs on a case-sensitive filesystem — identical
+precedent to PickingSample's own port.
+**Root cause:** N/A — cosmetic asset-naming accommodation for a case-sensitive
+filesystem, not a CNA gap.
+**Tracked in:** not planned.
 
-**Root cause (historical):** was a missing lit-shader path for `VertexPositionNormalTexture`
-in CNA; now resolved (see Status note above).
+## Textures present in source assets but not bindable through `.model.json` (pre-existing CNA gap, already tracked)
+**XNA behaviour:** `wood.tga` (table top/legs), `cat.tga` (Cats box), and
+`wedge_p2_diff_v1.tga` (P2Wedge) are referenced as embedded material textures inside
+their respective FBX files and are bound automatically to each mesh's
+`BasicEffect.Texture`/`TextureEnabled` by the (customized) `ModelProcessor` at
+content-build time.
+**CNA port behaviour:** converted all 3 `.tga` files to PNG (`wood.png`, `cat.png`,
+`wedge_p2_diff_v1.png`, via Pillow) and copied them into `Content/` for completeness
+(matching PickingSample's precedent), but **none of them are bound to any mesh** —
+CNA's `.model.json` "meshes" schema (`ModelTypeReader::Read()` in
+`ContentManager.cpp`) has no `"texture"` field at all (confirmed by direct source
+read, same as PickingSample's own finding). Every mesh in this sample therefore
+renders with `BasicEffect.TextureEnabled == false` and a plain white `DiffuseColor`
+(the class default), not the textured/tinted look in the original.
+**Root cause:** `ModelTypeReader::Read()`'s simple mesh schema doesn't parse a
+texture reference — pre-existing CNA gap, not new.
+**Tracked in:** DEFERRED.md item #6 (existing addendum from PickingSample already
+covers this exact scenario; no new item needed).
 
-**Tracked in:** DEFERRED.md item #5 (resolved)
+## Untextured `BasicEffect` + default 3-point lighting renders every model as a flat, fully-saturated white shape (confirmed again, same root cause as PickingSample)
+**XNA behaviour:** every mesh renders with its own material texture modulating the
+lit result, producing visible color and shading contrast.
+**CNA port behaviour:** confirmed live via screenshot — every model (`Sphere`,
+`P2Wedge`, `Cylinder`, `Table`, etc.) renders as a flat, fully-saturated white shape
+with a sharp silhouette against the CornflowerBlue background, exactly matching
+PickingSample's own already-documented finding (same root cause: `BasicEffect
+.DiffuseColor` defaults to white, `EnableDefaultLighting()`'s bright 3-point rig
+pushes the lit result above `(1,1,1)` for a broad range of normals with no texture to
+pull it back down, and OpenGL clamps to solid white). Not re-investigated from
+scratch — this is the exact, already-known consequence flagged in
+`samples/PickingSample/missing.md` and DEFERRED.md item #6's addendum, immediately
+recognizable rather than a new mystery, per this session's own briefing.
+**Root cause:** same as PickingSample's finding — no per-mesh texture in
+`.model.json` (item #6), combined with the lit shader's texture-less fallback being a
+mathematical no-op multiply against an all-white default material.
+**Tracked in:** DEFERRED.md item #6 (existing addendum; no new item needed).
+
+## Near-plane-clipping-family bug observed (matches the already-tracked pattern)
+**Confirmed live, in every screenshot taken this session:** the `Sphere` model
+(closest object to the camera at the default arc-ball position/distance,
+`CameraDefaultDistance = 3.5`) consistently shows a thin, near-vertical dashed
+artifact at its top edge and a longer thin dashed line trailing from its lower-left
+edge, on top of an otherwise-correct silhouette — the same artifact family already
+tracked for `CameraShake`/`CustomModelClass`/`LensFlare`/`Graphics3D`/PickingSample
+(`NEXT.md` section 4/5). Unlike PickingSample (which only saw this once, at one
+camera angle), this port's fixed default camera position shows it consistently
+across every screenshot, since the camera never auto-rotates in this sample's own
+original (see below) — not a new/worse instance of the bug, just a more consistently
+reproducible view of the same one. Not attempted to fix here, per this repo's
+convention of tracking framework rendering bugs centrally rather than re-diagnosing
+per sample.
+**Tracked in:** `NEXT.md` section 4/8 (task 2), pre-existing; no new DEFERRED.md item
+needed.
+
+## Camera does not auto-rotate (matches the C# original; PickingSample's own port added rotation the original didn't have)
+**XNA behaviour:** `UpdateCamera()` only changes `cameraArc`/`cameraRotation`/
+`cameraDistance` in response to explicit keyboard/gamepad input (arrow keys/WASD,
+Z/X, right stick, triggers, R to reset) — with no input, the camera stays exactly at
+its default arc-ball position (`CameraDefaultArc=-30`, `CameraDefaultRotation=225`,
+`CameraDefaultDistance=3.5`) indefinitely.
+**CNA port behaviour:** ported `UpdateCamera()` verbatim — no auto-rotation was
+added. This is a deliberate difference from PickingSample's own port (which added an
+unconditional `cameraRotation_ += timeMs * CameraRotateSpeed` every frame, not present
+in either sample's actual C# source for this exact field — a PickingSample-specific
+embellishment, not something to copy here) — this port matches its own C# original's
+input-only camera behavior exactly instead.
+**Root cause:** N/A — faithful port of the original's actual `UpdateCamera()` logic.
+**Tracked in:** not planned.
+
+## `Game::DoInitialize()` component-lifecycle gap (DEFERRED.md item #23) — confirmed NOT triggered here, unlike PickingSample/Graphics3D
+**XNA behaviour:** `Game.cs`'s own constructor (`TrianglePickingGame()`) —
+**not** its `Initialize()` override — creates `cursor = new Cursor(this, Content);`
+and calls `Components.Add(cursor);`, before any `Initialize()` call happens at all.
+This differs from PickingSample's and Graphics3D's own C# originals, both of which
+add their component(s) from inside `Initialize()` instead.
+**CNA port behaviour:** ported the same structure — `cursor_` is constructed and
+added to `Components` from inside `TrianglePickingGame`'s own C++ constructor, before
+`Game::DoInitialize()` (which calls `Initialize()` and only *then* wires up
+`Components_.ComponentAdded`) ever runs. Investigated whether this still needed the
+`AddComponent()` workaround PickingSample/Graphics3D both required, by reading
+`cna`'s `Game.cpp` directly: `Game::DoInitialize()` calls the user's `Initialize()`
+override, which in this sample's own override calls `Game::Initialize()` (the base
+implementation) as its **last** statement (matching `base.Initialize();` in the C#
+original) — and that base `Game::Initialize()` (`Game.cpp` lines ~513-522)
+separately, unconditionally loops over every component **already present** in
+`Components_` and calls each one's own `Initialize()` directly, entirely independent
+of whether `ComponentAdded` has been subscribed yet. Since `cursor_` was added in the
+constructor — long before `DoInitialize()` runs at all — it is already present in
+`Components_` by the time this loop executes, so it gets initialized correctly with
+**no explicit workaround needed**. Confirmed live: built and ran without the
+`AddComponent()` helper pattern, no crash, `Cursor`'s `LoadContent()`/texture/
+`SpriteBatch` all initialize correctly (the cursor icon renders in every
+screenshot). This is a genuinely new, useful clarification of item #23's actual
+trigger condition: **the gap only bites when a component is added from inside the
+`Initialize()` override *before* that override's own call to `Game::Initialize()`**
+(PickingSample/Graphics3D's exact shape) — a component added anywhere *before*
+`Game::Initialize()` runs at all (this sample's constructor-time add) is unaffected,
+because CNA's base `Game::Initialize()` has its own independent, unconditional
+component-initialization pass that doesn't depend on the `ComponentAdded` event at
+all. Added this clarification to DEFERRED.md item #23's own text.
+**Root cause:** N/A here — this sample's own C# original's constructor-time
+component-add pattern happens to sidestep the gap entirely, confirmed by reading both
+`Game.cpp`'s base `Initialize()` and this sample's own call-order.
+**Tracked in:** DEFERRED.md item #23 (pre-existing; clarified, not newly triggered).
+
+## Windows-only input branch kept; Xbox/Windows-Phone branches dropped
+**XNA behaviour:** `Cursor.cs`'s `Update()` is `#if XBOX360`/`#else` (Windows)-gated:
+gamepad thumbstick+D-pad-driven cursor movement with viewport clamping on Xbox, real
+mouse position (`Mouse.GetState()`) on Windows, with `Mouse.SetPosition()` used to
+keep the OS cursor in sync with gamepad-driven movement while the game window is
+active. `Game.cs`'s own `HandleInput()`/`UpdateCamera()` gamepad checks
+(`Buttons.Back`, `Buttons.RightStick`, `ThumbSticks.Right`, `Triggers`) are
+unconditional on every platform, alongside the keyboard equivalents.
+**CNA port behaviour:** kept only the Windows (mouse) branch in `Cursor.hpp` — this
+repo's own desktop-only porting convention, confirmed via `TrianglePicking.htm`'s own
+"Sample Controls" table (`Move the cursor`: `N/A` keyboard, `Left thumbstick`
+gamepad — no dedicated mouse column at all for this row, since the original's
+Windows build just uses real absolute mouse position, not a virtual thumbstick-driven
+one) — same shape as PickingSample's own Cursor port. Kept all of `Game.cs`'s
+gamepad checks (`Back`/`RightStick`/`ThumbSticks.Right`/`Triggers.Left`/`.Right`)
+verbatim and unconditional, exactly as the original has them.
+**Root cause:** N/A — platform branch selection, not a CNA gap.
+**Tracked in:** not planned.
+
+## F1 help overlay: standard 3-column table, no one-off column-selection variant needed (unlike PickingSample)
+**XNA behaviour:** N/A (CNA-only addition per `CLAUDE.md`).
+**CNA port behaviour:** `TrianglePicking.htm`'s "Sample Controls" table has the
+standard 3 columns (`Action` | `Keyboard control` | `Gamepad control`) —
+`tools/gen_help_png.py`'s default column-index-1 assumption (keyboard) applies
+directly here with no modification, unlike PickingSample (whose `Picking.htm` has an
+extra leading Windows-Phone column and needed a one-off variant script). Generated
+`Content/help.png` with the stock tool; confirmed via a temporary debug
+auto-trigger (`helpTimer_ = 10.0f` forced in `LoadContent()`, removed before commit)
+that it renders correctly, centered, on top of everything, with the real keyboard
+column text (`Move the camera`: `UP ARROW, DOWN ARROW, LEFT ARROW, RIGHT ARROW or W,
+A, S, D`; `Zoom in and out`: `Z, X`; `Reset the camera`: `R`; `Exit`: `ESC or ALT+F4`).
+**Root cause:** N/A — this sample's own `.htm` simply doesn't have the extra column
+that forced PickingSample's workaround.
+**Tracked in:** not planned.
+
+## Live verification: real (non-forced) mouse-driven per-triangle picking confirmed working via screenshot
+**Confirmed live, unexpectedly:** this repo's own `xdotool` keyboard-focus
+reliability caveat (`NEXT.md` section 5) is well established, but an `xdotool
+mousemove --window <id> <x> <y>` call issued earlier in this session (while
+investigating that same caveat) evidently *did* move the real OS mouse pointer to a
+position over the window, even without confirmed window focus — `mousemove` doesn't
+require focus the way key events do. A later, fully clean (no debug code) screenshot
+of the running sample shows: the cursor sprite positioned near the center of the
+window; `"Inside bounding sphere: P2Wedge, Cylinder"` correctly listed at the top-left
+(the fast bounding-sphere pre-test genuinely passing for those two models at that
+real cursor position); and the label `"P2Wedge"` correctly drawn just below the
+cursor sprite (the slower, real per-triangle test genuinely resolving to `P2Wedge` as
+the closest actual hit) — reproduced identically across two separate screenshots
+taken 4 seconds apart. This is a **real**, not debug-forced, end-to-end confirmation
+that `UpdatePicking()`/`RayIntersectsModel()`/`RayIntersectsTriangle()` (and the
+`--picking` sidecar data they read) are all correct, not just "builds and doesn't
+crash." Separately, a temporary debug auto-trigger (forcing `insideBoundingSpheres_`/
+`pickedModelName_`/`pickedTriangle_` directly in `Update()`, removed before commit)
+was also used earlier to confirm `DrawPickedTriangle()`'s magenta wireframe outline
+renders correctly (visible on top of the model geometry, since it explicitly disables
+depth testing, exactly as intended) — both checks agree.
+**Root cause:** N/A — positive confirmation, not a bug.
+**Tracked in:** not planned; worth noting for future sessions that `xdotool
+mousemove --window` may work even when focus-dependent keyboard input doesn't.
+
+## `ModelMesh::ParentBone` is always `nullptr` for `.model.json`-loaded models (pre-existing CNA gap, worked around the same way PickingSample/CNA's own `Model::Draw()` do)
+**XNA behaviour:** `mesh.ParentBone.Index` always resolves to a valid bone index
+(`Game.cs`'s `DrawModel()` uses this directly).
+**CNA port behaviour:** confirmed via direct source read of `ModelTypeReader::Read()`
+(`ContentManager.cpp`) — same finding as PickingSample: it always builds exactly one
+synthetic `"Root"` `ModelBone` but never assigns any mesh's `ParentBone` to it.
+**Workaround applied:** the identical `BoneIndexOf(ModelMesh*)` helper PickingSample
+uses, falling back to bone index `0` — correct here for the same reason (every model
+in this sample is logically single-bone).
+**Root cause:** same pre-existing gap as DEFERRED.md item #6's "multi-bone
+rigid-part" note.
+**Tracked in:** DEFERRED.md item #6 (existing note already covers this; no new item
+needed).
+
+## `PreferPerPixelLighting` ported (present in this sample's own C# original, unlike PickingSample which happens not to set it)
+**XNA behaviour:** `DrawModel()` (`Game.cs:595-596`) calls both
+`effect.EnableDefaultLighting();` **and** `effect.PreferPerPixelLighting = true;` on
+every mesh's `BasicEffect`.
+**CNA port behaviour:** ported both calls (`basicEffect->EnableDefaultLighting();`
+followed by `basicEffect->setPreferPerPixelLightingProperty(true);`) — CNA's
+`BasicEffect` exposes this property (confirmed via header read); not independently
+verified whether the EasyGL backend's lit shader path actually branches on it
+differently from per-vertex lighting (out of scope to isolate for this port — the
+flat-white-saturation finding above dominates any visible difference either way, so
+this couldn't be visually distinguished this session regardless).
+**Root cause:** N/A — faithful port; CNA-side behavior of this specific flag not
+independently isolated.
+**Tracked in:** not planned; would need a dedicated side-by-side test to isolate from
+the flat-white-saturation issue if this ever becomes relevant.
+
+## Verification
+**Confirmed live:** built `TrianglePicking_cna_samples` cleanly (0 warnings, verified
+via a from-scratch rebuild: `rm -rf cmake-build-debug/samples/TrianglePicking &&
+cmake --build cmake-build-debug --target TrianglePicking_cna_samples`). Ran under
+`SDL_VIDEODRIVER=x11` — window opens (800×480), process stays alive 7+ seconds with
+no crash and no error output beyond normal EasyGL backend init logging, across
+multiple separate runs during this session. Screenshots show: the `Sphere` model (and
+a second, partially-visible model on the left edge) rendering as flat white shapes
+with the already-documented near-plane-clipping thin-line artifact at the `Sphere`'s
+top and lower-left edges (both pre-existing, already-tracked framework gaps, not new);
+the mouse cursor sprite rendering and tracking the real X11 pointer position
+correctly; and, in a real (non-debug-forced) run, correct live per-triangle picking
+output (`"Inside bounding sphere: P2Wedge, Cylinder"` + a `"P2Wedge"` name label under
+the cursor) — see the dedicated section above. F1 help overlay and the picked-triangle
+magenta wireframe outline were both confirmed via temporary debug auto-triggers
+(removed before commit; this repo's established fallback given `xdotool` keyboard
+input's documented unreliability) — both render correctly. Camera keyboard/gamepad
+controls (arrow keys/WASD, Z/X, R, right stick, triggers) were not separately
+exercised via synthetic input this session, consistent with every other sample in
+this repo affected by the same `xdotool` reliability caveat (`NEXT.md` section 5) —
+they are simple, direct ports of the original's own input-reading code, not expected
+to behave differently from any other sample already using the identical
+`Keyboard::GetState()`/`GamePad::GetState()` pattern.

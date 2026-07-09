@@ -14,8 +14,8 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 51 samples are fully ported and wired into the root
-`CMakeLists.txt`. 7 more are confirmed unblocked (no remaining CNA gap) and ready
+**Current phase:** 52 samples are fully ported and wired into the root
+`CMakeLists.txt`. 6 more are confirmed unblocked (no remaining CNA gap) and ready
 to port. 28 placeholder directories exist for samples still genuinely blocked on
 real CNA engine work (custom shaders, skeletal animation, one content-pipeline
 gap). 67 catalogued directories are permanently out of scope and listed in
@@ -98,6 +98,36 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **TrianglePicking (#048) ported** (2026-07-09) — close sibling of PickingSample
+  (#047, byte-identical FBX assets confirmed via `cmp`), replacing its per-object
+  `BoundingSphere`-only test with real per-triangle ray intersection
+  (Moller-Trumbore). CNA has no `Model.Tag`/custom-`ContentProcessor` equivalent
+  (item #18) *and*, confirmed this session, no `VertexBuffer`/
+  `IndexBuffer.GetData()` runtime readback either (new DEFERRED.md item #25) — the
+  C# original's own per-triangle vertex data (normally attached to `Model.Tag` at
+  content-build time by a custom `TrianglePickingProcessor`) is instead produced
+  by a new `--picking` option added to `tools/fbx_ascii2model.py`, which emits a
+  flat binary sidecar of triangle-expanded vertex positions per model, read back
+  directly by the C++ port at `LoadContent()` time. Builds 0 warnings, runs 7+
+  seconds with no crash. Confirmed the already-tracked near-plane-clipping
+  thin-line artifact on the `Sphere` model (consistent every frame, since this
+  sample's camera doesn't auto-rotate unlike PickingSample's port) and the
+  already-tracked flat-white-saturation finding (DEFERRED.md item #6 addendum) —
+  both immediately recognized as known, not re-diagnosed. Also clarified
+  DEFERRED.md item #23 (`Game::DoInitialize()`'s `ComponentAdded` timing gap):
+  confirmed this sample's C# original adds its `Cursor` component from the
+  *constructor*, not `Initialize()` (unlike PickingSample/Graphics3D), and by
+  reading `Game.cpp` directly, confirmed this genuinely does **not** need the
+  `AddComponent()` workaround — CNA's base `Game::Initialize()` has its own
+  unconditional per-component-initialize pass that already catches
+  constructor-time adds regardless of `ComponentAdded` subscription timing.
+  Unexpectedly got a live (non-debug-forced) confirmation that real per-triangle
+  picking works correctly end-to-end: an earlier `xdotool mousemove --window`
+  call (issued while checking this repo's known `xdotool` focus caveat) moved the
+  real OS pointer over the window even without confirmed focus, and a later clean
+  screenshot shows correct bounding-sphere-list text and a correct per-triangle
+  picked-model name label. See `samples/TrianglePicking/missing.md` for the full
+  account.
 - **PickingSample (#047) ported** (2026-07-09) — `DrawableGameComponent`
   (`Cursor`), stock `Model`/`BasicEffect`, `Viewport::Project`/`Unproject`,
   `Ray`/`BoundingSphere::Intersects` for mouse-ray picking against 5 FBX models
@@ -215,6 +245,93 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-09, third same-day follow-up):** Ported
+**TrianglePicking (#048)**, section 8 task 6's recommended next candidate — a
+close sibling of PickingSample (#047, ported immediately before it this same
+session): same original author, same table-of-4-objects scene, and (confirmed
+via `cmp`) byte-identical source FBX assets (`Sphere.fbx`, `Cats.fbx`≡`Cats.FBX`,
+`Cylinder.fbx`, `P2Wedge.fbx`≡`P2Wedge.FBX`, `table.FBX`). The key difference,
+confirmed by reading `TrianglePickingSample_4_0/TrianglePickingSample/Game.cs`
+directly rather than assuming: this sample replaces PickingSample's simpler
+per-object `BoundingSphere`-only test with a real **per-triangle** ray
+intersection (a hand-ported Moller-Trumbore ray-triangle test), a fast
+bounding-sphere pre-test only used to decide whether the expensive per-triangle
+test is worth running at all.
+
+The real engineering question this session was where the per-triangle vertex
+data comes from. XNA's original gets it from a custom content-pipeline
+processor (`TrianglePickingProcessor`, a `ModelProcessor` subclass) that walks
+the model's node tree at content-**build** time and attaches a flat
+`Vector3[]` (plus a precomputed `BoundingSphere`) to `Model.Tag`. CNA has
+neither a `Model.Tag` equivalent nor custom-`ContentProcessor` extensibility
+(pre-existing DEFERRED.md item #18). The task brief suggested a fallback —
+reading the data back from the model's already-loaded `VertexBuffer`/
+`IndexBuffer` at runtime instead — but a full read of both classes' headers
+(`cna/include/Microsoft/Xna/Framework/Graphics/{VertexBuffer,IndexBuffer}.hpp`)
+confirmed **neither has a `GetData()` method of any kind**: every method on
+both is a `SetData`/`SetDataRaw`/`SetDataWithOptions` upload path, never a
+readback path. This is a real, narrower CNA gap than item #18 (a sample could
+in principle re-derive picking data from an already-loaded `Model` with no
+custom content pipeline involved at all, and still couldn't) — filed as **new
+DEFERRED.md item #25**. Worked around at the tooling level, consistent with
+this repo's own "convert once, offline" asset philosophy (item #18's framing):
+extended `tools/fbx_ascii2model.py` (which already parses every mesh's raw
+triangle/vertex data to build `.model.json`'s own buffers) with an optional
+`--picking <output.bin>` flag that, from that same parsed data, additionally
+emits a flat binary sidecar of triangle-expanded vertex positions per model —
+read back directly by the C++ port (`samples/TrianglePicking/src/
+TrianglePickingData.hpp`) at `LoadContent()` time, with
+`BoundingSphere::CreateFromPoints()` (already implemented in CNA) computed over
+it once and cached, reproducing exactly what `TrianglePickingProcessor` stores
+in `Model.Tag` in the original.
+
+A second, useful clarification surfaced while investigating whether this
+sample would hit DEFERRED.md item #23 (`Game::DoInitialize()`'s
+`ComponentAdded`-after-`Initialize()` timing gap) the same way PickingSample
+and Graphics3D both did. Reading `Game.cs` directly showed this sample's
+`Cursor` component is added from the **constructor**, not `Initialize()` —
+and reading `cna`'s `Game.cpp` directly showed why that matters: the base
+`Game::Initialize()` (not `DoInitialize()`) separately, unconditionally loops
+over every component already present in `Components_` and calls each one's own
+`Initialize()` directly, independent of `ComponentAdded` subscription timing
+entirely. A component added in the constructor — long before
+`DoInitialize()`/`Initialize()` ever run — is already present in `Components_`
+by the time this loop executes, so it initializes correctly with **no
+workaround needed**. Confirmed live (built and ran without the
+`AddComponent()` pattern PickingSample/Graphics3D both required; `Cursor`'s
+texture/`SpriteBatch` all load correctly, cursor renders in every screenshot).
+Added this clarification directly to DEFERRED.md item #23's own text, since it
+narrows the gap's actual trigger condition (order relative to the override's
+own `base.Initialize()` call, not simply "constructor vs. `Initialize()`").
+
+Also unexpectedly got a **real, non-debug-forced** live confirmation that the
+whole picking pipeline works correctly end-to-end: an `xdotool mousemove
+--window <id> <x> <y>` call issued earlier in the session (while checking this
+repo's own known `xdotool` keyboard-focus reliability caveat) evidently moved
+the real OS pointer over the window even without confirmed focus — a later,
+fully clean screenshot (no debug code active) shows correct
+`"Inside bounding sphere: P2Wedge, Cylinder"` text and a correct `"P2Wedge"`
+per-triangle-picked name label under the cursor, reproduced identically across
+two screenshots taken 4 seconds apart. Separately, a temporary debug
+auto-trigger (removed before commit) confirmed the picked-triangle magenta
+wireframe outline (`DrawPickedTriangle()`) also renders correctly. Confirmed
+the already-tracked near-plane-clipping thin-line artifact on the `Sphere`
+model (visible in every screenshot, since this sample's own C# original's
+camera doesn't auto-rotate without input — unlike PickingSample's port, which
+added its own continuous auto-rotation not present in either sample's actual
+source) and the already-tracked flat-white-saturation finding (DEFERRED.md
+item #6 addendum) — both immediately recognized as known, per this session's
+own briefing, not re-diagnosed from scratch.
+
+Builds 0 warnings (verified via a from-scratch rebuild); ran 7+ seconds with no
+crash across multiple runs. F1 help overlay confirmed via a temporary debug
+auto-trigger (removed before commit) — this sample's own `.htm` has the
+standard 3-column controls table, so (unlike PickingSample) the stock
+`gen_help_png.py` needed no one-off column-selection variant. See
+`samples/TrianglePicking/missing.md` for the complete account.
+
+Commit this session: `<TRIANGLEPICKING_COMMIT_HASH>`, pushed to `develop`.
 
 **Newest session (2026-07-09, second same-day follow-up):** Ported
 **PickingSample (#047)**, section 8 task 6's recommended next candidate (one
@@ -569,17 +686,19 @@ symptom**:
   again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
   full invisibility is the same bug at a different camera distance, not a
   separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 5 more samples (TrianglePicking, HeightmapCollision,
-  InverseKinematics, ChaseCamera, MarbleMaze — LensFlare, Graphics3D, and
-  PickingSample are now all ported, see section 8) are otherwise unblocked and
+- **Why it matters now:** 4 more samples (HeightmapCollision, InverseKinematics,
+  ChaseCamera, MarbleMaze — LensFlare, Graphics3D, PickingSample, and
+  TrianglePicking are now all ported, see section 8) are otherwise unblocked and
   portable, but **should not be assumed to render correctly** just because they
   build — each needs its own screenshot check for this same artifact once
   ported (and, per the above, "renders nothing" is now just as suspect as "shows
   a thin line" — don't assume a blank frame means something else is wrong
-  without checking camera distance against this bug first). PickingSample's own
-  port confirmed the thin-line symptom once more (see section 3) and also
-  surfaced a separate, angle-independent "flat white, no shading" finding —
-  don't conflate the two; see `samples/PickingSample/missing.md`.
+  without checking camera distance against this bug first). PickingSample's and
+  TrianglePicking's own ports each confirmed the thin-line symptom once more
+  (see section 3) and PickingSample also surfaced a separate, angle-independent
+  "flat white, no shading" finding (also confirmed again by TrianglePicking) —
+  don't conflate the two; see `samples/PickingSample/missing.md` and
+  `samples/TrianglePicking/missing.md`.
 
 **Other rendering/framework gaps found this session (not blocking, tracked
 separately):**
@@ -801,10 +920,11 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-**Recently completed (2026-07-09):** LensFlare (#041), Graphics3D (#046), and
-PickingSample (#047), all screenshot-verified — see section 3 for the full
-account of each, including the new DEFERRED.md items (#22–#24) and the item
-#6 addendum PickingSample added.
+**Recently completed (2026-07-09):** LensFlare (#041), Graphics3D (#046),
+PickingSample (#047), and TrianglePicking (#048), all screenshot-verified — see
+section 3 for the full account of each, including the new DEFERRED.md items
+(#22–#25), the item #6 addendum PickingSample added, and TrianglePicking's
+clarification to item #23.
 
 1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
    aggregate build.**
@@ -873,21 +993,21 @@ account of each, including the new DEFERRED.md items (#22–#24) and the item
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port one of the 5 remaining unblocked lighting samples**
-   (TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
-   MarbleMaze). PickingSample (#047), previously in this list, is now ported
-   — see section 3.
-   - Goal: same pattern as LensFlare/Graphics3D/PickingSample — port using
-     stock `Model`/`BasicEffect`, screenshot-verify, expect (per task 2)
-     either the thin-line or fully-invisible near-plane-clipping symptom
-     depending on camera distance; that alone is not a reason to suspect a new
-     bug. Also expect the "flat white, no shading gradient" finding
-     PickingSample surfaced (DEFERRED.md item #6's addendum) on any model
-     whose original relied on a texture for material color/shading contrast
-     — not a new bug to re-diagnose, just a known consequence of `.model.json`
-     having no per-mesh texture field.
-   - Notes from a quick asset survey this session (not yet re-verified per
-     sample, just source/asset inspection):
+6. **Port one of the 4 remaining unblocked lighting samples**
+   (HeightmapCollision, InverseKinematics, ChaseCamera, MarbleMaze).
+   PickingSample (#047) and TrianglePicking (#048), previously in this list,
+   are now both ported — see section 3.
+   - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking —
+     port using stock `Model`/`BasicEffect`, screenshot-verify, expect (per
+     task 2) either the thin-line or fully-invisible near-plane-clipping
+     symptom depending on camera distance; that alone is not a reason to
+     suspect a new bug. Also expect the "flat white, no shading gradient"
+     finding PickingSample/TrianglePicking surfaced (DEFERRED.md item #6's
+     addendum) on any model whose original relied on a texture for material
+     color/shading contrast — not a new bug to re-diagnose, just a known
+     consequence of `.model.json` having no per-mesh texture field.
+   - Notes from a quick asset survey (not yet re-verified per sample, just
+     source/asset inspection):
      - **HeightmapCollision** — terrain is generated at content-build time from
        a `terrain.bmp` heightmap via a custom content-pipeline processor (no
        plain `.fbx`/`.x` for it); would need either a small Python heightmap→
@@ -898,10 +1018,6 @@ account of each, including the new DEFERRED.md items (#22–#24) and the item
        fbx_ascii2model.py` nor `tools/obj2model.py` reads directly; would need
        an `assimp`/Blender `.x`→`.obj` conversion step first (both tools do
        support `.x` import, unlike the old-binary-FBX case Graphics3D hit).
-     - **TrianglePicking** — likely similar in shape to PickingSample (same
-       sample family); check its own asset list against PickingSample's
-       precedent (`.fbx` conversion, `Cursor`/`BoundingSphereRenderer`-style
-       helpers) before assuming anything new is needed.
      - **MarbleMaze** — much larger source tree (140 files); only a specific
        subdirectory (`Source/EX2_Polishing/End/`) is likely the actual port
        target per its `missing.md` — recommend doing this one last.

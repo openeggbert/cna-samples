@@ -849,13 +849,37 @@ calls `Components.Add(component)` followed by an explicit
 `DrawableGameComponent::Initialize()` already guards against
 double-initialization.
 
-**Blocked samples:** Graphics3D (workaround applied, ported). Every other
-sample in this repo happens to add its components from the *constructor*
-(before `Initialize()` runs at all), which sidesteps this gap entirely —
-Graphics3D is the first to add components from `Initialize()` itself, which is
-why it's the first to surface this. Any future sample following the same
-pattern (matching a C# original that does its own component creation inside
-`Initialize()`) would hit the same bug.
+**Blocked samples:** Graphics3D (workaround applied, ported). PickingSample
+(#047) hit the identical shape and applied the identical workaround. Every
+other sample in this repo happens to add its components from the
+*constructor* (before `Initialize()` runs at all), which sidesteps this gap
+entirely. Any future sample following the same pattern (matching a C#
+original that does its own component creation inside `Initialize()`) would
+hit the same bug.
+
+**Addendum found while porting TrianglePicking (2026-07-09): the precise
+trigger condition is narrower than "added from `Initialize()` vs. the
+constructor" — it's about ordering relative to the *user override's own call*
+to `Game::Initialize()`/`base.Initialize()`.** `cna`'s base `Game::Initialize()`
+(`Game.cpp`, not `DoInitialize()`) separately, unconditionally loops over every
+component **already present** in `Components_` at the time it runs and calls
+each one's own `Initialize()` directly — entirely independent of whether
+`ComponentAdded` has been subscribed yet. Graphics3D's and PickingSample's own
+C# originals both add their component(s) from inside `Initialize()` **before**
+that override's own call to `base.Initialize()`, so the base loop's snapshot
+doesn't include them yet (the loop already ran) and only the — not-yet-
+subscribed — `ComponentAdded` event could have caught them. TrianglePicking's
+own C# original instead adds its `Cursor` from the **constructor**, i.e. long
+before `Initialize()`/`base.Initialize()` runs at all — confirmed live, this
+needs **no workaround**: by the time either `Game::Initialize()` (base or
+override) executes, the component is already present in `Components_`, so the
+base loop's unconditional pass initializes it correctly with no dependency on
+`ComponentAdded` timing at all. In short: constructor-time adds are safe (base
+`Game::Initialize()`'s own loop catches them); `Initialize()`-time adds are
+only safe if they happen **after** that override's own `base.Initialize()`
+call (untested by any sample so far — every sample hitting this pattern in C#
+calls `base.Initialize()` last, matching real XNA convention). See
+`samples/TrianglePicking/missing.md` for the full account.
 
 **Effort:** S.
 
@@ -908,6 +932,64 @@ sample using this Clear overload, and is worth fixing on general principle.
 
 ---
 
+## 25. `VertexBuffer`/`IndexBuffer` have no `GetData()` (no readback of GPU buffer contents)
+
+**Found while porting TrianglePicking (2026-07-09).** This sample's C# original
+(`TrianglePickingSample`) needs its models' raw triangle vertex positions at runtime
+for a per-triangle ray-intersection test — real XNA gets this via a custom
+content-pipeline processor (`TrianglePickingProcessor`, a `ModelProcessor` subclass)
+that walks the model's node tree at content-**build** time and attaches a flat
+`Vector3[]` (plus a precomputed `BoundingSphere`) to `Model.Tag`. The task brief for
+this port suggested an alternative if that path weren't available: read the data back
+from the model's already-loaded `VertexBuffer`/`IndexBuffer` at runtime instead (real
+XNA's `VertexBuffer.GetData<T>()`/`IndexBuffer.GetData<T>()`).
+
+**Confirmed via direct, full read of both headers** (`cna/include/Microsoft/Xna/
+Framework/Graphics/{VertexBuffer,IndexBuffer}.hpp`): **neither class has any `GetData`
+method at all** — every data-transfer method on both classes is a `SetData`/
+`SetDataRaw`/`SetDataWithOptions` upload path (grep confirms zero occurrences of
+`GetData` in either file). This means there is currently **no way to read back vertex
+or index data from a GPU buffer in CNA**, for any purpose — not just an inconvenience
+specific to this sample's `Model.Tag` gap (DEFERRED.md item #18, custom
+`ContentProcessor` extensibility), but a distinct, narrower missing capability: even a
+sample willing to re-derive its own picking data at runtime from an already-loaded
+`Model`'s buffers has no API surface to do so.
+
+**Where to implement:** add `GetData<T>(T* data, int count)` (and the `startIndex`/
+`elementCount` overloads, matching the existing `SetData` overload set) to both
+`VertexBuffer` and `IndexBuffer` — reading back from the backend's GPU buffer object
+(`glGetBufferSubData` on the EasyGL/OpenGL-ES backend; note OpenGL ES 3.x *does*
+support `glGetBufferSubData`, unlike some other ES-vs-desktop-GL gaps this repo has
+hit, so this should not need a new capability probe). `CNA::Internal::Backends::
+IVertexBufferBackend`/`IIndexBufferBackend` would need a matching virtual method added
+for each backend (EasyGL, Vulkan) to implement.
+
+**Workaround used in TrianglePicking (#048):** since CNA's whole asset story is
+"convert once, offline, into a static runtime format" (item #18's framing) rather than
+XNA's build-time `ContentProcessor` chaining, this port extends `tools/
+fbx_ascii2model.py` (which already parses every mesh's raw triangle/vertex data to
+produce `.model.json`'s own `_verts.bin`/`_idx.bin` files) with an optional `--picking`
+flag that, from that same already-parsed data, additionally emits a flat binary
+sidecar file (`<Model>_picking.bin`: triangle-expanded `float32 x,y,z` positions, no
+normal/uv, 9 floats per triangle) — this is generated once, offline, at asset-
+conversion time, and the C++ port just reads it directly from disk at `LoadContent()`
+time (see `samples/TrianglePicking/src/TrianglePickingData.hpp`). This sidesteps the
+gap entirely rather than working around it inside CNA, and needed no changes to
+`ModelTypeReader`/`Model.Tag`-equivalent machinery. A future sample that specifically
+needs to read back data from a `Model` it did **not** convert itself (e.g. a
+third-party/pre-existing `.model.json` with no matching source FBX available at
+runtime) would still need the real `GetData()` fix above.
+
+**Blocked samples:** none outright — the tool-level workaround fully unblocks
+TrianglePicking (#048). Any future sample needing genuine runtime readback of GPU
+buffer contents (not just triangle data producible by this repo's own offline
+converters) would hit this gap for real.
+
+**Effort:** S–M (mirrors the existing `SetData` overload set; the GPU-side readback
+call itself is a single line per backend on both EasyGL and Vulkan).
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -934,5 +1016,6 @@ sample using this Clear overload, and is worth fixing on general principle.
 | 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06; scoped remote-host-IsHost limitation remains, see item) |
 | 21 | Initial GamerJoined event queued, not synchronous | cna + sharp-runtime | S | ClientServerSample, NetworkPrediction, PeerToPeer | ✅ done (fixed 2026-07-06 via sharp-runtime EventHandler<T>::SetReplayHook(), user-approved) |
 | 22 | EasyGL: BlendState.ColorWriteChannels ignored (no glColorMask) | cna | S | LensFlare | not started |
-| 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D (workaround applied) | not started |
+| 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
+| 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |

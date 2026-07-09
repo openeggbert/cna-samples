@@ -10,11 +10,23 @@ Vertex format: VertexPositionNormalTexture (stride 32)
 Index format: uint16 little-endian
 
 Usage:
-  python3 tools/fbx_ascii2model.py <input.fbx> <output_dir/basename>
+  python3 tools/fbx_ascii2model.py <input.fbx> <output_dir/basename> [--picking <output.bin>]
   e.g.: python3 tools/fbx_ascii2model.py Content/tank.fbx Content/tank
   produces: Content/tank.model.json
             Content/tank_<meshname>_verts.bin
             Content/tank_<meshname>_idx.bin
+
+Optional --picking <output.bin>: also writes a flat, triangle-expanded, position-only
+(x,y,z float32, no normal/uv) vertex list across *all* mesh blocks in the file, 9 floats
+(3 vertices) per triangle, concatenated in mesh-then-triangle order. This mirrors what
+XNA's TrianglePickingSample's own custom ContentProcessor (TrianglePickingProcessor.
+FindVertices()) attaches to Model.Tag at content-build time for per-triangle
+ray-intersection tests -- CNA has no Model.Tag/custom-ContentProcessor equivalent (see
+DEFERRED.md item #18) and no VertexBuffer/IndexBuffer.GetData() to read the data back
+from the GPU at runtime either (confirmed gap -- see DEFERRED.md), so this sidecar file
+is generated once, offline, by this same conversion step instead, and read directly by
+the C++ port at startup. Added for TrianglePicking (#048); no effect on any existing
+2-argument caller.
 """
 
 import sys, os, re, struct, json, math
@@ -299,8 +311,15 @@ def main():
         print(__doc__)
         sys.exit(1)
 
-    fbx_path = sys.argv[1]
-    out_base = sys.argv[2]
+    args = sys.argv[1:]
+    picking_path = None
+    if '--picking' in args:
+        pi = args.index('--picking')
+        picking_path = args[pi + 1]
+        del args[pi:pi + 2]
+
+    fbx_path = args[0]
+    out_base = args[1]
     out_dir  = os.path.dirname(out_base) or '.'
     basename = os.path.basename(out_base)
     os.makedirs(out_dir, exist_ok=True)
@@ -312,6 +331,7 @@ def main():
     print(f"Found {len(blocks)} mesh blocks")
 
     mesh_entries = []
+    picking_positions = []  # only populated/used when --picking is given
 
     for (name, bstart, bend) in blocks:
         positions, normals, poly_indices, uvs, uv_indices = parse_mesh_block(lines, bstart, bend)
@@ -342,6 +362,9 @@ def main():
         tris = len(indices) // 3
         print(f"  {name}: {len(verts)} vertices, {tris} triangles")
 
+        if picking_path is not None:
+            picking_positions.extend(verts[idx][0:3] for idx in indices)
+
         mesh_entries.append({
             "name": name,
             "vertices": vert_rel,
@@ -355,6 +378,14 @@ def main():
         json.dump({"meshes": mesh_entries}, f, indent=2)
 
     print(f"Written: {json_path} ({len(mesh_entries)} meshes)")
+
+    if picking_path is not None:
+        os.makedirs(os.path.dirname(picking_path) or '.', exist_ok=True)
+        with open(picking_path, 'wb') as f:
+            for (x, y, z) in picking_positions:
+                f.write(struct.pack('<3f', x, y, z))
+        print(f"Written: {picking_path} "
+              f"({len(picking_positions)} picking vertices, {len(picking_positions)//3} triangles)")
 
 
 if __name__ == '__main__':
