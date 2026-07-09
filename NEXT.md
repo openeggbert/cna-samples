@@ -14,8 +14,8 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 48 samples are fully ported and wired into the root
-`CMakeLists.txt`. 10 more are confirmed unblocked (no remaining CNA gap) and ready
+**Current phase:** 49 samples are fully ported and wired into the root
+`CMakeLists.txt`. 9 more are confirmed unblocked (no remaining CNA gap) and ready
 to port. 28 placeholder directories exist for samples still genuinely blocked on
 real CNA engine work (custom shaders, skeletal animation, one content-pipeline
 gap). 67 catalogued directories are permanently out of scope and listed in
@@ -53,14 +53,32 @@ per-category counts.
 ## 2. Current status
 
 ### Build
-As of commit `eee6769` on `develop` (pushed), a full build succeeded with 0
-errors and 0 warnings:
+**A full aggregate build currently FAILS** (verified live this session,
+2026-07-09) — 8 errors, all in the pre-existing `SafeArea` sample, unrelated to
+this session's own changes:
 ```
-cmake --build cmake-build-debug -j$(nproc)
+/rv/data/development/github.com/openeggbert/cna-samples/samples/SafeArea/src/SafeAreaOverlay.hpp:47:39:
+error: 'class Microsoft::Xna::Framework::Graphics::Viewport' has no member named 'x'
 ```
-This produced 94 targets. Not re-verified in the current turn (no build was run
-this turn per explicit instruction) — treat as "last known good" as of that
-commit, not a live guarantee.
+(and 7 more of the same shape, for `.x`/`.y` at lines 47/48/50/51/53/56/58).
+`Viewport` no longer exposes direct `.x`/`.y` members upstream in `cna` — same
+class of drift that previously broke `InputReporter`'s direct `GamePadCapabilities`
+field access (section 3's history); `SafeAreaOverlay.hpp` needs the same treatment
+(switch to `viewport.getXProperty()`/`getYProperty()`). **Not fixed this session**
+— out of scope for the task that found it (porting LensFlare); a small, mechanical
+fix for a future session (or right now, if the user wants it fixed opportunistically
+— it's a ~7-line change in one file).
+
+`LensFlare_cna_samples` itself (this session's own new target) builds cleanly with
+0 errors/0 warnings, standalone and repeatedly re-verified:
+```
+cmake --build cmake-build-debug --target LensFlare_cna_samples -j$(nproc)
+```
+Last full aggregate build known to fully succeed was commit `eee6769` on
+`develop` (94 targets, 0 errors/0 warnings) — no longer a live guarantee given the
+`SafeArea` break above; some other sample(s) not touched by this session may also
+be affected if the same `Viewport` API change hit them (not audited beyond
+`SafeArea`, which is the only one the aggregate build reached before stopping).
 
 ### Tests
 No automated test suite exists in this repo. Each sample is its own manual/visual
@@ -80,6 +98,19 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **LensFlare (#041) ported** (2026-07-09) — `DrawableGameComponent`, stock
+  `Model`/`BasicEffect`, and `OcclusionQuery`, all working end-to-end with no
+  CNA-side API gaps for the sample's own code. Builds 0 warnings, runs 5+ seconds
+  with no crash. Found and fixed a real bug in `tools/fbx_ascii2model.py` along the
+  way (see below). See `samples/LensFlare/missing.md` for the full account.
+- `tools/fbx_ascii2model.py` now applies each FBX mesh's baked
+  `PreRotation`/`LclRotation`/`LclScaling`/`LclTranslation` node transform instead
+  of silently ignoring it — `terrain.fbx` (LensFlare's asset) has a `-90,0,0`
+  `PreRotation` (a Z-up → Y-up correction) that, unapplied, put the entire terrain
+  outside the camera's view volume (rendered as nothing at all, not even the
+  near-plane-clipping artifact). Confirmed this does **not** change `tank.fbx`'s
+  already-shipped output (all its `PreRotation`s are `0,0,0`) — see DEFERRED.md
+  item #6's addendum.
 - `Microsoft::Xna::Framework::Audio::Microphone` + `DynamicSoundEffectInstance`
   (MicrophoneEcho, #098) — capture-device enumeration, `BufferReady`/`GetData()`,
   loopback playback. Live-verified: a real capture device was found on this
@@ -96,10 +127,27 @@ screenshot.
   existed in `cna` but were never enabled/linked here — see section 3).
 
 ### Known NOT working
+- **Full aggregate build** (`cmake --build cmake-build-debug -j$(nproc)` with no
+  `--target`) — fails in `SafeArea` (see Build subsection above). Newly discovered
+  this session, unrelated to LensFlare. Any single-sample `--target` build
+  (including `LensFlare_cna_samples`) is unaffected.
 - Visual correctness of tank-model-based lit rendering: CustomModelClass (#052)
   and the pre-existing CameraShake both render `tank.model.json` as a thin
   diagonal line instead of a recognizable model — a real, unfixed EasyGL
-  near-plane clipping bug (section 4/5), not specific to either sample.
+  near-plane clipping bug (section 4/5), not specific to either sample. **Now also
+  confirmed on a second, independent asset:** LensFlare's `terrain.model.json`
+  (after fixing its orientation, see above) shows the identical thin-line artifact,
+  ruling out an asset-specific cause a second time.
+- **New: EasyGL backend never applies `BlendState.ColorWriteChannels`** (no
+  `glColorMask` anywhere in `EasyGLGraphicsBackend`) — found via LensFlare's
+  occlusion-query trick, which relies on `ColorWriteChannels.None` to keep its test
+  polygon invisible; it renders as a solid white square instead. DEFERRED.md item
+  #22 (new, not started). See `samples/LensFlare/missing.md` for the full account.
+- LensFlare's glow/flare sprites (gated on the occlusion query's pixel count) were
+  never observed to appear during this session's live verification — not
+  root-caused; may be a symptom of the `ColorWriteChannels` gap above, or a
+  separate issue. Flagged in `samples/LensFlare/missing.md`, not yet its own
+  DEFERRED.md item.
 - Multi-gamer `NetworkSession` state routing: `NetworkGamer.Id` is a hardcoded
   stub (always `0`), so `FindGamerById()` always resolves to the first gamer —
   correct for solo sessions (verified), wrong once a second gamer joins
@@ -111,6 +159,55 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-09):** Ported **LensFlare (#041)**, section 8 task 1 from
+the prior session's handoff. Used `DrawableGameComponent` for `LensFlareComponent`
+(matching the C# original's own component split), stock `Model`/`BasicEffect` for
+the terrain, and CNA's `OcclusionQuery` for the sun-visibility trick — all worked
+with no CNA-side gaps for the sample's own code. While converting `terrain.fbx`,
+found and fixed a real bug in `tools/fbx_ascii2model.py`: it never applied a mesh's
+baked `PreRotation`/`LclRotation`/`LclScaling`/`LclTranslation` node transform, only
+its raw vertex/normal data. `terrain.fbx`'s `Plane01` mesh has a `-90,0,0`
+`PreRotation` (a standard 3ds-Max Z-up → FBX-declared-Y-up correction); without
+applying it, the terrain's height ended up in Z instead of Y and the whole mesh sat
+outside the camera's view volume — first screenshot was solid CornflowerBlue with
+nothing visible at all. Fixed the converter generically (any mesh's node transform,
+not special-cased to this asset) and confirmed live it does not change `tank.fbx`'s
+already-shipped conversion output (all its `PreRotation`s are `0,0,0`; regenerated
+into a scratch dir and diffed byte-identical against the checked-in
+`tank.model.json`/`.bin` files — see DEFERRED.md item #6's addendum for the note
+that `tank.fbx`'s *sub-meshes* do have non-zero `Lcl Translation`, relevant only
+once a future sample needs independently-posed tank parts).
+
+After the fix, LensFlare's terrain renders with the same thin-diagonal-line
+near-plane-clipping artifact already known from `CameraShake`/`CustomModelClass`'s
+tank rendering — confirming that bug's cause is shared across two independently-
+converted FBX assets, not specific to the tank model. Also found a **new** CNA
+rendering gap while verifying: the EasyGL backend never applies
+`BlendState.ColorWriteChannels` (`glColorMask` is never called anywhere in
+`EasyGLGraphicsBackend` — confirmed via direct grep), so `LensFlareComponent`'s
+occlusion-query trick (drawing an intentionally-invisible test polygon via
+`ColorWriteChannels.None`) instead renders a fully visible white square on screen.
+Filed as DEFERRED.md item #22 (not started — not fixed this session, out of scope
+for a porting task). Additionally observed that the glow/flare sprites never
+appeared during 5+ seconds of live verification; not root-caused, flagged in
+`samples/LensFlare/missing.md` rather than assumed benign.
+
+F1 help overlay verified via this repo's established temporary-debug-auto-trigger
+pattern (removed before commit) — `xdotool` reached the window's focus
+(`getactivewindow` matched) but a sent `F1` keypress had no observable effect,
+consistent with this repo's known `xdotool` reliability caveat, not a code bug.
+
+**Also discovered, unrelated to LensFlare:** a full aggregate build
+(`cmake --build cmake-build-debug -j$(nproc)`, no `--target`) now fails with 8
+errors in `samples/SafeArea/src/SafeAreaOverlay.hpp` — `Viewport` no longer exposes
+direct `.x`/`.y` members upstream in `cna` (same class of drift that previously
+broke `InputReporter`). Not fixed this session (out of scope for the LensFlare
+task); flagged as a new item in section 8 for whoever picks this repo up next.
+`LensFlare_cna_samples` itself was independently confirmed to build clean via its
+own `--target`, both before and after this discovery.
+
+Commits this session: not yet committed as of this NEXT.md update — see git status.
 
 **Newest session (2026-07-06, follow-up):** `cna`'s `feature/net` fixed two of the
 three DEFERRED.md gaps `ClientServerSample` (#091) worked around — #19
@@ -213,20 +310,43 @@ Commits from the newest follow-up session (see the top entry above): `3197b06`,
 
 ## 4. Current blocker / main problem
 
-**There is no failing build or test blocking the whole project right now.** The
-most significant *open, concrete problem* is a rendering bug:
+**A full aggregate build (`cmake --build cmake-build-debug -j$(nproc)`, no
+`--target`) now fails** — newly discovered 2026-07-09, unrelated to any of this
+session's own changes:
 
-- **Exact symptom:** a `tank.model.json`-based `Model`, drawn with
-  `BasicEffect.EnableDefaultLighting()` through a perspective camera at a
-  moderate distance (~500–1000 XNA units), renders as a thin diagonal
-  line/dashes instead of a recognizable 3D model.
+- **Exact symptom:** 8 compile errors in
+  `samples/SafeArea/src/SafeAreaOverlay.hpp` (lines 47/48/50/51/53/56/58):
+  `'class Microsoft::Xna::Framework::Graphics::Viewport' has no member named 'x'`
+  (and `'y'`).
+- **Failing command:** `cmake --build cmake-build-debug -j$(nproc)` (aggregate;
+  any single sample's own `--target` build is unaffected unless it also touches
+  `Viewport.x`/`.y` directly — not audited beyond `SafeArea`, the only sample the
+  aggregate build reached before `ninja` stopped on the first failure).
+- **Root cause:** `Viewport` no longer exposes direct `.x`/`.y` members upstream in
+  `cna` (must now use `getXProperty()`/`getYProperty()`) — same class of drift that
+  previously broke `InputReporter`'s direct `GamePadCapabilities` field access
+  (section 3's history).
+- **Fix shape:** mechanical, ~7-line change in one file — switch each
+  `viewport.x`/`viewport.y` to `viewport.getXProperty()`/`viewport.getYProperty()`.
+  Not done this session (out of scope for the task that found it — porting
+  LensFlare); see section 8 for a dedicated task.
+
+The previously-tracked rendering bug (near-plane clipping) is still open and is now
+confirmed on a **second** independent asset:
+
+- **Exact symptom:** a `Model` drawn through a perspective camera at a moderate
+  distance renders as a thin diagonal line/dashes instead of a recognizable 3D
+  shape. Originally found on `tank.model.json` (CameraShake/CustomModelClass);
+  **now also confirmed on LensFlare's `terrain.model.json`** (2026-07-09, after
+  fixing its FBX-conversion orientation bug — section 3) — same artifact, ruling
+  out an asset-specific cause for the second time.
 - **Failing command (to reproduce):**
   ```
   cd cmake-build-debug/samples/CameraShake
   SDL_VIDEODRIVER=x11 ./CameraShake_cna_samples
   ```
-  (or `cmake-build-debug/samples/CustomModelClass/CustomModelClass_cna_samples`
-  — same artifact, same asset.)
+  (or `CustomModelClass_cna_samples`, or now `LensFlare_cna_samples` — all three
+  show the same artifact.)
 - **No failing automated test** — there is no test suite; this was found by
   screenshot comparison.
 - **Affected files/modules:** almost certainly
@@ -237,14 +357,19 @@ most significant *open, concrete problem* is a rendering bug:
   degenerate instead of being clipped correctly.
 - **What has been tried:** confirmed (2026-07-06) via a side-by-side screenshot
   that CameraShake and CustomModelClass show the *identical* artifact in the
-  *identical* screen position — this rules out a per-sample bug and confirms a
-  shared framework cause. Not yet root-caused inside `cna` itself; no fix
-  attempted.
-- **Why it matters now:** 8 more samples (LensFlare, Graphics3D, PickingSample,
+  *identical* screen position; confirmed again (2026-07-09) that LensFlare's
+  independently-converted terrain asset shows the same artifact too. Not yet
+  root-caused inside `cna` itself; no fix attempted.
+- **Why it matters now:** 8 more samples (Graphics3D, PickingSample,
   TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
-  MarbleMaze) are otherwise unblocked and portable, but **should not be assumed
-  to render correctly** just because they build — each needs its own screenshot
-  check for this same artifact once ported.
+  MarbleMaze — LensFlare itself is now ported, see section 8) are otherwise
+  unblocked and portable, but **should not be assumed to render correctly** just
+  because they build — each needs its own screenshot check for this same artifact
+  once ported.
+
+**New, second rendering gap found this session:** the EasyGL backend never applies
+`BlendState.ColorWriteChannels` — see section 5 for the full write-up (DEFERRED.md
+item #22).
 
 Secondary, lower-urgency items (not blocking, just open):
 - A product/scope decision is needed before porting AccelerometerSample (#084)/
@@ -259,10 +384,23 @@ Secondary, lower-urgency items (not blocking, just open):
 ## 5. Known bugs and limitations
 
 - **CONFIRMED BUG, unfixed** — EasyGL near-plane clipping renders certain
-  `Model`-based geometry (confirmed: `tank.model.json`, at both CameraShake's and
-  CustomModelClass's camera distances) as a degenerate thin line instead of the
-  model. See section 4 for full detail. Likely affects other models/samples too;
-  not yet characterized beyond the tank asset.
+  `Model`-based geometry (confirmed: `tank.model.json` at CameraShake's and
+  CustomModelClass's camera distances, and now also `terrain.model.json` at
+  LensFlare's — 2026-07-09) as a degenerate thin line instead of the model. See
+  section 4 for full detail. Confirmed on two independently-converted FBX assets;
+  likely affects other models/samples too.
+- **CONFIRMED BUG, unfixed** — the EasyGL backend never applies
+  `BlendState.ColorWriteChannels` (no `glColorMask` call anywhere in
+  `EasyGLGraphicsBackend.cpp`, confirmed via direct grep). Found via LensFlare's
+  occlusion-query trick (a `ColorWriteChannels.None` blend state meant to keep its
+  test polygon invisible), which instead renders a solid white square on screen.
+  DEFERRED.md item #22 (new, not started). See `samples/LensFlare/missing.md`.
+- **NEW BUILD BREAKAGE, unfixed** — `samples/SafeArea/src/SafeAreaOverlay.hpp`
+  accesses `Viewport.x`/`.y` directly; `cna`'s `Viewport` no longer exposes those as
+  public members (property-getter-only now). Breaks both `SafeArea`'s own
+  `--target` build and, as a consequence, the full aggregate build (`ninja` stops
+  at the first failure). Every other sample's own `--target` build is unaffected.
+  See section 4 for the exact errors and section 8 for a dedicated fix task.
 - **CONFIRMED BUG, workaround applied (ClientServerSample, #091)** —
   `GamerServicesDispatcher::Update()` in `cna` is a no-op, so
   `NetworkSession::Create`/`Find`/`Join`'s synchronous busy-wait loop never
@@ -417,28 +555,53 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-1. **Screenshot-verify one of the 8 remaining unblocked lighting samples for the
-   near-plane clipping bug before/while porting it — recommended: LensFlare
-   (#041), the other simplest pick.**
-   - Goal: port it using stock `Model`/`BasicEffect` (same pattern as
-     CustomModelClass), then confirm via screenshot whether it hits the same
-     rendering bug as CameraShake/CustomModelClass, or renders correctly (its
-     terrain model may differ in scale/geometry from the tank).
-   - Files: new `samples/LensFlare/src/`; see `samples/LensFlare/missing.md`.
-   - Verify: `cmake --build cmake-build-debug --target LensFlare_cna_samples`,
-     then run under `SDL_VIDEODRIVER=x11` and screenshot.
+1. **✅ DONE (2026-07-09): LensFlare (#041) ported and screenshot-verified.**
+   Confirmed it hits the same near-plane-clipping artifact as CameraShake/
+   CustomModelClass (on its own, independently-converted terrain asset), plus
+   surfaced a new `ColorWriteChannels` gap (task 3 below) and fixed a real
+   `tools/fbx_ascii2model.py` bug along the way. See `samples/LensFlare/
+   missing.md` and section 3 for the full account.
 
-2. **Investigate the EasyGL near-plane clipping bug itself (section 4).**
+2. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
+   aggregate build.**
+   - Goal: `samples/SafeArea/src/SafeAreaOverlay.hpp` (lines 47/48/50/51/53/56/58)
+     accesses `viewport.x`/`viewport.y` directly; `cna`'s `Viewport` no longer
+     exposes those as public members. Switch each to
+     `viewport.getXProperty()`/`viewport.getYProperty()` (see `CLAUDE.md`'s
+     property-access table).
+   - Files: `samples/SafeArea/src/SafeAreaOverlay.hpp`.
+   - Verify: `cmake --build cmake-build-debug --target SafeArea_cna_samples`,
+     then `cmake --build cmake-build-debug -j$(nproc)` (full aggregate) to
+     confirm no other sample hits the same `Viewport.x`/`.y` pattern.
+
+3. **Investigate the EasyGL near-plane clipping bug itself (section 4).**
    - Goal: clip `w<0` vertices correctly so the tank/terrain models render fully
-     instead of degenerating to a thin line.
+     instead of degenerating to a thin line. Now confirmed on two independent
+     assets (`tank.model.json`, `terrain.model.json`), raising confidence this is
+     a real shared clipping/projection bug, not an asset artifact.
    - Files: likely `cna/src/CNA/Internal/Backends/EasyGL/
      EasyGLGraphicsBackend.cpp` (clipping/projection path) — exact location not
      yet confirmed.
-   - Verify: run `CameraShake_cna_samples` and `CustomModelClass_cna_samples`
-     under `SDL_VIDEODRIVER=x11`; confirm the tank/ground are fully visible in a
-     screenshot, not a thin line.
+   - Verify: run `CameraShake_cna_samples`, `CustomModelClass_cna_samples`, and
+     `LensFlare_cna_samples` under `SDL_VIDEODRIVER=x11`; confirm the
+     tank/ground/terrain are fully visible in a screenshot, not a thin line.
 
-3. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
+4. **Fix the EasyGL `BlendState.ColorWriteChannels` gap (DEFERRED.md item #22).**
+   - Goal: `EasyGLGraphicsBackend` never calls `glColorMask` (or equivalent), so
+     `ColorWriteChannels.None`/partial-channel blend states are silently ignored
+     — every draw writes all 4 color channels regardless of the active
+     `BlendState`. Found via LensFlare's occlusion-query trick, which renders a
+     visible white square instead of staying invisible.
+   - Files: wherever `EasyGLGraphicsBackend` applies `BlendState` to GL state
+     (alongside its existing blend-func/equation setup) — exact location not yet
+     confirmed.
+   - Verify: run `LensFlare_cna_samples` under `SDL_VIDEODRIVER=x11`; confirm the
+     occlusion-query polygon is no longer visible as a white square. Consider
+     also re-checking whether this fixes the "glow/flare sprites never appear"
+     observation in `samples/LensFlare/missing.md` — not established either way
+     yet.
+
+5. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
    - Goal: all three of ClientServerSample's original workarounds are gone now
      (DEFERRED.md #19/#20/#21 all fixed upstream in `cna`/`sharp-runtime` — see
      section 3's newest entries): a real `GamerServicesComponent` can be constructed
@@ -460,14 +623,14 @@ No lint/format command and no automated test suite are configured in this repo.
      (or `PeerToPeer_cna_samples`); screenshot the menu + a triggered session
      the way ClientServerSample was verified.
 
-4. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+6. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin()/End()` in the same frame must not discard the
      first.
    - Files: `cna/src/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
      confirm all layers draw.
 
-5. **Decide the scope for AccelerometerSample (#084)/TiltPerspective (#107).**
+7. **Decide the scope for AccelerometerSample (#084)/TiltPerspective (#107).**
    - Goal: get an explicit go/no-go from the user on inventing a keyboard-tilt
      fallback from scratch (neither original has any non-phone code to reuse)
      before spending the effort.
@@ -475,7 +638,7 @@ No lint/format command and no automated test suite are configured in this repo.
      `samples/TiltPerspective/src/`.
    - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`.
 
-6. **Decide whether to port any of the 5 now-reopened Avatar samples** (#085,
+8. **Decide whether to port any of the 5 now-reopened Avatar samples** (#085,
    #086, #087, #094, #101) onto `cna`'s new `AvatarRenderer::
    EnableRealRenderingEXT` substitute-body path.
    - Goal: get an explicit go/no-go from the user before spending effort — this
@@ -484,7 +647,7 @@ No lint/format command and no automated test suite are configured in this repo.
    - Files: none yet.
    - Verify: N/A until a decision is made.
 
-7. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
+9. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
    CNA's `.model.json` reader.**
    - Goal: unblock SplitScreen (#076), TankOnHeightmap (#074), SimpleAnimation
      (#050).
@@ -502,15 +665,15 @@ No lint/format command and no automated test suite are configured in this repo.
   ShadowMapping, BillboardSample, InstancedModel, ShatterEffect, Particles3D,
   XmlParticles, ShipGame, NetRumble) without first building an HLSL→GLSL
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
-  yet. This does **not** apply to the 8 remaining lit-`BasicEffect`-only samples
-  (task 1/section 8) — those need no shader work.
+  yet. This does **not** apply to the 7 remaining lit-`BasicEffect`-only samples
+  (LensFlare is now ported — section 8, task 1) — those need no shader work.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).
 - **Do not invent a keyboard-tilt input scheme for AccelerometerSample/
-  TiltPerspective** without an explicit scope decision first (section 8, task 5).
+  TiltPerspective** without an explicit scope decision first (section 8, task 7).
 - **Do not start porting any of the 5 reopened Avatar samples** without an
-  explicit scope decision first (section 8, task 6).
+  explicit scope decision first (section 8, task 8).
 - **Do not assume a newly-unblocked lighting sample renders correctly just
   because it builds** — screenshot it and check for the near-plane clipping
   artifact (section 4) first.
@@ -522,7 +685,8 @@ No lint/format command and no automated test suite are configured in this repo.
   immediately beforehand, and do not conclude "no visible effect" means a code
   bug without first checking the sample's own state.
 - **No broad refactors or unrelated cleanup** while the near-plane-clipping/
-  Vulkan bugs (section 8, tasks 2/4) are open.
+  `ColorWriteChannels`/`SafeArea`-build/Vulkan bugs (section 8, tasks 2/3/4/6) are
+  open.
 - **Do not regenerate existing font atlases or `.model.json` assets** unless
   there is a confirmed rendering bug — regenerating is cheap but pointless churn
   otherwise.

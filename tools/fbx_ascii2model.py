@@ -17,7 +17,90 @@ Usage:
             Content/tank_<meshname>_idx.bin
 """
 
-import sys, os, re, struct, json
+import sys, os, re, struct, json, math
+
+
+def mat3_mul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def mat3_vec(m, v):
+    return (
+        m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+        m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+        m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
+    )
+
+
+def euler_deg_to_matrix(rx, ry, rz):
+    """XYZ Euler angles (degrees) to a 3x3 rotation matrix, FBX's default eXYZ order
+    (rotation composed as Rz * Ry * Rx, i.e. X applied first)."""
+    rx, ry, rz = math.radians(rx), math.radians(ry), math.radians(rz)
+    cx, sx = math.cos(rx), math.sin(rx)
+    cy, sy = math.cos(ry), math.sin(ry)
+    cz, sz = math.cos(rz), math.sin(rz)
+
+    Rx = [[1, 0, 0], [0, cx, -sx], [0, sx, cx]]
+    Ry = [[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]]
+    Rz = [[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]]
+
+    return mat3_mul(mat3_mul(Rz, Ry), Rx)
+
+
+def parse_model_transform(lines, block_start, block_end):
+    """Reads a Mesh Model node's PreRotation/PostRotation/LclRotation/LclTranslation/
+    LclScaling properties (baked by DCC tools like 3ds Max to convert their native
+    axis system, e.g. Z-up, into the FBX file's declared axis system). Returns
+    (rotation_3x3, scale_xyz, translation_xyz); identity/no-op if all properties
+    are absent or zero, matching the C# content pipeline's own node-transform bake."""
+
+    def find_vec3(prop_name):
+        pattern = re.compile(
+            r'Property:\s*"' + re.escape(prop_name) + r'"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,'
+            r'\s*([-\d.eE]+)\s*,\s*([-\d.eE]+)\s*,\s*([-\d.eE]+)')
+        for i in range(block_start, block_end):
+            m = pattern.search(lines[i])
+            if m:
+                return (float(m.group(1)), float(m.group(2)), float(m.group(3)))
+        return (0.0, 0.0, 0.0)
+
+    pre_rot   = find_vec3("PreRotation")
+    post_rot  = find_vec3("PostRotation")
+    lcl_rot   = find_vec3("Lcl Rotation")
+    lcl_trans = find_vec3("Lcl Translation")
+    lcl_scale = find_vec3("Lcl Scaling")
+    if lcl_scale == (0.0, 0.0, 0.0):
+        lcl_scale = (1.0, 1.0, 1.0)
+
+    R = euler_deg_to_matrix(*pre_rot)
+    if lcl_rot != (0.0, 0.0, 0.0):
+        R = mat3_mul(R, euler_deg_to_matrix(*lcl_rot))
+    if post_rot != (0.0, 0.0, 0.0):
+        Rpost = euler_deg_to_matrix(*post_rot)
+        Rpost_inv = [[Rpost[j][i] for j in range(3)] for i in range(3)]  # orthonormal: inverse == transpose
+        R = mat3_mul(R, Rpost_inv)
+
+    return R, lcl_scale, lcl_trans
+
+
+def is_identity_transform(transform):
+    R, S, T = transform
+    identity_R = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    close = lambda a, b: abs(a - b) < 1e-9
+    return (all(close(R[i][j], identity_R[i][j]) for i in range(3) for j in range(3))
+            and S == (1.0, 1.0, 1.0) and T == (0.0, 0.0, 0.0))
+
+
+def transform_position(p, transform):
+    R, S, T = transform
+    scaled = (p[0] * S[0], p[1] * S[1], p[2] * S[2])
+    rotated = mat3_vec(R, scaled)
+    return (rotated[0] + T[0], rotated[1] + T[1], rotated[2] + T[2])
+
+
+def transform_normal(n, transform):
+    R, _S, _T = transform
+    return mat3_vec(R, n)
 
 
 def read_data_block(lines, start):
@@ -236,6 +319,12 @@ def main():
         if not positions or not poly_indices:
             print(f"  {name}: skipped (no geometry)")
             continue
+
+        transform = parse_model_transform(lines, bstart, bend)
+        if not is_identity_transform(transform):
+            print(f"  {name}: applying baked node transform (PreRotation/LclRotation/LclScaling/LclTranslation)")
+            positions = [transform_position(p, transform) for p in positions]
+            normals = [transform_normal(n, transform) for n in normals]
 
         triangles = triangulate(poly_indices, normals, uv_indices)
         verts, indices = build_buffers(positions, normals, uvs, triangles, uv_indices)

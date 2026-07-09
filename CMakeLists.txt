@@ -93,7 +93,7 @@ add_subdirectory(samples/ParticleSample)
 add_subdirectory(samples/Particles2DPipeline)
 # add_subdirectory(samples/BillboardSample)
 # add_subdirectory(samples/InstancedModel)
-# add_subdirectory(samples/LensFlare)
+add_subdirectory(samples/LensFlare)
 
 # Phase 4 — Full Games
 # add_subdirectory(samples/MarbleMaze)

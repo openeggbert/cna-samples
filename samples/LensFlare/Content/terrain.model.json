@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "Plane01",
+      "vertices": "terrain_Plane01_verts.bin",
+      "indices": "terrain_Plane01_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

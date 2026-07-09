@@ -288,6 +288,32 @@ item 13 regardless.)
 needed. S–M CNA code change (once) to unblock the multi-bone rigid-part case, then M
 per model as above.
 
+**Tool bug found and fixed while porting LensFlare (2026-07-09):**
+`tools/fbx_ascii2model.py` baked each mesh's raw `Vertices:`/`Normals:` data straight
+into the output buffers, ignoring the source `Model` node's `PreRotation`/
+`LclRotation`/`LclScaling`/`LclTranslation` properties — the node transform 3ds Max
+(and similar DCC tools) bake in to convert their own internal axis convention into
+the FBX file's declared one. `LensFlareSample`'s `terrain.fbx` has a `PreRotation` of
+`-90,0,0` on `Plane01` (a Z-up → Y-up correction); without applying it, the "terrain"
+came out standing on its edge (all height variation in Z instead of Y) and rendered
+as a flat CornflowerBlue screen with nothing visible. Fixed by parsing those
+properties per mesh and applying the composed rotation/scale/translation to every
+position and normal before building the vertex buffers (identity transform is a
+no-op, so any FBX with all-zero node properties, e.g. `tank.fbx`, converts
+byte-identically to before). **Confirmed this does not change any already-shipped
+asset:** every `Model::<mesh>` node in `tank.fbx` (`CameraShake`/`CustomModelClass`'s
+source) has `PreRotation 0,0,0` — but several of its meshes (the wheels/turret/
+canon/hatch) *do* have non-zero `Lcl Translation` values, meaning regenerating
+`tank.model.json` with this fixed converter would now bake those parts into their
+correct relative positions instead of leaving them stacked at the mesh's own local
+origin. That regeneration was deliberately **not** done as part of this fix — it's a
+separate, pre-existing-asset change outside LensFlare's own scope, and (per the
+multi-bone note above) doesn't matter for CameraShake/CustomModelClass today since
+neither sample moves tank parts independently of each other; only relevant once a
+sample actually needs independent per-part motion (SplitScreen, SimpleAnimation, and
+the other rigid-multi-part-bone-hierarchy samples listed above), at which point
+regenerating `tank.model.json` with the fixed converter should be revisited.
+
 ---
 
 ## 7. Audio (SoundEffect, SoundEffectInstance, Song) ✅ RESOLVED
@@ -711,6 +737,46 @@ confirmed for those two yet.
 
 ---
 
+## 22. EasyGL backend ignores `BlendState.ColorWriteChannels` (color-write mask never applied)
+
+**Found while porting LensFlare (2026-07-09).** `LensFlareComponent`'s occlusion-query
+trick (`LensFlareComponent.cs`'s `UpdateOcclusion()`) relies on a custom `BlendState`
+with `ColorWriteChannels = ColorWriteChannels.None` so the query polygon it draws to
+test sun visibility never actually appears on screen — only its occluded/visible
+pixel *count* matters. Confirmed via direct source grep:
+`grep -rn "ColorWriteChannels\|glColorMask" src/CNA/Internal/Backends/EasyGL/` in
+`cna` returns **zero** matches — the EasyGL backend parses/stores
+`BlendState.ColorWriteChannels` (and `...Channels1/2/3`) but never calls the
+OpenGL-ES equivalent (`glColorMask`) to actually apply it, so every draw call writes
+all four color channels regardless of the active `BlendState`.
+
+**Confirmed live:** running the ported sample shows a solid opaque white square (the
+occlusion-query polygon, `querySize` × `querySize` at the current light-screen
+position) that should be invisible, on top of the CornflowerBlue background and the
+already-known near-plane-clipping thin-line artifact (item 5's terrain-asset
+variant — same shared framework cause as the tank models, confirmed by the terrain
+now converting/orienting correctly per item 6's write-up above, so the thin line is
+not an asset problem).
+
+**Root cause:** `CNA::Internal::Backends::EasyGL::EasyGLGraphicsBackend` has no
+`glColorMask` call anywhere in its state-application path.
+
+**Where to implement:** wherever the EasyGL backend applies `BlendState` to GL state
+(alongside its existing blend-func/blend-equation setup) — add a `glColorMask` call
+driven by `BlendState.ColorWriteChannels` (all four channels come from the same
+`ColorWriteChannels` value unless `IndependentBlendEnable`/per-target overrides are
+also unimplemented, which is a separate, likely-also-missing MRT feature not
+investigated here).
+
+**Blocked samples:** LensFlare (#041, ported; ported using the assumption that fixing
+this is a follow-up, not a blocker for shipping the port — see its `missing.md`).
+Any future sample using a `ColorWriteChannels.None`/partial-channel `BlendState` for
+a similar depth-only or stencil-only trick would hit the same gap.
+
+**Effort:** S.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -736,3 +802,4 @@ confirmed for those two yet.
 | 19 | GamerServicesDispatcher::Update() no-op hangs NetworkSession::Create/Find/Join | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06) |
 | 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06; scoped remote-host-IsHost limitation remains, see item) |
 | 21 | Initial GamerJoined event queued, not synchronous | cna + sharp-runtime | S | ClientServerSample, NetworkPrediction, PeerToPeer | ✅ done (fixed 2026-07-06 via sharp-runtime EventHandler<T>::SetReplayHook(), user-approved) |
+| 22 | EasyGL: BlendState.ColorWriteChannels ignored (no glColorMask) | cna | S | LensFlare | not started |
