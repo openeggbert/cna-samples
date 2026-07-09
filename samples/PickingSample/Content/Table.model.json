@@ -1,0 +1,39 @@
+{
+  "meshes": [
+    {
+      "name": "TableTop",
+      "vertices": "Table_TableTop_verts.bin",
+      "indices": "Table_TableTop_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "BackRightLeg",
+      "vertices": "Table_BackRightLeg_verts.bin",
+      "indices": "Table_BackRightLeg_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "BackLeftLeg",
+      "vertices": "Table_BackLeftLeg_verts.bin",
+      "indices": "Table_BackLeftLeg_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "FrontLeftLeg",
+      "vertices": "Table_FrontLeftLeg_verts.bin",
+      "indices": "Table_FrontLeftLeg_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "FrontRightLeg",
+      "vertices": "Table_FrontRightLeg_verts.bin",
+      "indices": "Table_FrontRightLeg_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

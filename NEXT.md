@@ -14,8 +14,8 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 50 samples are fully ported and wired into the root
-`CMakeLists.txt`. 8 more are confirmed unblocked (no remaining CNA gap) and ready
+**Current phase:** 51 samples are fully ported and wired into the root
+`CMakeLists.txt`. 7 more are confirmed unblocked (no remaining CNA gap) and ready
 to port. 28 placeholder directories exist for samples still genuinely blocked on
 real CNA engine work (custom shaders, skeletal animation, one content-pipeline
 gap). 67 catalogued directories are permanently out of scope and listed in
@@ -98,6 +98,30 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **PickingSample (#047) ported** (2026-07-09) — `DrawableGameComponent`
+  (`Cursor`), stock `Model`/`BasicEffect`, `Viewport::Project`/`Unproject`,
+  `Ray`/`BoundingSphere::Intersects` for mouse-ray picking against 5 FBX models
+  (table + 4 picked objects). Builds 0 warnings, runs 5+ seconds with no crash.
+  All 5 source FBX files were plain ASCII, converted directly with
+  `tools/fbx_ascii2model.py` (no binary-FBX workaround needed this time). Hit
+  and worked around the same `Game::DoInitialize()` component-lifecycle gap
+  Graphics3D found (DEFERRED.md item #23 — `Cursor` is created and added to
+  `Components` from inside `Initialize()`, matching the C# original). Also hit
+  and worked around a related, previously-only-implicitly-documented gap:
+  `ModelMesh::ParentBone` is always `nullptr` for `.model.json`-loaded models
+  (DEFERRED.md item #6's existing "multi-bone" note already covered the root
+  cause) — added a `BoneIndexOf()` fallback-to-0 helper, the same guard CNA's
+  own `Model::Draw()` already uses internally. Found that every model renders
+  as a flat, fully-saturated white shape with zero shading gradient (confirmed
+  angle-independent via multiple screenshots) — root-caused to the combination
+  of CNA's `.model.json` format having no per-mesh texture field (an existing
+  gap, first flagged by LensFlare's `ground.png`) and XNA's bright default
+  3-point lighting rig clamping to white on an untextured, default-white
+  material; added an addendum to DEFERRED.md item #6 documenting this more
+  severe consequence (not a new item — same root cause). Also separately
+  observed the already-tracked near-plane-clipping thin-line artifact once, at
+  one camera angle, confirming it's independent of the flat-white finding. See
+  `samples/PickingSample/missing.md` for the full account.
 - **Graphics3D (#046) ported** (2026-07-09) — `DrawableGameComponent` (touch
   buttons ported to mouse), stock `Model`/`BasicEffect` with 3 directional
   lights + specular + per-pixel-lighting toggle, sprite-sheet animation. Builds
@@ -191,6 +215,95 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-09, second same-day follow-up):** Ported
+**PickingSample (#047)**, section 8 task 6's recommended next candidate (one
+of the 6 remaining unblocked lighting samples, chosen for this continuous
+unattended porting session). Source: `Game.cs`/`Cursor.cs`/
+`BoundingSphereRenderer.cs` — a table with 4 pickable objects (`Sphere`,
+`Cats`, `P2Wedge`, `Cylinder`), mouse-ray picking via `Viewport.Unproject` →
+`Ray` → `BoundingSphere.Intersects`, with per-model name labels drawn via
+`Viewport.Project` + `SpriteFont.DrawString` when the ray hits. Ported
+`Cursor` as a `DrawableGameComponent` (Windows/mouse branch only — Xbox/
+Windows-Phone branches dropped, matching every other desktop-only port in
+this repo) and `BoundingSphereRenderer` as an ordinary instance class (C#
+static-class-with-extension-method → C++ instance member, a natural
+language-constraint adjustment, not a behavior change).
+
+All 5 source FBX files (`table.FBX`, `Sphere.fbx`, `Cats.FBX`, `Cylinder.fbx`,
+`P2Wedge.FBX`) turned out to be plain ASCII FBX 6.1, converted directly with
+`tools/fbx_ascii2model.py` — no binary-FBX/`ufbx` workaround needed this time
+(unlike Graphics3D). One asset-naming quirk found and worked around:
+`Game.cs` calls `Content.Load<Model>("Table")` (capital T) even though the
+source file/content-item name is lowercase `table` — only worked in the
+original because Windows content loading is case-insensitive; kept the
+literal `"Table"` string in the C++ port and named the converted files to
+match (`Table.model.json` etc.) instead of changing the source line. Also
+found, via direct `Cats.FBX` inspection, that its only real mesh is a plain
+box (`Box01`) — not a detailed cat model — matching the original asset
+exactly, not a conversion bug.
+
+Two CNA gaps surfaced, both already covered by existing DEFERRED.md items
+(no new items needed), plus one confirmed sighting of the already-tracked
+near-plane-clipping bug:
+
+1. **`Game::DoInitialize()`'s component-lifecycle gap (DEFERRED.md item
+   #23)** — this sample's original creates `Cursor` and adds it to
+   `Components` from inside `Initialize()`, the same pattern Graphics3D hit
+   first. Worked around with the identical `AddComponent()` helper pattern
+   established there.
+2. **`ModelMesh::ParentBone` is always `nullptr` for `.model.json`-loaded
+   models** — confirmed via direct source read of `ModelTypeReader::Read()`:
+   it builds one synthetic `"Root"` bone but never assigns any mesh's
+   `ParentBone` to it (no setter even exists). Dereferencing
+   `mesh.ParentBone.Index` directly (mirroring the C# source literally, as
+   this sample's `DrawModel()`/`RayIntersectsModel()` both do) segfaulted
+   immediately. This is the same root cause DEFERRED.md item #6's existing
+   "multi-bone rigid-part" note already describes — not a new gap. Worked
+   around with a small `BoneIndexOf(ModelMesh*)` helper that falls back to
+   bone index 0, the exact same fallback CNA's own `Model::Draw()` already
+   uses internally; correct here since every model in this sample is
+   logically single-bone.
+3. **New finding: untextured `BasicEffect` + default lighting renders every
+   model as flat, fully-saturated white, with zero shading gradient at any
+   camera angle** (confirmed via pixel sampling across several screenshots
+   at different camera-rotation angles — not a one-off framing coincidence).
+   Root-caused via direct source read of `EasyGLGraphicsBackend.cpp`'s
+   `EnsureLit3DProgram()`: the lit fragment shader always multiplies by
+   `texture(uTexture, vUV)`, falling back to an internal 1×1 *white* texture
+   when none is bound — a no-op multiply. Combined with `BasicEffect`'s
+   default white `DiffuseColor` (never overridden, since this sample's
+   original relies entirely on its FBX-embedded material textures for color)
+   and XNA's bright standard 3-point `EnableDefaultLighting()` rig, the lit
+   result exceeds `(1,1,1)` for a broad range of normals and clips to solid
+   white. This is a direct (if visually dramatic) consequence of the
+   already-known "no per-mesh texture in `.model.json`" gap first flagged by
+   LensFlare's `ground.png` note, not an independent new lighting bug — added
+   the addendum to DEFERRED.md item #6 that LensFlare's own `missing.md`
+   predicted a future sample would eventually need.
+
+Also separately confirmed, at one particular camera-rotation angle, the
+already-tracked near-plane-clipping thin-diagonal-line artifact
+(`CameraShake`/`CustomModelClass`/`LensFlare`/`Graphics3D`'s bug family) on
+one of the models — an independent, angle-*dependent* issue from the
+angle-*independent* flat-white finding above, not a duplicate observation.
+
+`BoundingSphereRenderer`'s wireframe circles were not confirmed visible in
+any screenshot (toggling them off made no visible difference) — flagged in
+`samples/PickingSample/missing.md` as unresolved (possibly occlusion/depth-
+test related), not assumed to be a bug or assumed to be working.
+
+Builds 0 warnings (verified via a from-scratch rebuild); ran 5+ seconds with
+no crash across multiple runs. F1 help overlay verified via this repo's
+established temporary-debug-auto-trigger pattern (removed before commit) —
+renders correctly, using a one-off `gen_help_png.py` variant (same pattern as
+MicrophoneEcho) to pick the "Windows" column instead of the tool's default
+"Windows Phone" column from the sample's 4-column controls table. Live mouse-
+driven cursor/name-label interaction was not exercised via synthetic input
+this session (same `xdotool` reliability caveat noted throughout this repo).
+See `samples/PickingSample/missing.md` for the complete account.
+
+Commit this session: `<PICKING_COMMIT_HASH>`, pushed to `develop`.
 
 **Newest session (2026-07-09, same-day follow-up):** Ported **Graphics3D
 (#046)**, picked interactively (user asked "which sample next" after LensFlare
@@ -456,14 +569,17 @@ symptom**:
   again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
   full invisibility is the same bug at a different camera distance, not a
   separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 6 more samples (PickingSample, TrianglePicking,
-  HeightmapCollision, InverseKinematics, ChaseCamera, MarbleMaze — LensFlare and
-  Graphics3D are now both ported, see section 8) are otherwise unblocked and
+- **Why it matters now:** 5 more samples (TrianglePicking, HeightmapCollision,
+  InverseKinematics, ChaseCamera, MarbleMaze — LensFlare, Graphics3D, and
+  PickingSample are now all ported, see section 8) are otherwise unblocked and
   portable, but **should not be assumed to render correctly** just because they
   build — each needs its own screenshot check for this same artifact once
   ported (and, per the above, "renders nothing" is now just as suspect as "shows
   a thin line" — don't assume a blank frame means something else is wrong
-  without checking camera distance against this bug first).
+  without checking camera distance against this bug first). PickingSample's own
+  port confirmed the thin-line symptom once more (see section 3) and also
+  surfaced a separate, angle-independent "flat white, no shading" finding —
+  don't conflate the two; see `samples/PickingSample/missing.md`.
 
 **Other rendering/framework gaps found this session (not blocking, tracked
 separately):**
@@ -685,9 +801,10 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-**Recently completed (2026-07-09):** LensFlare (#041) and Graphics3D (#046),
-both screenshot-verified — see section 3 for the full account of each,
-including the new DEFERRED.md items (#22–#24) both surfaced.
+**Recently completed (2026-07-09):** LensFlare (#041), Graphics3D (#046), and
+PickingSample (#047), all screenshot-verified — see section 3 for the full
+account of each, including the new DEFERRED.md items (#22–#24) and the item
+#6 addendum PickingSample added.
 
 1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
    aggregate build.**
@@ -756,13 +873,19 @@ including the new DEFERRED.md items (#22–#24) both surfaced.
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port one of the 6 remaining unblocked lighting samples** (PickingSample,
-   TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
-   MarbleMaze).
-   - Goal: same pattern as LensFlare/Graphics3D — port using stock
-     `Model`/`BasicEffect`, screenshot-verify, expect (per task 2) either the
-     thin-line or fully-invisible near-plane-clipping symptom depending on
-     camera distance; that alone is not a reason to suspect a new bug.
+6. **Port one of the 5 remaining unblocked lighting samples**
+   (TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
+   MarbleMaze). PickingSample (#047), previously in this list, is now ported
+   — see section 3.
+   - Goal: same pattern as LensFlare/Graphics3D/PickingSample — port using
+     stock `Model`/`BasicEffect`, screenshot-verify, expect (per task 2)
+     either the thin-line or fully-invisible near-plane-clipping symptom
+     depending on camera distance; that alone is not a reason to suspect a new
+     bug. Also expect the "flat white, no shading gradient" finding
+     PickingSample surfaced (DEFERRED.md item #6's addendum) on any model
+     whose original relied on a texture for material color/shading contrast
+     — not a new bug to re-diagnose, just a known consequence of `.model.json`
+     having no per-mesh texture field.
    - Notes from a quick asset survey this session (not yet re-verified per
      sample, just source/asset inspection):
      - **HeightmapCollision** — terrain is generated at content-build time from
@@ -775,11 +898,10 @@ including the new DEFERRED.md items (#22–#24) both surfaced.
        fbx_ascii2model.py` nor `tools/obj2model.py` reads directly; would need
        an `assimp`/Blender `.x`→`.obj` conversion step first (both tools do
        support `.x` import, unlike the old-binary-FBX case Graphics3D hit).
-     - **PickingSample**, **TrianglePicking** — multiple `.fbx` models each
-       (table/sphere/cylinder/p2wedge/cats), all plain ASCII or otherwise
-       normally-convertible FBX as far as a quick `file`-command check showed;
-       more assets to convert than LensFlare/Graphics3D but no known format
-       blocker.
+     - **TrianglePicking** — likely similar in shape to PickingSample (same
+       sample family); check its own asset list against PickingSample's
+       precedent (`.fbx` conversion, `Cursor`/`BoundingSphereRenderer`-style
+       helpers) before assuming anything new is needed.
      - **MarbleMaze** — much larger source tree (140 files); only a specific
        subdirectory (`Source/EX2_Polishing/End/`) is likely the actual port
        target per its `missing.md` — recommend doing this one last.
@@ -852,9 +974,9 @@ including the new DEFERRED.md items (#22–#24) both surfaced.
   ShadowMapping, BillboardSample, InstancedModel, ShatterEffect, Particles3D,
   XmlParticles, ShipGame, NetRumble) without first building an HLSL→GLSL
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
-  yet. This does **not** apply to the 6 remaining lit-`BasicEffect`-only samples
-  (LensFlare and Graphics3D are now ported — section 8, task 6) — those need no
-  shader work.
+  yet. This does **not** apply to the 5 remaining lit-`BasicEffect`-only samples
+  (LensFlare, Graphics3D, and PickingSample are now ported — section 8, task 6)
+  — those need no shader work.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).

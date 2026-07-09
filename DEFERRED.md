@@ -314,6 +314,38 @@ sample actually needs independent per-part motion (SplitScreen, SimpleAnimation,
 the other rigid-multi-part-bone-hierarchy samples listed above), at which point
 regenerating `tank.model.json` with the fixed converter should be revisited.
 
+**Addendum found while porting PickingSample (2026-07-09):** confirmed the
+"no per-mesh texture" gap flagged in LensFlare's `missing.md` ("worth a small
+addendum here if a future sample specifically needs a textured static model")
+has a much more visually severe consequence than LensFlare's own dulled/
+untextured terrain. `ModelTypeReader::Read()`'s `.model.json` mesh schema has
+no `"texture"` field at all, so every mesh in PickingSample (`table`, `Sphere`,
+`Cats`, `Cylinder`, `P2Wedge` — all of which have real material textures in
+their source FBX files, e.g. `wood.tga`/`cat.tga`/`wedge_p2_diff_v1.tga`)
+renders with `BasicEffect.TextureEnabled == false` and the class-default
+`DiffuseColor` of `(1,1,1)` (plain white) instead of its real material color.
+Combined with a separate, confirmed detail in `EasyGLGraphicsBackend.cpp`'s
+`EnsureLit3DProgram()` fragment shader — for `VertexPositionNormalTexture`
+(stride 32) draws, it unconditionally computes
+`FragColor = texture(uTexture, vUV) * vec4(litRGB, uDiffuseColor.a)` with no
+texture-less branch, falling back to an internal 1×1 *white* texture when
+none is bound (so the multiply is a no-op) — the combination of white
+`DiffuseColor` and XNA's standard bright `EnableDefaultLighting()` 3-point
+rig pushes `litRGB` above `(1,1,1)` for a broad range of surface normals,
+which OpenGL then clamps to solid white. The practical result, confirmed live
+via screenshot at multiple camera angles: every PickingSample model renders
+as a flat, fully-saturated white shape with a razor-sharp, non-antialiased
+silhouette and *zero* visible shading gradient anywhere — not merely "duller"
+like LensFlare's terrain, but a total loss of visual information. A correctly
+bound, real-world-average-brightness texture (well under 1.0 per channel)
+would pull the product back under the clamp for most pixels and restore
+normal-looking shading contrast — this is a direct, if dramatic, consequence
+of the existing "no per-mesh texture" gap, not an independent new lighting
+bug. See `samples/PickingSample/missing.md` for the full write-up (including
+confirmation, via pixel sampling across several camera angles, that this is
+angle-*independent*, unlike the separate near-plane-clipping-family bug also
+observed once in the same session on a different model).
+
 ---
 
 ## 7. Audio (SoundEffect, SoundEffectInstance, Song) ✅ RESOLVED

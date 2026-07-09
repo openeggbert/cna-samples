@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "Box01",
+      "vertices": "Cats_Box01_verts.bin",
+      "indices": "Cats_Box01_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}
