@@ -14,8 +14,8 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 49 samples are fully ported and wired into the root
-`CMakeLists.txt`. 9 more are confirmed unblocked (no remaining CNA gap) and ready
+**Current phase:** 50 samples are fully ported and wired into the root
+`CMakeLists.txt`. 8 more are confirmed unblocked (no remaining CNA gap) and ready
 to port. 28 placeholder directories exist for samples still genuinely blocked on
 real CNA engine work (custom shaders, skeletal animation, one content-pipeline
 gap). 67 catalogued directories are permanently out of scope and listed in
@@ -98,6 +98,22 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **Graphics3D (#046) ported** (2026-07-09) — `DrawableGameComponent` (touch
+  buttons ported to mouse), stock `Model`/`BasicEffect` with 3 directional
+  lights + specular + per-pixel-lighting toggle, sprite-sheet animation. Builds
+  0 warnings, runs 6+ seconds with no crash. Converted `spaceship.fbx` (an old
+  *binary* FBX 6.1 file, unreadable by `assimp`/Blender/this repo's own
+  `tools/fbx_ascii2model.py`) via a one-off `ufbx`-based script → `.obj` →
+  `tools/obj2model.py`. Found and worked around a real CNA component-lifecycle
+  bug (`Game::DoInitialize()` wires `ComponentAdded` after calling the user's
+  `Initialize()`, DEFERRED.md item #23) that segfaulted the port on its first
+  frame. The spaceship model itself doesn't render — extensively isolated this
+  session to the same near-plane-clipping-family bug already tracked for
+  `CameraShake`/`CustomModelClass`/`LensFlare`, now confirmed to also cause full
+  invisibility (not just a thin line) at longer camera distances. Also found
+  `GraphicsDevice::Clear(Color)` never clears the depth buffer (DEFERRED.md item
+  #24, latent, not blocking). See `samples/Graphics3D/missing.md` for the full
+  account.
 - **LensFlare (#041) ported** (2026-07-09) — `DrawableGameComponent`, stock
   `Model`/`BasicEffect`, and `OcclusionQuery`, all working end-to-end with no
   CNA-side API gaps for the sample's own code. Builds 0 warnings, runs 5+ seconds
@@ -134,11 +150,14 @@ screenshot.
 - Visual correctness of tank-model-based lit rendering: CustomModelClass (#052)
   and the pre-existing CameraShake both render `tank.model.json` as a thin
   diagonal line instead of a recognizable model — a real, unfixed EasyGL
-  near-plane clipping bug (section 4/5), not specific to either sample. **Now also
-  confirmed on a second, independent asset:** LensFlare's `terrain.model.json`
-  (after fixing its orientation, see above) shows the identical thin-line artifact,
-  ruling out an asset-specific cause a second time.
-- **New: EasyGL backend never applies `BlendState.ColorWriteChannels`** (no
+  near-plane clipping bug (section 4/5), not specific to either sample. **Now
+  confirmed on two further, independent assets:** LensFlare's `terrain.model.json`
+  shows the identical thin-line artifact; Graphics3D's spaceship (at a longer
+  camera distance, ~3523 vs. ~1059 units) renders as **fully invisible** instead —
+  same underlying bug family, a new/different visible symptom depending on camera
+  distance (isolated via direct swap-in testing, see
+  `samples/Graphics3D/missing.md`).
+- **EasyGL backend never applies `BlendState.ColorWriteChannels`** (no
   `glColorMask` anywhere in `EasyGLGraphicsBackend`) — found via LensFlare's
   occlusion-query trick, which relies on `ColorWriteChannels.None` to keep its test
   polygon invisible; it renders as a solid white square instead. DEFERRED.md item
@@ -148,6 +167,19 @@ screenshot.
   root-caused; may be a symptom of the `ColorWriteChannels` gap above, or a
   separate issue. Flagged in `samples/LensFlare/missing.md`, not yet its own
   DEFERRED.md item.
+- **New: `Game::DoInitialize()` wires `Components_.ComponentAdded` after calling
+  the user's `Initialize()` override**, not before (real XNA/FNA does this in the
+  `Game` constructor, before `Initialize()` can run) — a component added to
+  `Components` from within `Initialize()` (a pattern the Graphics3D C# original
+  relies on) never gets its own `Initialize()`/`LoadContent()` called, since the
+  event that would trigger it isn't subscribed yet. Segfaulted Graphics3D's first
+  `Draw()` until worked around. DEFERRED.md item #23 (new, not started). See
+  `samples/Graphics3D/missing.md`.
+- **New: `GraphicsDevice::Clear(Color)` (single-arg overload) never clears the
+  depth buffer** — confirmed via direct source read; only the multi-arg
+  `Clear(...)` overloads do. Affects every 3D sample in this repo (all use the
+  single-arg overload), latent but not currently blocking anything observed.
+  DEFERRED.md item #24 (new, not started).
 - Multi-gamer `NetworkSession` state routing: `NetworkGamer.Id` is a hardcoded
   stub (always `0`), so `FindGamerById()` always resolves to the first gamer —
   correct for solo sessions (verified), wrong once a second gamer joins
@@ -160,7 +192,57 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-09):** Ported **LensFlare (#041)**, section 8 task 1 from
+**Newest session (2026-07-09, same-day follow-up):** Ported **Graphics3D
+(#046)**, picked interactively (user asked "which sample next" after LensFlare
+shipped; recommended it as the leanest remaining unblocked candidate — one FBX
+model, one texture, no `.x`-format blockers). Three real, separate findings
+this session, on top of the port itself:
+
+1. **`spaceship.fbx` is an old *binary* FBX (v6.1/6000)** — unreadable by
+   `assimp` 5.4 and Blender 4.3.2's FBX importer (both explicitly refuse
+   anything older than FBX 2011) and by this repo's own
+   `tools/fbx_ascii2model.py` (ASCII-only). Worked around with a one-off
+   `ufbx`-based Python script (installed in a scratch virtualenv, not added as
+   a repo dependency) that bakes the mesh's node transform and writes a plain
+   `.obj`, then fed that through the existing `tools/obj2model.py` — no new
+   converter added to `tools/`, since this is (so far) a one-off asset format.
+2. **Found and worked around a real CNA component-lifecycle bug**: this
+   sample's C# original creates its 4 `Checkbox` components from inside
+   `Initialize()` (not the constructor) — a pattern real XNA/FNA supports
+   because `Game`'s constructor subscribes to `Components.ComponentAdded`
+   immediately. `cna`'s `Game::DoInitialize()` instead subscribes that event
+   *after* calling the user's `Initialize()` override, so components added
+   from inside `Initialize()` never get their own `Initialize()`/
+   `LoadContent()` called — segfaulted on the very first `Draw()` (dereferencing
+   an unset `std::optional<SpriteBatch>`). Worked around with an explicit
+   `component->Initialize()` call right after `Add()`. Filed as DEFERRED.md
+   item #23 — every other sample in this repo happens to add components from
+   the constructor instead, which is why this hadn't surfaced before.
+3. **The spaceship model itself doesn't render.** Extensively isolated via
+   direct experimentation (hand-computed NDC coordinates confirmed the math is
+   correct; swapping in the already-proven `tank.model.json` through the exact
+   same drawing code at the exact same ~3523-unit camera distance also
+   rendered nothing; the *same* substitution at `CustomModelClass`'s own
+   ~1059-unit camera distance reproduced the known thin-line artifact) — this
+   is the same near-plane-clipping-family EasyGL bug already tracked for
+   `CameraShake`/`CustomModelClass`/`LensFlare` (section 4), now confirmed to
+   cause **full invisibility**, not just a degenerate thin line, at longer
+   camera distances. Also found — while testing an unrelated hypothesis during
+   this investigation — that `GraphicsDevice::Clear(Color)`'s single-argument
+   overload never clears the depth buffer (real XNA's does); confirmed this is
+   not what's hiding the spaceship, but it's a real, separate gap affecting
+   every 3D sample in this repo. Filed as DEFERRED.md item #24.
+
+Also confirmed live via a temporary debug auto-trigger (removed before commit):
+starfield background toggle, explosion sprite-sheet animation, all 4 buttons'
+icon/tint state, and the F1 help overlay (custom-written control text, since
+the original `.htm` has no keyboard/gamepad table — it's touch-only) all render
+correctly. Mouse substitutes for the original's touch/gesture input throughout
+(drag-to-rotate, wheel-to-zoom, click-to-toggle) — not separately exercised via
+synthetic input this session. Builds 0 warnings; ran 6+ seconds with no crash.
+See `samples/Graphics3D/missing.md` for the complete account.
+
+**Same-day, earlier:** Ported **LensFlare (#041)**, section 8 task 1 from
 the prior session's handoff. Used `DrawableGameComponent` for `LensFlareComponent`
 (matching the C# original's own component split), stock `Model`/`BasicEffect` for
 the terrain, and CNA's `OcclusionQuery` for the sun-visibility trick — all worked
@@ -332,21 +414,29 @@ session's own changes:
   LensFlare); see section 8 for a dedicated task.
 
 The previously-tracked rendering bug (near-plane clipping) is still open and is now
-confirmed on a **second** independent asset:
+confirmed on a **third** independent asset, and with a **second distinct visible
+symptom**:
 
-- **Exact symptom:** a `Model` drawn through a perspective camera at a moderate
-  distance renders as a thin diagonal line/dashes instead of a recognizable 3D
-  shape. Originally found on `tank.model.json` (CameraShake/CustomModelClass);
-  **now also confirmed on LensFlare's `terrain.model.json`** (2026-07-09, after
-  fixing its FBX-conversion orientation bug — section 3) — same artifact, ruling
-  out an asset-specific cause for the second time.
+- **Exact symptom:** a `Model` drawn through a perspective camera renders as a
+  thin diagonal line/dashes instead of a recognizable 3D shape — at "moderate"
+  camera distance (~1000 units). Originally found on `tank.model.json`
+  (CameraShake/CustomModelClass); confirmed on LensFlare's `terrain.model.json`
+  too. **At longer camera distance (~3500 units), the same underlying bug
+  instead produces full invisibility, not a thin line** — confirmed 2026-07-09
+  while porting Graphics3D (#046): its spaceship (own camera distance ~3523)
+  renders nothing at all; swapping the already-proven `tank.model.json` into
+  Graphics3D's own drawing code at that same ~3523 distance also rendered
+  nothing, and swapping it in again at `CustomModelClass`'s own ~1059 distance
+  reproduced the familiar thin line — isolating the distance, not the asset or
+  the drawing code, as what determines which symptom appears.
 - **Failing command (to reproduce):**
   ```
   cd cmake-build-debug/samples/CameraShake
   SDL_VIDEODRIVER=x11 ./CameraShake_cna_samples
   ```
-  (or `CustomModelClass_cna_samples`, or now `LensFlare_cna_samples` — all three
-  show the same artifact.)
+  (or `CustomModelClass_cna_samples`, `LensFlare_cna_samples` — thin line; or
+  `Graphics3D_cna_samples` — fully invisible, same bug family, longer camera
+  distance.)
 - **No failing automated test** — there is no test suite; this was found by
   screenshot comparison.
 - **Affected files/modules:** almost certainly
@@ -354,22 +444,39 @@ confirmed on a **second** independent asset:
   projection path) — not yet confirmed by direct inspection.
 - **Suspected cause:** near-plane (`w<0`) vertex clipping in the EasyGL backend
   does not match DirectX/real-XNA behavior, so triangles crossing the near plane
-  degenerate instead of being clipped correctly.
+  degenerate instead of being clipped correctly. The distance-dependent
+  thin-line-vs-invisible split found this session suggests whatever's wrong is
+  sensitive to the actual clip-space `w`/depth values involved, not purely a
+  binary "does this triangle cross the near plane" check — worth keeping in
+  mind once someone actually opens `EasyGLGraphicsBackend.cpp` to fix this.
 - **What has been tried:** confirmed (2026-07-06) via a side-by-side screenshot
   that CameraShake and CustomModelClass show the *identical* artifact in the
   *identical* screen position; confirmed again (2026-07-09) that LensFlare's
-  independently-converted terrain asset shows the same artifact too. Not yet
-  root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 8 more samples (Graphics3D, PickingSample,
-  TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
-  MarbleMaze — LensFlare itself is now ported, see section 8) are otherwise
-  unblocked and portable, but **should not be assumed to render correctly** just
-  because they build — each needs its own screenshot check for this same artifact
-  once ported.
+  independently-converted terrain asset shows the same artifact too; confirmed
+  again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
+  full invisibility is the same bug at a different camera distance, not a
+  separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
+- **Why it matters now:** 6 more samples (PickingSample, TrianglePicking,
+  HeightmapCollision, InverseKinematics, ChaseCamera, MarbleMaze — LensFlare and
+  Graphics3D are now both ported, see section 8) are otherwise unblocked and
+  portable, but **should not be assumed to render correctly** just because they
+  build — each needs its own screenshot check for this same artifact once
+  ported (and, per the above, "renders nothing" is now just as suspect as "shows
+  a thin line" — don't assume a blank frame means something else is wrong
+  without checking camera distance against this bug first).
 
-**New, second rendering gap found this session:** the EasyGL backend never applies
-`BlendState.ColorWriteChannels` — see section 5 for the full write-up (DEFERRED.md
-item #22).
+**Other rendering/framework gaps found this session (not blocking, tracked
+separately):**
+- EasyGL backend never applies `BlendState.ColorWriteChannels` — DEFERRED.md
+  item #22 (found via LensFlare).
+- `Game::DoInitialize()` wires `Components_.ComponentAdded` after calling the
+  user's `Initialize()` override, breaking the common "add components from
+  `Initialize()`" pattern real XNA/FNA supports — DEFERRED.md item #23 (found
+  via Graphics3D; worked around at the sample level).
+- `GraphicsDevice::Clear(Color)`'s single-argument overload never clears the
+  depth buffer (every 3D sample in this repo uses it) — DEFERRED.md item #24
+  (found via Graphics3D; confirmed not the cause of its invisible-model bug
+  above, but a real, separate, latent gap).
 
 Secondary, lower-urgency items (not blocking, just open):
 - A product/scope decision is needed before porting AccelerometerSample (#084)/
@@ -385,16 +492,39 @@ Secondary, lower-urgency items (not blocking, just open):
 
 - **CONFIRMED BUG, unfixed** — EasyGL near-plane clipping renders certain
   `Model`-based geometry (confirmed: `tank.model.json` at CameraShake's and
-  CustomModelClass's camera distances, and now also `terrain.model.json` at
-  LensFlare's — 2026-07-09) as a degenerate thin line instead of the model. See
-  section 4 for full detail. Confirmed on two independently-converted FBX assets;
-  likely affects other models/samples too.
+  CustomModelClass's ~1059-unit camera distance, `terrain.model.json` at
+  LensFlare's) as a degenerate thin line instead of the model — **and, confirmed
+  2026-07-09 via Graphics3D, the same bug renders geometry as fully invisible at
+  longer (~3523-unit) camera distances**, isolated by direct asset-swap testing
+  to be the camera distance, not the asset or drawing code. See section 4 for
+  full detail. Confirmed on three independently-converted assets across two
+  distinct visible symptoms; likely affects other models/samples too — don't
+  assume "renders nothing" means something else is broken without checking this
+  first.
 - **CONFIRMED BUG, unfixed** — the EasyGL backend never applies
   `BlendState.ColorWriteChannels` (no `glColorMask` call anywhere in
   `EasyGLGraphicsBackend.cpp`, confirmed via direct grep). Found via LensFlare's
   occlusion-query trick (a `ColorWriteChannels.None` blend state meant to keep its
   test polygon invisible), which instead renders a solid white square on screen.
   DEFERRED.md item #22 (new, not started). See `samples/LensFlare/missing.md`.
+- **CONFIRMED BUG, worked around (Graphics3D, #046)** — `Game::DoInitialize()`
+  wires up `Components_.ComponentAdded`/`ComponentRemoved` *after* calling the
+  user's `Initialize()` override, unlike real XNA/FNA (which subscribes in the
+  `Game` constructor, before `Initialize()` can run). A component added to
+  `Components` from within `Initialize()` — a pattern real XNA supports and this
+  sample's C# original uses — never gets its own `Initialize()`/`LoadContent()`
+  called, since the event that would trigger it isn't subscribed yet; segfaults
+  on first `Draw()` if that component's `Draw()` depends on `LoadContent()`
+  having run. Worked around by calling `component->Initialize()` explicitly
+  right after `Add()`. DEFERRED.md item #23 (new, not started). See
+  `samples/Graphics3D/missing.md`.
+- **CONFIRMED BUG, unfixed (latent)** — `GraphicsDevice::Clear(Color)`'s
+  single-argument overload never clears the depth buffer (confirmed via direct
+  source read); real XNA's same-signature overload clears color+depth+stencil
+  together. Every 3D sample in this repo uses this overload. Confirmed (via
+  Graphics3D's investigation) this is *not* the cause of the near-plane-clipping
+  bug above, but is a real, separate, currently-latent gap. DEFERRED.md item #24
+  (new, not started).
 - **NEW BUILD BREAKAGE, unfixed** — `samples/SafeArea/src/SafeAreaOverlay.hpp`
   accesses `Viewport.x`/`.y` directly; `cna`'s `Viewport` no longer exposes those as
   public members (property-getter-only now). Breaks both `SafeArea`'s own
@@ -555,14 +685,11 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-1. **✅ DONE (2026-07-09): LensFlare (#041) ported and screenshot-verified.**
-   Confirmed it hits the same near-plane-clipping artifact as CameraShake/
-   CustomModelClass (on its own, independently-converted terrain asset), plus
-   surfaced a new `ColorWriteChannels` gap (task 3 below) and fixed a real
-   `tools/fbx_ascii2model.py` bug along the way. See `samples/LensFlare/
-   missing.md` and section 3 for the full account.
+**Recently completed (2026-07-09):** LensFlare (#041) and Graphics3D (#046),
+both screenshot-verified — see section 3 for the full account of each,
+including the new DEFERRED.md items (#22–#24) both surfaced.
 
-2. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
+1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
    aggregate build.**
    - Goal: `samples/SafeArea/src/SafeAreaOverlay.hpp` (lines 47/48/50/51/53/56/58)
      accesses `viewport.x`/`viewport.y` directly; `cna`'s `Viewport` no longer
@@ -574,19 +701,24 @@ No lint/format command and no automated test suite are configured in this repo.
      then `cmake --build cmake-build-debug -j$(nproc)` (full aggregate) to
      confirm no other sample hits the same `Viewport.x`/`.y` pattern.
 
-3. **Investigate the EasyGL near-plane clipping bug itself (section 4).**
-   - Goal: clip `w<0` vertices correctly so the tank/terrain models render fully
-     instead of degenerating to a thin line. Now confirmed on two independent
-     assets (`tank.model.json`, `terrain.model.json`), raising confidence this is
-     a real shared clipping/projection bug, not an asset artifact.
+2. **Investigate the EasyGL near-plane clipping bug itself (section 4).**
+   - Goal: clip `w<0` vertices correctly so tank/terrain/spaceship models render
+     fully instead of degenerating to a thin line (moderate camera distance) or
+     disappearing entirely (longer camera distance — confirmed 2026-07-09 via
+     Graphics3D that this is the *same* bug, not a separate one). Now confirmed
+     on three independent assets (`tank.model.json`, `terrain.model.json`,
+     `spaceship`-via-`.obj`), raising confidence this is a real shared
+     clipping/projection bug, not an asset artifact.
    - Files: likely `cna/src/CNA/Internal/Backends/EasyGL/
      EasyGLGraphicsBackend.cpp` (clipping/projection path) — exact location not
      yet confirmed.
-   - Verify: run `CameraShake_cna_samples`, `CustomModelClass_cna_samples`, and
-     `LensFlare_cna_samples` under `SDL_VIDEODRIVER=x11`; confirm the
-     tank/ground/terrain are fully visible in a screenshot, not a thin line.
+   - Verify: run `CameraShake_cna_samples`, `CustomModelClass_cna_samples`,
+     `LensFlare_cna_samples`, and `Graphics3D_cna_samples` under
+     `SDL_VIDEODRIVER=x11`; confirm the tank/ground/terrain/spaceship are fully
+     visible in a screenshot at both camera-distance regimes, not a thin line or
+     nothing.
 
-4. **Fix the EasyGL `BlendState.ColorWriteChannels` gap (DEFERRED.md item #22).**
+3. **Fix the EasyGL `BlendState.ColorWriteChannels` gap (DEFERRED.md item #22).**
    - Goal: `EasyGLGraphicsBackend` never calls `glColorMask` (or equivalent), so
      `ColorWriteChannels.None`/partial-channel blend states are silently ignored
      — every draw writes all 4 color channels regardless of the active
@@ -601,7 +733,62 @@ No lint/format command and no automated test suite are configured in this repo.
      observation in `samples/LensFlare/missing.md` — not established either way
      yet.
 
-5. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
+4. **Fix `Game::DoInitialize()`'s `ComponentAdded` subscription timing
+   (DEFERRED.md item #23).**
+   - Goal: move the `Components_.ComponentAdded +=`/`ComponentRemoved +=`
+     subscription in `Game::DoInitialize()` to before the call to `Initialize()`
+     (or into `Game`'s constructor, matching FNA/XNA exactly), so components
+     added to `Components` from within a user `Initialize()` override get their
+     own `Initialize()`/`LoadContent()` called automatically, like real XNA.
+   - Files: `cna/src/Microsoft/Xna/Framework/Game.cpp` (`DoInitialize()`).
+   - Verify: remove Graphics3D's `AddComponent()` workaround (its explicit
+     `component->Initialize()` calls) and confirm its 4 `Checkbox`es still work
+     correctly — this is the regression test.
+
+5. **Fix `GraphicsDevice::Clear(Color)` to also clear the depth buffer
+   (DEFERRED.md item #24).**
+   - Goal: make the single-argument `Clear(Color)` overload match real XNA —
+     clear color + depth + stencil together, not just color.
+   - Files: `cna/src/Microsoft/Xna/Framework/Graphics/GraphicsDevice.cpp`.
+   - Verify: re-run the near-plane-clipping repro samples (task 2) after this
+     fix lands, in case stale depth-buffer contents were contributing to any of
+     their symptoms (not established either way this session — the two bugs
+     were tested independently and this one wasn't confirmed as a contributing
+     cause, but wasn't fully ruled out as a compounding factor either).
+
+6. **Port one of the 6 remaining unblocked lighting samples** (PickingSample,
+   TrianglePicking, HeightmapCollision, InverseKinematics, ChaseCamera,
+   MarbleMaze).
+   - Goal: same pattern as LensFlare/Graphics3D — port using stock
+     `Model`/`BasicEffect`, screenshot-verify, expect (per task 2) either the
+     thin-line or fully-invisible near-plane-clipping symptom depending on
+     camera distance; that alone is not a reason to suspect a new bug.
+   - Notes from a quick asset survey this session (not yet re-verified per
+     sample, just source/asset inspection):
+     - **HeightmapCollision** — terrain is generated at content-build time from
+       a `terrain.bmp` heightmap via a custom content-pipeline processor (no
+       plain `.fbx`/`.x` for it); would need either a small Python heightmap→
+       `.model.json` generator or a runtime procedural-mesh approach (this repo
+       already has a terrain-generation precedent in `GeneratedGeometry`).
+     - **ChaseCamera**, **InverseKinematics** — each needs one `.x`-format model
+       (`Ground.x`, `cylinder.x` respectively) that neither `tools/
+       fbx_ascii2model.py` nor `tools/obj2model.py` reads directly; would need
+       an `assimp`/Blender `.x`→`.obj` conversion step first (both tools do
+       support `.x` import, unlike the old-binary-FBX case Graphics3D hit).
+     - **PickingSample**, **TrianglePicking** — multiple `.fbx` models each
+       (table/sphere/cylinder/p2wedge/cats), all plain ASCII or otherwise
+       normally-convertible FBX as far as a quick `file`-command check showed;
+       more assets to convert than LensFlare/Graphics3D but no known format
+       blocker.
+     - **MarbleMaze** — much larger source tree (140 files); only a specific
+       subdirectory (`Source/EX2_Polishing/End/`) is likely the actual port
+       target per its `missing.md` — recommend doing this one last.
+   - Files: new `samples/<Name>/src/`; read that sample's existing
+     `missing.md` first.
+   - Verify: `cmake --build cmake-build-debug --target <Name>_cna_samples`, run
+     under `SDL_VIDEODRIVER=x11`, screenshot.
+
+7. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
    - Goal: all three of ClientServerSample's original workarounds are gone now
      (DEFERRED.md #19/#20/#21 all fixed upstream in `cna`/`sharp-runtime` — see
      section 3's newest entries): a real `GamerServicesComponent` can be constructed
@@ -623,14 +810,14 @@ No lint/format command and no automated test suite are configured in this repo.
      (or `PeerToPeer_cna_samples`); screenshot the menu + a triggered session
      the way ClientServerSample was verified.
 
-6. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
+8. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin()/End()` in the same frame must not discard the
      first.
    - Files: `cna/src/.../Vulkan/VulkanGraphicsBackend.cpp`.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
      confirm all layers draw.
 
-7. **Decide the scope for AccelerometerSample (#084)/TiltPerspective (#107).**
+9. **Decide the scope for AccelerometerSample (#084)/TiltPerspective (#107).**
    - Goal: get an explicit go/no-go from the user on inventing a keyboard-tilt
      fallback from scratch (neither original has any non-phone code to reuse)
      before spending the effort.
@@ -638,7 +825,7 @@ No lint/format command and no automated test suite are configured in this repo.
      `samples/TiltPerspective/src/`.
    - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`.
 
-8. **Decide whether to port any of the 5 now-reopened Avatar samples** (#085,
+10. **Decide whether to port any of the 5 now-reopened Avatar samples** (#085,
    #086, #087, #094, #101) onto `cna`'s new `AvatarRenderer::
    EnableRealRenderingEXT` substitute-body path.
    - Goal: get an explicit go/no-go from the user before spending effort — this
@@ -647,7 +834,7 @@ No lint/format command and no automated test suite are configured in this repo.
    - Files: none yet.
    - Verify: N/A until a decision is made.
 
-9. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
+11. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
    CNA's `.model.json` reader.**
    - Goal: unblock SplitScreen (#076), TankOnHeightmap (#074), SimpleAnimation
      (#050).
@@ -665,18 +852,22 @@ No lint/format command and no automated test suite are configured in this repo.
   ShadowMapping, BillboardSample, InstancedModel, ShatterEffect, Particles3D,
   XmlParticles, ShipGame, NetRumble) without first building an HLSL→GLSL
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
-  yet. This does **not** apply to the 7 remaining lit-`BasicEffect`-only samples
-  (LensFlare is now ported — section 8, task 1) — those need no shader work.
+  yet. This does **not** apply to the 6 remaining lit-`BasicEffect`-only samples
+  (LensFlare and Graphics3D are now ported — section 8, task 6) — those need no
+  shader work.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).
 - **Do not invent a keyboard-tilt input scheme for AccelerometerSample/
-  TiltPerspective** without an explicit scope decision first (section 8, task 7).
+  TiltPerspective** without an explicit scope decision first (section 8, task 9).
 - **Do not start porting any of the 5 reopened Avatar samples** without an
-  explicit scope decision first (section 8, task 8).
+  explicit scope decision first (section 8, task 10).
 - **Do not assume a newly-unblocked lighting sample renders correctly just
   because it builds** — screenshot it and check for the near-plane clipping
-  artifact (section 4) first.
+  artifact (section 4) first. Remember it can now manifest as either a thin
+  line *or* full invisibility depending on camera distance (confirmed via
+  Graphics3D) — don't assume "renders nothing" must be a different, new bug
+  without checking this first.
 - **Do not add a shared `samples/common/` library**, even where two samples'
   code looks structurally similar.
 - **Do not edit `cna`/`sharp-runtime` source** without confirming scope with the
@@ -685,8 +876,8 @@ No lint/format command and no automated test suite are configured in this repo.
   immediately beforehand, and do not conclude "no visible effect" means a code
   bug without first checking the sample's own state.
 - **No broad refactors or unrelated cleanup** while the near-plane-clipping/
-  `ColorWriteChannels`/`SafeArea`-build/Vulkan bugs (section 8, tasks 2/3/4/6) are
-  open.
+  `ColorWriteChannels`/`ComponentAdded`-timing/`Clear(Color)`-depth/
+  `SafeArea`-build/Vulkan bugs (section 8, tasks 1–5/8) are open.
 - **Do not regenerate existing font atlases or `.model.json` assets** unless
   there is a confirmed rendering bug — regenerating is cheap but pointless churn
   otherwise.

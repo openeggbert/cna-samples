@@ -777,6 +777,105 @@ a similar depth-only or stencil-only trick would hit the same gap.
 
 ---
 
+## 23. `Game::DoInitialize()` wires up `Components_.ComponentAdded` *after* calling the user's `Initialize()` override
+
+**Found while porting Graphics3D (2026-07-09).** Real XNA/FNA's `Game`
+constructor subscribes to `Components.ComponentAdded`/`ComponentRemoved`
+immediately, before any user `Initialize()` override can run — this is why
+real XNA supports the common pattern of creating `DrawableGameComponent`s and
+calling `Components.Add(...)` from *inside* `Initialize()` (not just the
+constructor), which is exactly what Graphics3D's C# original does
+(`GameMain.cs`'s `CreateLightEnablingButtons()` etc., all called from
+`Initialize()`).
+
+**Confirmed live:** `cna`'s `Game::DoInitialize()`
+(`src/Microsoft/Xna/Framework/Game.cpp`) calls `Initialize()` first, and only
+wires up `Components_.ComponentAdded`/`ComponentRemoved` afterward
+(`DoInitialize()`'s own body, after the `Initialize()` call). A component
+added to `Components` from within `Initialize()` is added to the collection
+(and later categorized as updateable/drawable, so it does run every frame) but
+its own `Initialize()` — and therefore `LoadContent()`, since
+`DrawableGameComponent::Initialize()` calls it — is never invoked, since the
+event that would trigger it isn't subscribed yet. Reproduced directly: a
+`Checkbox` (`DrawableGameComponent`) added this way had an unset
+`std::optional<SpriteBatch>`/`std::optional<Texture2D>` at first `Draw()` —
+segfault on the very first frame.
+
+**Root cause:** `Game::DoInitialize()` subscribes the `ComponentAdded`/
+`ComponentRemoved` event handlers after calling `Initialize()`, not before —
+deviates from FNA/XNA's own `Game` constructor, where the equivalent
+subscription happens immediately.
+
+**Where to implement:** move the `Components_.ComponentAdded +=`/
+`ComponentRemoved +=` subscription earlier — either into `Game`'s constructor
+(matching FNA exactly) or at minimum to before the `Initialize()` call inside
+`DoInitialize()`.
+
+**Workaround used in Graphics3D:** an `AddComponent(Checkbox*)` helper that
+calls `Components.Add(component)` followed by an explicit
+`component->Initialize()`. Safe even after a `cna` fix, since
+`DrawableGameComponent::Initialize()` already guards against
+double-initialization.
+
+**Blocked samples:** Graphics3D (workaround applied, ported). Every other
+sample in this repo happens to add its components from the *constructor*
+(before `Initialize()` runs at all), which sidesteps this gap entirely —
+Graphics3D is the first to add components from `Initialize()` itself, which is
+why it's the first to surface this. Any future sample following the same
+pattern (matching a C# original that does its own component creation inside
+`Initialize()`) would hit the same bug.
+
+**Effort:** S.
+
+---
+
+## 24. `GraphicsDevice::Clear(Color)` (single-argument overload) never clears the depth buffer
+
+**Found while porting Graphics3D (2026-07-09)**, while investigating that
+sample's invisible-model bug (item 5's near-plane-clipping-family entry — this
+turned out not to be the cause of that specific bug, but is a real, separate
+gap). Real XNA's `GraphicsDevice.Clear(Color)` convenience overload clears the
+color target, depth buffer, and stencil buffer together (documented behavior,
+matches FNA).
+
+**Confirmed via direct source read** (`src/Microsoft/Xna/Framework/Graphics/
+GraphicsDevice.cpp`): the single-argument `Clear(const Color&)` overload only
+ever calls `backend_->Clear(r,g,b,a)` (color only) — it never touches depth or
+stencil. The `Clear(ClearOptions, const Color&, float depth, int stencil)` and
+`Clear(const Color&, float depth)` overloads both correctly clear depth
+(`ClearColorAndDepth`) when asked; only the plain single-`Color`-argument
+overload is missing it.
+
+**Root cause:** `GraphicsDevice::Clear(const Color&)` doesn't forward to the
+`ClearOptions`-based overload with `DepthBuffer` included — it's a strict
+subset of what real XNA's same-signature overload does.
+
+**Impact:** every 3D sample calling `device.Clear(SomeColor)` at the top of its
+own `Draw()` (i.e. essentially every 3D sample in this repo — `CameraShake`,
+`CustomModelClass`, `LensFlare`, `Graphics3D`) draws each frame against a depth
+buffer that was never actually cleared by that call, relying on whatever the
+driver/backend leaves behind from the previous frame (or an uninitialized
+buffer on the first frame). Tested substituting the two-argument
+`Clear(color, 1.0f)` overload in Graphics3D specifically to see if this
+explained that sample's invisible spaceship — it didn't change the result, so
+this is confirmed independent of item 5's near-plane-clipping bug, not a
+duplicate finding.
+
+**Where to implement:** `GraphicsDevice::Clear(const Color& color)` in
+`GraphicsDevice.cpp` should forward to
+`Clear(ClearOptions::Target | ClearOptions::DepthBuffer | ClearOptions::Stencil, color, 1.0f, 0)`
+(or equivalent), matching real XNA's documented behavior for this overload.
+
+**Blocked samples:** none outright (every affected sample still renders
+*something*, since GPU depth buffers are typically cleared to a sane default
+by the driver on allocation in practice) — but this is a latent correctness
+gap that could cause intermittent, driver-dependent depth artifacts in any 3D
+sample using this Clear overload, and is worth fixing on general principle.
+
+**Effort:** S.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -803,3 +902,5 @@ a similar depth-only or stencil-only trick would hit the same gap.
 | 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06; scoped remote-host-IsHost limitation remains, see item) |
 | 21 | Initial GamerJoined event queued, not synchronous | cna + sharp-runtime | S | ClientServerSample, NetworkPrediction, PeerToPeer | ✅ done (fixed 2026-07-06 via sharp-runtime EventHandler<T>::SetReplayHook(), user-approved) |
 | 22 | EasyGL: BlendState.ColorWriteChannels ignored (no glColorMask) | cna | S | LensFlare | not started |
+| 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D (workaround applied) | not started |
+| 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |

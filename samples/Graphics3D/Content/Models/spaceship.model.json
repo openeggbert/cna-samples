@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "spaceship",
+      "vertices": "Models/spaceship_verts.bin",
+      "indices": "Models/spaceship_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

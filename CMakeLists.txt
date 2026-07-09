@@ -148,7 +148,7 @@ add_subdirectory(samples/Orientation)
 # add_subdirectory(samples/RimLighting)
 # add_subdirectory(samples/ShatterEffect)
 # add_subdirectory(samples/XmlParticles)
-# add_subdirectory(samples/Graphics3D)
+add_subdirectory(samples/Graphics3D)
 # add_subdirectory(samples/PickingSample)
 # add_subdirectory(samples/TrianglePicking)
 
