@@ -14,11 +14,14 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 52 samples are fully ported and wired into the root
-`CMakeLists.txt`. 6 more are confirmed unblocked (no remaining CNA gap) and ready
-to port. 28 placeholder directories exist for samples still genuinely blocked on
-real CNA engine work (custom shaders, skeletal animation, one content-pipeline
-gap). 67 catalogued directories are permanently out of scope and listed in
+**Current phase:** 53 samples are fully ported and wired into the root
+`CMakeLists.txt`. 3 more are confirmed unblocked (no remaining CNA gap) and ready
+to port (InverseKinematics, ChaseCamera, MarbleMaze — see section 8 task 6; this
+count was previously stale at "6," not updated as LensFlare/Graphics3D/
+PickingSample/TrianglePicking/HeightmapCollision were ported across several
+sessions — corrected here). 28 placeholder directories exist for samples still
+genuinely blocked on real CNA engine work (custom shaders, skeletal animation, one
+content-pipeline gap). 67 catalogued directories are permanently out of scope and listed in
 `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant duplicates, or tied to
 a platform CNA won't target). See `PLAN.md`'s Sample Count Summary table for exact
 per-category counts.
@@ -98,6 +101,40 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **HeightmapCollision (#049) ported** (2026-07-10) — a rolling ball on a
+  procedurally-generated terrain, with the camera and ball both queried against a
+  `HeightMapInfo` height-lookup class. Builds 0 warnings, runs 7+ seconds with no
+  crash across two separate runs; screenshots show a fully **textured and shaded**
+  terrain (unlike every other `Content.Load<Model>`-based sample so far) with the
+  ball sitting correctly on its surface. The interesting engineering question was
+  the terrain: XNA's original generates it at content-**build** time from
+  `terrain.bmp` via a custom `TerrainProcessor`/`HeightMapInfoContent`
+  `ContentProcessor` pair, attaching the collision height data to the built
+  `Model`'s `Tag`. CNA has neither a `Model.Tag` equivalent nor custom-
+  `ContentProcessor` extensibility (item #18), so — after reading this repo's own
+  `GeneratedGeometry` sample first and confirming it already ships a *structurally
+  identical* `TerrainProcessor` in its own C# original — this port builds the
+  terrain mesh **and** the `HeightMapInfo` collision data together at runtime
+  (`Terrain.hpp`, NOXNA), the same adaptation `GeneratedGeometry` already
+  established, not a new pattern. A second, independent reason favored this over
+  `Content.Load<Model>`: `terrain.bmp` is 257×257 = 66049 vertices, over the 65535
+  limit of a 16-bit index buffer, and a direct source read confirmed CNA's
+  `.model.json` `ModelTypeReader` hardcodes 16-bit indices with no way to request
+  32-bit — a genuine, narrower nuance of item #6 not previously documented (added
+  as a new addendum this session), even though `IndexBuffer` itself fully supports
+  `IndexElementSize::ThirtyTwoBits` end-to-end. Building the terrain directly with
+  a real 32-bit `IndexBuffer` sidestepped both gaps at once. A pleasant side
+  effect: because the terrain never goes through `.model.json` (which has no
+  per-mesh texture field — item #6's PickingSample/TrianglePicking addendum), its
+  hand-built `BasicEffect` + real bound `Texture2D` renders **correctly textured
+  and shaded** — the sphere, which *is* loaded via `Content.Load<Model>("sphere")`,
+  still hits the known flat-white gap as expected. This sample's camera sits only
+  ~155 units from the ball (much closer than the ~1000+ unit distances that
+  trigger the tracked near-plane-clipping bug elsewhere in this repo) — confirmed
+  via screenshot that neither the ball nor the terrain shows that artifact here;
+  not claiming the bug is fixed, just that this sample's own geometry doesn't
+  trigger it. This sample also adds no `GameComponent`s at all, so item #23 simply
+  doesn't apply. See `samples/HeightmapCollision/missing.md` for the full account.
 - **TrianglePicking (#048) ported** (2026-07-09) — close sibling of PickingSample
   (#047, byte-identical FBX assets confirmed via `cmp`), replacing its per-object
   `BoundingSphere`-only test with real per-triangle ray intersection
@@ -246,7 +283,85 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-09, third same-day follow-up):** Ported
+**Newest session (2026-07-10):** Ported **HeightmapCollision (#049)**, section 8
+task 6's recommended next candidate — a rolling ball on a heightmap-generated
+terrain, with both the ball and the follow-camera queried against a
+`HeightMapInfo` height-lookup class (bilinear interpolation over the same height
+grid the terrain mesh itself uses).
+
+The real engineering question was the terrain. `HeightmapCollision.cs`'s own
+runtime code is nothing more than `Content.Load<Model>("terrain")` + reading
+`terrain.Tag as HeightMapInfo` — all the actual work happens at content-**build**
+time, in `HeightmapCollisionPipeline.TerrainProcessor` (a custom
+`ContentProcessor<Texture2DContent, ModelContent>` that reads `terrain.bmp` as a
+heightfield, builds a grid mesh via `MeshBuilder`, chains to the stock
+`ModelProcessor`, and attaches a `HeightMapInfoContent` — the same height data,
+computed once — to the built model's `Tag`). CNA has neither a `Model.Tag`
+equivalent nor custom-`ContentProcessor` extensibility (pre-existing DEFERRED.md
+item #18), so this isn't directly portable. Rather than inventing a new
+workaround, this session first read this repo's own `GeneratedGeometry` sample
+(per the task brief's suggestion) and confirmed via its `missing.md` that its own
+C# original ships a **structurally identical** `TerrainProcessor` — meaning
+`GeneratedGeometry`'s existing runtime-mesh-generation approach
+(`samples/GeneratedGeometry/src/Terrain.hpp`) is precedent, not just a candidate
+idea. This session's `Terrain.hpp` (NOXNA) follows the same shape: builds the
+terrain's `VertexBuffer`/`IndexBuffer`/`BasicEffect` **and** its `HeightMapInfo`
+together at runtime in `LoadContent()`, replicating `TerrainProcessor.Process()`'s
+exact algorithm (`terrainScale=30`, `terrainBumpiness=640`, `texCoordScale=0.1`)
+and computing per-vertex normals from the heightfield's gradient in place of
+`ModelProcessor`'s automatic normal generation.
+
+A second, independent reason favored this approach over `Content.Load<Model>`,
+found by direct source read rather than assumed: `terrain.bmp` is 257×257 =
+66049 vertices, exceeding the 65535 limit of a 16-bit index buffer. Real XNA's
+`ModelProcessor` automatically selects 32-bit indices for a mesh this large;
+CNA's `.model.json` `ModelTypeReader` (`ContentManager.cpp`) hardcodes 16-bit
+indices unconditionally, with no way to request 32-bit for any mesh regardless of
+size — a genuine, narrower nuance of DEFERRED.md item #6 not previously
+documented (added as a new addendum this session). Confirmed this is not a
+general CNA limitation, though: `IndexBuffer`/`IIndexBufferBackend` (both EasyGL
+and Vulkan) already fully implement `IndexElementSize::ThirtyTwoBits`
+end-to-end — the gap is specifically `ModelTypeReader`'s hardcoded assumption.
+Building the terrain's `IndexBuffer` directly with the real
+`IndexBuffer(device, IndexElementSize::ThirtyTwoBits, ...)` constructor
+sidestepped this cleanly, verified working live (the full 257×257 grid renders
+with no visible artifacts).
+
+A pleasant, unplanned side effect: because this terrain never goes through
+`.model.json` (whose mesh schema has no per-mesh texture field — DEFERRED.md item
+#6's PickingSample/TrianglePicking addendum, the "flat white" finding repeated
+across multiple prior samples), its hand-built `BasicEffect` gets a real,
+already-loaded `Texture2D` (`rocks.bmp`) bound directly via
+`setTextureProperty()`. Confirmed live via screenshot: the terrain renders fully
+textured, with a clearly visible shading gradient across its hills — the first
+sample in this repo's Model-based lighting series to *not* hit the flat-white
+gap. The **sphere** (`Content.Load<Model>("sphere")`, a plain ASCII FBX with the
+same `-90,0,0` `PreRotation` node-transform shape LensFlare's `terrain.fbx` had —
+handled automatically by the already-fixed `tools/fbx_ascii2model.py`) does still
+render as a small flat white shape, exactly as expected and not re-diagnosed.
+
+Also confirmed, by direct comparison against `NEXT.md`'s own tracked bug list:
+this sample's camera sits only ~155 units from the ball
+(`CameraPositionOffset = (0,40,150)`), noticeably closer than the ~1000+ unit
+distances that trigger the tracked near-plane-clipping-family bug elsewhere in
+this repo — screenshots confirm neither the ball nor the terrain shows that
+artifact here. Not claiming the bug is fixed; this sample's own camera geometry
+simply doesn't reach the distance where it's been observed to trigger. This
+sample also adds no `GameComponent`s at all (unlike PickingSample/Graphics3D/
+TrianglePicking's `Cursor`/`Checkbox`es), so DEFERRED.md item #23 is simply not
+exercised here — noted in `missing.md` rather than silently skipped.
+
+Builds 0 warnings (verified via the real build after fixing one small C++
+language-constraint issue: `Vector3` has no `operator*=`, only
+`operator*(Vector3, float)`, unlike C#'s `Vector3 *= float` — a one-line fix, not
+a CNA gap). Ran 7+ seconds with no crash across two separate runs. F1 help
+overlay uses the standard `tools/gen_help_png.py` path with no one-off variant
+needed (`HeightmapCollision.htm`'s table has the standard 3 columns). See
+`samples/HeightmapCollision/missing.md` for the complete account.
+
+Commit this session: see git log (pushed to `develop`).
+
+**Previous session (2026-07-09, third same-day follow-up):** Ported
 **TrianglePicking (#048)**, section 8 task 6's recommended next candidate — a
 close sibling of PickingSample (#047, ported immediately before it this same
 session): same original author, same table-of-4-objects scene, and (confirmed
@@ -686,16 +801,20 @@ symptom**:
   again (2026-07-09) via direct asset-swap isolation testing that Graphics3D's
   full invisibility is the same bug at a different camera distance, not a
   separate defect. Not yet root-caused inside `cna` itself; no fix attempted.
-- **Why it matters now:** 4 more samples (HeightmapCollision, InverseKinematics,
-  ChaseCamera, MarbleMaze — LensFlare, Graphics3D, PickingSample, and
-  TrianglePicking are now all ported, see section 8) are otherwise unblocked and
+- **Why it matters now:** 3 more samples (InverseKinematics, ChaseCamera,
+  MarbleMaze — LensFlare, Graphics3D, PickingSample, TrianglePicking, and
+  HeightmapCollision are now all ported, see section 8) are otherwise unblocked and
   portable, but **should not be assumed to render correctly** just because they
   build — each needs its own screenshot check for this same artifact once
   ported (and, per the above, "renders nothing" is now just as suspect as "shows
   a thin line" — don't assume a blank frame means something else is wrong
   without checking camera distance against this bug first). PickingSample's and
   TrianglePicking's own ports each confirmed the thin-line symptom once more
-  (see section 3) and PickingSample also surfaced a separate, angle-independent
+  (see section 3); HeightmapCollision's own port, by contrast, confirmed neither
+  symptom at all — its camera sits only ~155 units from its subject, well under
+  the ~1000+ unit distances where the bug has been observed, a useful negative
+  data point on the distance-dependence theory (task 2's own reasoning). Also,
+  PickingSample surfaced a separate, angle-independent
   "flat white, no shading" finding (also confirmed again by TrianglePicking) —
   don't conflate the two; see `samples/PickingSample/missing.md` and
   `samples/TrianglePicking/missing.md`.
@@ -993,26 +1112,26 @@ clarification to item #23.
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port one of the 4 remaining unblocked lighting samples**
-   (HeightmapCollision, InverseKinematics, ChaseCamera, MarbleMaze).
-   PickingSample (#047) and TrianglePicking (#048), previously in this list,
-   are now both ported — see section 3.
-   - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking —
-     port using stock `Model`/`BasicEffect`, screenshot-verify, expect (per
-     task 2) either the thin-line or fully-invisible near-plane-clipping
-     symptom depending on camera distance; that alone is not a reason to
-     suspect a new bug. Also expect the "flat white, no shading gradient"
-     finding PickingSample/TrianglePicking surfaced (DEFERRED.md item #6's
-     addendum) on any model whose original relied on a texture for material
-     color/shading contrast — not a new bug to re-diagnose, just a known
-     consequence of `.model.json` having no per-mesh texture field.
+6. **Port one of the 3 remaining unblocked lighting samples**
+   (InverseKinematics, ChaseCamera, MarbleMaze).
+   PickingSample (#047), TrianglePicking (#048), and HeightmapCollision (#049),
+   previously in this list, are now all ported — see section 3.
+   - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking/
+     HeightmapCollision — port using stock `Model`/`BasicEffect`,
+     screenshot-verify, expect (per task 2) either the thin-line or
+     fully-invisible near-plane-clipping symptom depending on camera distance;
+     that alone is not a reason to suspect a new bug. Also expect the "flat
+     white, no shading gradient" finding PickingSample/TrianglePicking/
+     HeightmapCollision surfaced (DEFERRED.md item #6's addendum) on any model
+     whose original relied on a texture for material color/shading contrast —
+     not a new bug to re-diagnose, just a known consequence of `.model.json`
+     having no per-mesh texture field. If a future sample's `.model.json` mesh
+     ever exceeds 65535 vertices, also expect the newer 16-bit-index-only
+     nuance HeightmapCollision found (item #6's second addendum) — build that
+     mesh directly at runtime with a real 32-bit `IndexBuffer` instead, the same
+     way `Terrain.hpp` does, rather than routing it through `Content.Load<Model>`.
    - Notes from a quick asset survey (not yet re-verified per sample, just
      source/asset inspection):
-     - **HeightmapCollision** — terrain is generated at content-build time from
-       a `terrain.bmp` heightmap via a custom content-pipeline processor (no
-       plain `.fbx`/`.x` for it); would need either a small Python heightmap→
-       `.model.json` generator or a runtime procedural-mesh approach (this repo
-       already has a terrain-generation precedent in `GeneratedGeometry`).
      - **ChaseCamera**, **InverseKinematics** — each needs one `.x`-format model
        (`Ground.x`, `cylinder.x` respectively) that neither `tools/
        fbx_ascii2model.py` nor `tools/obj2model.py` reads directly; would need

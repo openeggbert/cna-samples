@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "sphere01",
+      "vertices": "sphere_sphere01_verts.bin",
+      "indices": "sphere_sphere01_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

@@ -84,7 +84,7 @@ add_subdirectory(samples/ParticleSample)
 
 # Phase 3 — 3D Graphics
 # add_subdirectory(samples/ChaseCamera)
-# add_subdirectory(samples/HeightmapCollision)
+add_subdirectory(samples/HeightmapCollision)
 # add_subdirectory(samples/BloomSample)
 # add_subdirectory(samples/ShadowMapping)
 # add_subdirectory(samples/NormalMapping)

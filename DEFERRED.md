@@ -346,6 +346,39 @@ confirmation, via pixel sampling across several camera angles, that this is
 angle-*independent*, unlike the separate near-plane-clipping-family bug also
 observed once in the same session on a different model).
 
+**Addendum found while porting HeightmapCollision (2026-07-10):** confirmed a
+second, narrower gap in `ModelTypeReader::Read()` (`ContentManager.cpp`),
+independent of the texture-field gap above: it unconditionally reads every
+mesh's index data as `std::uint16_t` (`idxBytes.size() /
+sizeof(std::uint16_t)`, then `IndexBuffer::SetData(const std::uint16_t*, ...)`)
+with no branch on vertex count and no `"indexSize"`/`"indexElementSize"` JSON
+field to request 32-bit indices explicitly. Real XNA's stock `ModelProcessor`
+automatically selects `IndexElementSize.ThirtyTwoBits` once a mesh exceeds
+65535 vertices; a `.model.json` mesh that large has no way to express that
+today. HeightmapCollision's own procedurally-generated terrain (257×257 =
+66049 vertices, from `terrain.bmp`) would hit exactly this limit if routed
+through `Content.Load<Model>`. **Not a hard blocker in general** — confirmed by
+direct header/source read that `IndexBuffer`/`IIndexBufferBackend` (both the
+EasyGL and Vulkan backends) already fully implement
+`IndexElementSize::ThirtyTwoBits` end-to-end (`CreateIndexBuffer32`,
+`SetData(const std::uint32_t*, ...)`, and a real `GL_UNSIGNED_INT`
+`glDrawElements` path in `EasyGLGraphicsBackend::DrawIndexedPrimitivesEx`) —
+the gap is specifically `ModelTypeReader`'s hardcoded 16-bit assumption, not
+the underlying buffer classes. **Workaround used:** HeightmapCollision's
+terrain is built directly at runtime (`Terrain.hpp`, NOXNA) instead of via
+`Content.Load<Model>`, using the real 32-bit `IndexBuffer` constructor
+directly — this was already necessary anyway for a different reason (no
+`Model.Tag`/custom-`ContentProcessor` equivalent, item #18) — so this gap
+didn't block that sample, but would block any future sample needing to
+`Content.Load<Model>()` a single mesh with more than 65535 vertices.
+**Where to implement (if ever needed):** `ModelTypeReader::Read()`
+(`ContentManager.cpp`, in the "Meshes" parsing loop, alongside the existing
+`stride`/`numVertices` computation) — read an optional `"indexElementSize"`
+JSON field (or just auto-select based on `numVertices > 65535`, mirroring real
+XNA's own `ModelProcessor` behavior) and branch to the `std::uint32_t`
+`SetData` overload accordingly. See `samples/HeightmapCollision/missing.md`
+for the full write-up.
+
 ---
 
 ## 7. Audio (SoundEffect, SoundEffectInstance, Song) ✅ RESOLVED
