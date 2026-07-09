@@ -331,7 +331,7 @@ standard 3-column controls table, so (unlike PickingSample) the stock
 `gen_help_png.py` needed no one-off column-selection variant. See
 `samples/TrianglePicking/missing.md` for the complete account.
 
-Commit this session: `<TRIANGLEPICKING_COMMIT_HASH>`, pushed to `develop`.
+Commit this session: `5bd30b0`, pushed to `develop`.
 
 **Newest session (2026-07-09, second same-day follow-up):** Ported
 **PickingSample (#047)**, section 8 task 6's recommended next candidate (one
