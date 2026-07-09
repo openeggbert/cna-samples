@@ -421,7 +421,7 @@ artifact at all, consistent with (though not proof of) the item #26
 re-attribution above. See `samples/InverseKinematics/missing.md` for the
 complete account.
 
-Commit this session: see git log for the exact hash, pushed to `develop`.
+Commit this session: `67219d6`, pushed to `develop`.
 
 **Newest session (2026-07-10):** Ported **HeightmapCollision (#049)**, section 8
 task 6's recommended next candidate — a rolling ball on a heightmap-generated
