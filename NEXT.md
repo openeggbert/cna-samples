@@ -446,7 +446,7 @@ focus throughout this session (this repo's known shared-desktop caveat — secti
 5), so no synthetic keypresses were sent to the sample's own window. See
 `samples/ChaseCamera/missing.md` for the complete account.
 
-Commit this session: see git log for the exact hash, pushed to `develop`.
+Commit this session: `a8b1dc3`, pushed to `develop`.
 
 **Newest session (2026-07-10, follow-up):** Ported **InverseKinematics (#057)**,
 section 8 task 6's last remaining candidate from the original 3-sample list
