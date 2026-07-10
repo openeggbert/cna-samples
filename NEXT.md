@@ -527,7 +527,7 @@ the same "no genuine 2-process LAN test" limitation ClientServerSample's own
 discovery limitation on this container, not a regression). See
 `samples/NetworkPrediction/missing.md` for the complete account.
 
-Commit this session: see below (pushed to `develop`).
+Commit this session: `9619ff8`, pushed to `develop`.
 
 **Newest session (2026-07-10, third follow-up):** Ported **MarbleMaze (#061)**,
 section 8 task 6's last remaining candidate from the original 3-sample list
