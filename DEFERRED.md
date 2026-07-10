@@ -1250,14 +1250,23 @@ uses, or a dedicated setter), and (b) actual replication logic in `Update()`/the
 backend — e.g. treating a change to `sessionProperties_` like `GamerJoined`/`GamerLeave`,
 diffing and broadcasting it as its own wire message whenever the host's copy changes,
 and applying an incoming one on non-host machines. This is squarely a "generic
-real-time-networking feature," not Xbox-Live-specific, and would also directly benefit
-PeerToPeer (#103, not yet ported) if that sample's own C# original uses
-`SessionProperties` the same way.
+real-time-networking feature," not Xbox-Live-specific.
+
+**Update (2026-07-10, PeerToPeer #103 ported):** checked, as this item itself
+recommended — `PeerToPeerGame.cs` (PeerToPeer's C# original) never references
+`NetworkSession.SessionProperties` anywhere. This gap is confirmed genuinely
+conditional on a sample's own use of `SessionProperties`, not universal to every
+`NetworkSession`-based sample: PeerToPeer needed no workaround for it and no
+`PacketKind`-byte packet-type disambiguation anywhere in its own `Tank.hpp` (every
+packet on the wire is always the same shape). See `samples/PeerToPeer/missing.md`
+for the full account.
 
 **Blocked samples:** none outright — NetworkPrediction (#100) worked around it
-completely via an explicit options packet (above). PeerToPeer (#103), not yet ported,
-should be checked for the same `SessionProperties` usage pattern before assuming it
-needs the identical workaround.
+completely via an explicit options packet (above). PeerToPeer (#103) doesn't use
+`SessionProperties` at all, so the gap simply never comes up there. No other
+sample in `PLAN.md` uses this same `NetworkSession` API family and also needs this
+specific property (NetRumble, the other `NetworkSession`-based sample, remains
+blocked on custom HLSL shaders, item #11, unrelated to this gap).
 
 **Effort:** S/M — (a) alone (a mutable accessor with no replication) is a few lines and
 would already unblock a *local-only* single-machine use of the properties list; (b)
@@ -1296,4 +1305,4 @@ already replicates gamer-roster changes.
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
 | 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze applied the same RawMesh.hpp bypass proactively, not re-confirmed empirically) | not started |
-| 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer (not yet ported, unaudited) | not started |
+| 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer ported 2026-07-10, confirmed doesn't use SessionProperties at all — not affected | not started |
