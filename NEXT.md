@@ -14,18 +14,21 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 56 samples are fully ported and wired into the root
-`CMakeLists.txt`. MarbleMaze (#061) — section 8 task 6's last remaining
-candidate — was ported this session (see section 3), meaning **all 3** of the
-original 3-sample lighting-candidate list (ChaseCamera, InverseKinematics,
-MarbleMaze) are now done; no more confirmed-unblocked-and-ready samples are
-queued from that original list (see section 8, task 6, for the note on what
-replaces it as "next smallest task"). 28 placeholder directories exist for
-samples still genuinely blocked on real CNA engine work (custom shaders, skeletal
-animation, one content-pipeline gap). 67 catalogued directories are permanently out
-of scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
-duplicates, or tied to a platform CNA won't target). See `PLAN.md`'s Sample Count
-Summary table for exact per-category counts.
+**Current phase:** 57 samples are fully ported and wired into the root
+`CMakeLists.txt`. NetworkPrediction (#100) — section 8 task 7's recommended next
+candidate — was ported this session (see section 3), confirming that all three of
+ClientServerSample's (#091) original networking workarounds (DEFERRED.md items
+#19/#20/#21) really are gone for a second, independently-written sample, not just
+ClientServerSample's own. MarbleMaze (#061), ChaseCamera (#058), and
+InverseKinematics (#057) (the original 3-sample lighting-candidate list) were
+ported in earlier sessions and remain done; no more confirmed-unblocked-and-ready
+samples are queued from that list (see section 8, task 6). 27 placeholder
+directories exist for samples still genuinely blocked on real CNA engine work
+(custom shaders, skeletal animation, one content-pipeline gap, or — for
+PeerToPeer specifically — simply not yet attempted). 67 catalogued directories
+are permanently out of scope and listed in `ignored.md` (not XNA 4.0, not a
+runnable `Game`, redundant duplicates, or tied to a platform CNA won't target).
+See `PLAN.md`'s Sample Count Summary table for exact per-category counts.
 
 **Important architectural decisions:**
 - One executable per sample; no shared sample library. Each `samples/<Name>/`
@@ -102,6 +105,41 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **NetworkPrediction (#100) ported** (2026-07-10) — section 8 task 7's recommended
+  next candidate: client-side prediction and remote-entity smoothing to hide network
+  latency and a throttled packet-send rate (`Tank.hpp`'s `UpdateLocal`/`UpdateRemote`/
+  `ApplyPrediction`/`ApplySmoothing`, `RollingAverage.hpp`'s clock-skew compensation,
+  both direct ports of `Tank.cs`/`RollingAverage.cs`). Builds 0 warnings (two
+  from-scratch rebuilds); ran 9+ seconds with no crash across two runs. **Confirmed
+  the "zero networking workarounds needed" hypothesis this task was specifically
+  set up to test**: unlike ClientServerSample (#091), which needed all 3 of
+  DEFERRED.md items #19/#20/#21 (`GamerServicesDispatcher` hang, `IsHost`/`Id`
+  stubs, non-synchronous `GamerJoined`), this sample needed **none** of them — a
+  real `GamerServicesComponent` is added in the constructor exactly like the C#
+  original, `networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()` are
+  used directly with no locally-tracked bool, and `HookSessionEvents()` needs no
+  extra manual `Update()` call. Confirmed live via this repo's established
+  temporary debug-auto-trigger pattern (`CreateSession()` + `helpTimer_ = 10.0f`
+  forced on the first frame, reverted before commit, re-verified with a clean
+  from-scratch rebuild afterward): session creation doesn't hang, `GamerJoined`
+  fires synchronously (a fully textured, correctly labeled `"Stub Gamer"` tank
+  renders on the very first frame with no manual `Update()` call anywhere), the
+  session correctly reports itself as host, and the F1 help overlay renders
+  correctly on top. Found **one new, genuine CNA gap**: `NetworkSession::
+  SessionProperties` has no mutable accessor (`getSessionPropertiesProperty()` is
+  const-only, confirmed via direct source read of both the header and `.cpp`) and
+  is never replicated over the wire (`sessionProperties_` is set once at
+  construction and never touched again anywhere in `NetworkSession.cpp`) — the C#
+  original relies entirely on this for its host-authoritative network-quality/
+  prediction/smoothing settings. Worked around (NOXNA, no C# equivalent) with an
+  explicit host-broadcast "options packet," distinguished from ordinary tank-state
+  packets by a new leading `PacketKind` byte on the same `LocalNetworkGamer::
+  SendData`/`ReceiveData` channel — `Tank.hpp` itself is completely unaffected
+  (matches `Tank.cs` line-for-line). Filed as new DEFERRED.md item #27. Reused
+  ClientServerSample's already-converted `Tank.png`/`Turret.png`/font assets
+  directly (confirmed byte-identical source `.tga`/`.spritefont` files via
+  `md5sum`/`diff` — no reconversion needed). See
+  `samples/NetworkPrediction/missing.md` for the complete account.
 - **MarbleMaze (#061) ported** (2026-07-10) — a full "Phase 4 — Full Games"
   title: `ScreenManager`-based menu/gameplay flow (main menu, loading/
   instructions, gameplay, pause, high score) wrapping a marble-in-a-tilting-maze
@@ -416,6 +454,80 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-10, fourth follow-up):** Ported **NetworkPrediction
+(#100)**, section 8 task 7's recommended candidate — the first attempt at either
+NetworkPrediction or PeerToPeer since all three of ClientServerSample's (#091)
+original networking workarounds were resolved upstream. Read
+`NetworkPredictionSample_4_0/NetworkPrediction/{NetworkPredictionGame.cs, Tank.cs,
+RollingAverage.cs}` in full, plus `samples/ClientServerSample/src/*.hpp` and its
+`missing.md`, per this task's own brief, before writing any code.
+
+**The "zero networking workarounds needed" hypothesis held up completely.** A real
+`GamerServicesComponent` is constructed in the constructor exactly like the C#
+original (`Components.Add(new GamerServicesComponent(this));` ported line-for-line,
+no "don't add one" workaround); every host/client branch uses
+`networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()` directly with no
+locally-tracked `bool`; and `HookSessionEvents()` needs no extra manual `Update()`
+call afterward. Confirmed live via this repo's established temporary
+debug-auto-trigger pattern (`CreateSession()` + `helpTimer_` forced on the very first
+frame, reverted before a subsequent clean from-scratch rebuild that re-confirmed 0
+warnings): `NetworkSession::Create()` completes with no hang, `GamerJoinedEventHandler`
+fires synchronously (a fully textured tank labeled `"Stub Gamer"` renders on that same
+first frame, with no manual `Update()` call anywhere), the session correctly reports
+itself as host (`DrawOptions()`'s "(X to toggle)"-style prompts, gated on
+`IsHost`, render correctly), and the F1 help overlay renders on top. This is the first
+confirmation that ClientServerSample's three fixes (DEFERRED.md items #19/#20/#21)
+generalize to a second, independently-written sample's own `Update()`-loop shape, not
+just ClientServerSample's own — exactly the test this task was set up to run.
+
+**Found one new, genuine CNA gap** while porting `UpdateOptions()` (this sample's own
+distinctive content — client-side prediction/smoothing to hide network latency and a
+throttled send rate): `NetworkSession::SessionProperties` has no mutable accessor
+(`getSessionPropertiesProperty()` returns `const NetworkSessionProperties&` with no
+non-const overload or setter anywhere in `NetworkSession.hpp`/`.cpp`, confirmed by
+direct source read) and is never replicated over the wire (`sessionProperties_` is
+set once at construction and never read or written again anywhere in
+`NetworkSession.cpp`, confirmed by grepping the whole file). The C# original relies
+entirely on this — the host writes 4 settings into
+`networkSession.SessionProperties[i]` once per frame, and every other machine reads
+the same indices back with no explicit packet-send call anywhere in the sample's own
+code; real XNA's networking layer silently replicates the list to every peer. Worked
+around (NOXNA, no C# equivalent, confined to the outer game class — `Tank.hpp` matches
+`Tank.cs` line-for-line with no change) with an explicit host-broadcast "options
+packet," distinguished from ordinary tank-state packets by a new leading `PacketKind`
+byte on the same `LocalNetworkGamer::SendData`/`ReceiveData` channel already used for
+tank state. Filed as new **DEFERRED.md item #27** — effort S/M, since a mutable
+accessor alone (no replication) is a few lines, but real wire replication is
+comparable in shape to how `GamerJoined` already replicates gamer-roster changes.
+
+Reused ClientServerSample's already-converted `Content/Tank.png`/`Turret.png`/
+`font.font.json`/`font.png` directly (confirmed byte-identical source `Tank.tga`/
+`Turret.tga`/`Font.spritefont` files via `md5sum`/`diff` — no reconversion needed, per
+this repo's own "don't regenerate existing assets unless there's a confirmed bug"
+guidance). Generated `Content/help.png` via the standard `tools/gen_help_png.py` path
+with no one-off variant needed (this sample's own `.htm` has the standard 3-column
+controls table). One faithful, deliberate divergence from ClientServerSample's own
+port worth calling out: this sample's `IsPressed()` is **rising-edge** triggered
+(`currentState.IsKeyDown && previousState.IsKeyUp`), matching its own C# original
+exactly, whereas ClientServerSample's `IsPressed()` is level-triggered, matching *its*
+own, genuinely different, C# original — confirmed by direct comparison of both C#
+sources rather than assumed, since porting the wrong one would have made the A/B/X/Y
+option-cycling keys repeat every single frame instead of toggling once per press.
+
+Builds 0 warnings (confirmed via two separate from-scratch object-file rebuilds — one
+before, one after removing the temporary debug-auto-trigger code). Ran under
+`SDL_VIDEODRIVER=x11` for 9+ seconds total across two runs with no crash.
+`xdotool getactivewindow` showed a different real user window (`0x400003`) held focus
+throughout, so no synthetic keypresses were sent — same established fallback used
+throughout this session. Two-machine `JoinSession()`/the actual host → client wire
+replication path for the new options packet were **not** tested live this session —
+the same "no genuine 2-process LAN test" limitation ClientServerSample's own
+`missing.md` already documents (a pre-existing `ENetDiscoveryService` two-process
+discovery limitation on this container, not a regression). See
+`samples/NetworkPrediction/missing.md` for the complete account.
+
+Commit this session: see below (pushed to `develop`).
 
 **Newest session (2026-07-10, third follow-up):** Ported **MarbleMaze (#061)**,
 section 8 task 6's last remaining candidate from the original 3-sample list
@@ -1524,10 +1636,10 @@ No lint/format command and no automated test suite are configured in this repo.
 
 **Recently completed (2026-07-09/07-10):** LensFlare (#041), Graphics3D (#046),
 PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
-InverseKinematics (#057), ChaseCamera (#058), and MarbleMaze (#061), all
-screenshot-verified — see section 3 for the full account of each, including
-the new DEFERRED.md items (#22–#26), the item #6/#9 corrections, and item
-#23's clarification. Task 6 (below) is retired now that MarbleMaze — its last
+InverseKinematics (#057), ChaseCamera (#058), MarbleMaze (#061), and
+NetworkPrediction (#100), all screenshot-verified — see section 3 for the full
+account of each, including the new DEFERRED.md items (#22–#27), the item #6/#9
+corrections, and item #23's clarification. Task 6 (below) is retired now that MarbleMaze — its last
 tracked candidate — is done; see its own entry for what's recommended next.
 
 1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
@@ -1642,27 +1754,32 @@ tracked candidate — is done; see its own entry for what's recommended next.
    - Files: N/A (retired).
    - Verify: N/A (retired).
 
-7. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
-   - Goal: all three of ClientServerSample's original workarounds are gone now
-     (DEFERRED.md #19/#20/#21 all fixed upstream in `cna`/`sharp-runtime` — see
-     section 3's newest entries): a real `GamerServicesComponent` can be constructed
-     normally, `networkSession_->getIsHostProperty()`/`gamer->getIsHostProperty()`
-     can be used directly instead of a local tracking bool, and `GamerJoined`
-     replays immediately on subscription (no manual `Update()` call needed right
-     after hooking events). These two new samples should need **zero**
-     networking-related workarounds — a good test of whether that claim actually
-     holds for their own `Update()` loop shape.
-   - **Before starting:** make sure `../cna`'s checkout actually has these fixes —
-     either `git -C ../cna checkout feature/net` (what this session used, not merged
-     to `develop` yet) or check whether someone has since merged `feature/net` →
-     `develop` there. Also confirm `../sharp-runtime` (relative to `../cna`) is on a
-     `develop` that includes commit `69661c2` (`EventHandler::SetReplayHook`).
-   - Files: new `samples/NetworkPrediction/src/` or `samples/PeerToPeer/src/`;
-     read `samples/ClientServerSample/missing.md` and DEFERRED.md items #19–21
+7. **RETIRED (2026-07-10) — NetworkPrediction (#100) is ported; PeerToPeer (#103)
+   is the one remaining candidate.**
+   - **What was confirmed:** all three of ClientServerSample's original
+     networking workarounds (DEFERRED.md #19/#20/#21) really are gone for a
+     second, independently-written sample, not just ClientServerSample's own — see
+     section 3's newest entry and `samples/NetworkPrediction/missing.md` for the
+     full live verification. `../cna`'s current `develop` HEAD already has all
+     three fixes; no branch switch was needed this session (unlike the original
+     phrasing of this task, written before the fixes were confirmed merged to
+     `develop`).
+   - **What's next:** **PeerToPeer (#103)** is now the only remaining sample in
+     this "networking" family not yet ported. Per NetworkPrediction's own
+     experience, expect it to also need zero of items #19–21's workarounds, but
+     check whether its own C# original uses `NetworkSession.SessionProperties`
+     (or anything else NetworkPrediction didn't exercise) before assuming
+     DEFERRED.md item #27 (new this session — `SessionProperties` has no mutable
+     accessor and no wire replication) doesn't apply; if it does, reuse
+     NetworkPrediction's own `PacketKind`-byte options-packet workaround shape
+     rather than inventing a new one.
+   - Files (PeerToPeer): new `samples/PeerToPeer/src/`; read
+     `samples/NetworkPrediction/src/*.hpp` and its `missing.md`, plus
+     `samples/ClientServerSample/missing.md` and DEFERRED.md items #19–21/#27
      first.
-   - Verify: `cmake --build cmake-build-debug --target NetworkPrediction_cna_samples`
-     (or `PeerToPeer_cna_samples`); screenshot the menu + a triggered session
-     the way ClientServerSample was verified.
+   - Verify: `cmake --build cmake-build-debug --target PeerToPeer_cna_samples`;
+     screenshot the menu + a triggered session the way NetworkPrediction/
+     ClientServerSample were both verified.
 
 8. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
    - Goal: a second `Begin()/End()` in the same frame must not discard the

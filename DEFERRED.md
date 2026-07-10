@@ -1183,6 +1183,89 @@ all of them.
 
 ---
 
+## 27. `NetworkSession::SessionProperties` has no mutable accessor and is never replicated over the wire
+
+**Found while porting NetworkPrediction (2026-07-10).** This sample's C# original
+(`NetworkPredictionGame.cs`'s `UpdateOptions()`) relies on
+`NetworkSession.SessionProperties` being a **live, mutable, host-authoritative, and
+automatically network-replicated** key/value store: the host writes
+`networkSession.SessionProperties[i] = value` for 4 settings (simulated network quality,
+packet send rate, prediction on/off, smoothing on/off) once per frame, and every other
+machine in the session transparently sees the same values through its own
+`networkSession.SessionProperties[i]` read — real XNA's networking layer silently
+replicates this list to every peer with no explicit packet-send call anywhere in the
+sample's own code.
+
+**Root cause, confirmed by direct source read of `cna`'s
+`include/Microsoft/Xna/Framework/Net/NetworkSession.hpp` and
+`src/Microsoft/Xna/Framework/Net/NetworkSession.cpp`:**
+
+1. `getSessionPropertiesProperty()` returns `const NetworkSessionProperties&` — there is
+   no non-const overload, no `setSessionPropertiesProperty()`, and no other public
+   accessor that exposes a mutable reference to the session's own `sessionProperties_`
+   member. `NetworkSessionProperties::operator[]` does have a mutable, non-const
+   overload (confirmed in `NetworkSessionProperties.hpp`) — but it is unreachable through
+   `NetworkSession`'s own const-only getter, so `networkSession->getSessionPropertiesProperty()[0] = 5;`
+   does not compile (and could not be made to compile without a `cna`-side signature
+   change).
+2. Even granting a hypothetical mutable accessor, grepping `NetworkSession.cpp`'s
+   `Update()` and every other member function shows `sessionProperties_` is set exactly
+   once, at construction (`NetworkSession(NetworkSessionProperties properties, ...)`'s
+   member-initializer list), and never read or written again anywhere in the class
+   outside the getter above. There is no wire-replication logic of any kind for this
+   member — confirmed by grepping for `sessionProperties_`/`SessionProperties` across the
+   whole `.cpp` file (only the constructor and the one getter reference it).
+
+So this gap is really two independent pieces: (a) no way to mutate the properties list
+after `Create()`/`Join()` even locally, and (b) no automatic replication mechanism exists
+even if (a) were fixed. Both would need to be implemented in `cna` to port this sample's
+`SessionProperties` usage faithfully.
+
+**CNA port behaviour (workaround applied in NetworkPrediction, #100):** the host still
+computes the same 4 settings from its own local key input (`UpdateOptions()`, unchanged
+in shape from the original), but instead of writing them into
+`NetworkSession.SessionProperties`, it explicitly broadcasts them in a small,
+NOXNA "options packet" — a leading `PacketKind` byte (`TankState = 0`/`Options = 1`)
+distinguishes it from an ordinary tank-state packet on the same
+`LocalNetworkGamer::SendData`/`ReceiveData` channel, sent by the host (via
+`(LocalNetworkGamer*)networkSession_->getHostProperty()`) at the same throttled cadence
+as tank packets (`sendPacketThisFrame`). Client machines apply the received values
+directly to their own local `networkQuality_`/`framesBetweenPackets_`/
+`enablePrediction_`/`enableSmoothing_` fields in `ReadIncomingPackets()`, instead of
+reading them back from `SessionProperties` as the C# original does. See
+`samples/NetworkPrediction/src/NetworkPredictionGame.hpp`'s top-of-file comment and
+`samples/NetworkPrediction/missing.md` for the complete account. Confirmed live: a
+solo/single-gamer session created via `NetworkSession::Create()` renders the correct,
+live `DrawOptions()` text (`"Packets per second = 10 (B to change)"`, etc.) driven by
+these locally-tracked fields — the substitute mechanism reproduces the original's
+visible behavior for the one-machine case that could be tested this session; the actual
+host → client replication path itself was not tested with a second live instance (same
+"no genuine 2-machine LAN test" caveat every networking sample in this repo carries —
+see DEFERRED.md items #19–21's own verification notes and NEXT.md section 5).
+
+**Where to implement (if fixed in `cna`):** `NetworkSession` needs (a) a mutable
+accessor for `sessionProperties_` (either a non-const `getSessionPropertiesProperty()`
+overload, matching the pattern `NetworkSessionProperties::operator[]` itself already
+uses, or a dedicated setter), and (b) actual replication logic in `Update()`/the ENet
+backend — e.g. treating a change to `sessionProperties_` like `GamerJoined`/`GamerLeave`,
+diffing and broadcasting it as its own wire message whenever the host's copy changes,
+and applying an incoming one on non-host machines. This is squarely a "generic
+real-time-networking feature," not Xbox-Live-specific, and would also directly benefit
+PeerToPeer (#103, not yet ported) if that sample's own C# original uses
+`SessionProperties` the same way.
+
+**Blocked samples:** none outright — NetworkPrediction (#100) worked around it
+completely via an explicit options packet (above). PeerToPeer (#103), not yet ported,
+should be checked for the same `SessionProperties` usage pattern before assuming it
+needs the identical workaround.
+
+**Effort:** S/M — (a) alone (a mutable accessor with no replication) is a few lines and
+would already unblock a *local-only* single-machine use of the properties list; (b)
+(actual wire replication) is the larger piece, comparable in shape to how `GamerJoined`
+already replicates gamer-roster changes.
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -1213,3 +1296,4 @@ all of them.
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
 | 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze applied the same RawMesh.hpp bypass proactively, not re-confirmed empirically) | not started |
+| 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer (not yet ported, unaudited) | not started |
