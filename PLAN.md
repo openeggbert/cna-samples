@@ -275,7 +275,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 025 | ChaseAndEvade | `ChaseAndEvadeSample_4_0` | ✅ Done |
 | 026 | AimingSample | `AimingSample_4_0` | ✅ Done |
 | 027 | FuzzyLogic | `FuzzyLogicSample_4_0` | ✅ Done |
-| 028 | ColorReplacement | `ColorReplacementSample_4_0` | 🚫 Deferred — Model + custom Effect not in CNA |
+| 028 | ColorReplacement | `ColorReplacementSample_4_0` | 🚫 Deferred — custom `ReplaceColor.fx` shader not in CNA (item #11); model conversion itself is not a blocker (item #6 resolved) — see `samples/ColorReplacement/missing.md` |
 | 029 | ParticleSample | `ParticleSample_4_0` | ✅ Done |
 | 030 | CameraShake | `CameraShake_4_0` | ✅ Done |
 
