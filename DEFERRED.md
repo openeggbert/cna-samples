@@ -205,6 +205,35 @@ compile-time `#if`. See `samples/Yacht/missing.md`, `samples/SnowShovel/missing.
   bigger design decision than usual, worth confirming with the user before doing it**,
   since "invent the missing half of the sample" is a different scope commitment than
   "port what's there."
+  - **Correction (2026-07-10, AccelerometerSample only — found while actually
+    porting it, per user go/no-go):** this 2026-07-05 audit's "no alternate
+    input path at all" claim for AccelerometerSample specifically was wrong —
+    a direct read of `Accelerometer.cs:117-135` found the original's own
+    `GetState()` **does** have a keyboard fallback, gated on
+    `Microsoft.Devices.Environment.DeviceType != DeviceType.Device` (i.e. "am
+    I running in the Visual Studio Windows Phone 7 *emulator*, which has no
+    physical accelerometer, instead of on a real device"): arrow keys
+    synthesize a `Vector3` (`Left`/`Right` → `X--`/`X++`, `Up`/`Down` →
+    `Y++`/`Y--`, `Z` fixed at `-1`, then `Vector3.Normalize()`'d). This
+    fallback branch lives *inside* the same `#if WINDOWS_PHONE` block as the
+    real-hardware branch (not in a separate non-`#if` branch the way Yacht/
+    SnowShovel/Bounce's own fallbacks do), which is why the earlier audit's
+    "no `#if WINDOWS_PHONE` split" check missed it — that check was looking
+    for a branch *outside* the `#if`, not a second, DeviceType-gated branch
+    *inside* it. Net effect: **AccelerometerSample did not need an invented
+    keyboard scheme after all** — it needed the same "un-#if an existing
+    branch" treatment as Yacht/SnowShovel/Bounce, just with the branch
+    boundary one level deeper (a runtime `DeviceType` check nested inside the
+    `#if`, rather than the `#if` itself). See
+    `samples/AccelerometerSample/missing.md` for the full account and the
+    exact ported code. **Not yet re-audited for TiltPerspective** — a future
+    session porting that sample should re-check `AccelerometerHelper.cs`
+    (or equivalent) with this same correction in mind before assuming its own
+    scheme truly must be invented from scratch.
+  - **✅ AccelerometerSample (#084) ported (2026-07-10)** — see
+    `samples/AccelerometerSample/missing.md`. TiltPerspective (#107) is a
+    separate, not-yet-done follow-up (same user go/no-go covers both, per
+    NEXT.md section 8 task 9).
 - **Orientation (#102): this sample has nothing to do with the accelerometer at
   all** — it was miscategorized. It demonstrates `GraphicsDeviceManager
   .SupportedOrientations`/`GameWindow.CurrentOrientation`/`OrientationChanged`
@@ -1293,7 +1322,7 @@ already replicates gamer-roster changes.
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
 | 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
 | 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
-| 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample, TiltPerspective (scope decision, not blocked); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
+| 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample ✅ ported 2026-07-10 (original's own emulator keyboard fallback, not invented); TiltPerspective (still pending, same user go/no-go); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
 | 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
 | 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
 | 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |

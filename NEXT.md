@@ -14,32 +14,48 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 58 samples are fully ported and wired into the root
-`CMakeLists.txt`. **PeerToPeer (#103) was ported this session** (see section 3) —
-the third and final sample in the `NetworkSession`/`GamerServicesComponent`
-networking family (after ClientServerSample #091 and NetworkPrediction #100),
-confirming a *third* time that all three of ClientServerSample's original
-networking workarounds (DEFERRED.md items #19/#20/#21) stay gone for an
-independently-written sample, this time one with a genuinely different topology
-(full peer-to-peer broadcast, no host authority over simulation at all). This
-retires section 8 task 7 and, with it, the original "port more samples" backlog
-this session set out to work through — see section 8's rewritten task list for
-what a future session should look at next (re-scanning placeholders for anything
-DEFERRED item #26's fix pattern newly unblocks, etc.). The
-AccelerometerSample/TiltPerspective/Avatar scope questions are now both settled
-(2026-07-10, user go/no-go — see section 8 tasks 9/10): port the former with an
-invented keyboard-tilt fallback, do not port the latter. MarbleMaze
-(#061), ChaseCamera (#058), and InverseKinematics (#057) (the original 3-sample
-lighting-candidate list) were ported in earlier sessions and remain done. 28
-placeholder directories exist for samples still genuinely blocked on real CNA
-engine work (custom shaders, skeletal animation, one content-pipeline gap) — a
-correction from earlier revisions of this file's "27," which undercounted by one
-even before PeerToPeer's own placeholder resolved this session (verified by direct
-count: `ls samples | wc -l` = 86 total sample directories = 58 active
-`add_subdirectory` lines + 28 still-commented placeholder lines in the root
-`CMakeLists.txt`, with none unlisted either way). 67 catalogued directories are
-permanently out of scope and listed in `ignored.md` (not XNA 4.0, not a runnable
-`Game`, redundant duplicates, or tied to a platform CNA won't target). See
+**Current phase:** 59 samples are fully ported and wired into the root
+`CMakeLists.txt`. **AccelerometerSample (#084) was ported this session** (see
+section 3) — the first of the two samples covered by the 2026-07-10 user
+go/no-go decision (section 8 task 9). Porting it turned up a correction to
+that decision's own premise: the task was originally framed as "invent a
+keyboard-tilt fallback, since the original never shipped one," but a direct
+read of `Accelerometer.cs:117-135` this session found the original *does*
+ship exactly such a fallback — the Visual Studio Windows Phone 7 emulator
+branch (`DeviceType != DeviceType.Device`), nested inside the same
+`#if WINDOWS_PHONE` block as the real-hardware branch rather than in a
+separate non-`#if` branch (which is why an earlier audit's "no `#if
+WINDOWS_PHONE` split" check missed it — see DEFERRED.md item #15's
+correction). So this port needed the same "un-`#if` an existing branch"
+treatment already established by Yacht/SnowShovel/Bounce, not an invented
+scheme; only TiltPerspective (#107, not yet ported — the second half of the
+same go/no-go decision) still needs re-auditing against this same
+correction before assuming its own scheme truly must be invented. Before
+this, **PeerToPeer (#103) was ported** — the third and final sample in the
+`NetworkSession`/`GamerServicesComponent` networking family (after
+ClientServerSample #091 and NetworkPrediction #100), confirming a *third*
+time that all three of ClientServerSample's original networking workarounds
+(DEFERRED.md items #19/#20/#21) stay gone for an independently-written
+sample, this time one with a genuinely different topology (full
+peer-to-peer broadcast, no host authority over simulation at all). This
+retired section 8 task 7 and, with it, the original "port more samples"
+backlog this session set out to work through — see section 8's rewritten
+task list for what a future session should look at next (re-scanning
+placeholders for anything DEFERRED item #26's fix pattern newly unblocks,
+etc.). The Avatar scope question is settled (2026-07-10, user go/no-go —
+see section 8 task 10): the 5 Avatar samples will not be ported.
+TiltPerspective (#107) is queued as the very next follow-up (see section 8
+task 9). MarbleMaze (#061), ChaseCamera (#058), and InverseKinematics
+(#057) (the original 3-sample lighting-candidate list) were ported in
+earlier sessions and remain done. 27 placeholder directories exist for
+samples still genuinely blocked on real CNA engine work (custom shaders,
+skeletal animation, one content-pipeline gap) or on the still-pending
+TiltPerspective follow-up — verified by direct count: `ls samples | wc -l`
+= 86 total sample directories = 59 active `add_subdirectory` lines + 27
+still-commented placeholder lines in the root `CMakeLists.txt`, with none
+unlisted either way. 67 catalogued directories are permanently out of
+scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`,
+redundant duplicates, or tied to a platform CNA won't target). See
 `PLAN.md`'s Sample Count Summary table for exact per-category counts.
 
 **Important architectural decisions:**
@@ -119,11 +135,66 @@ screenshot.
   own `.htm` "Sample Controls" table into the mandatory F1 help-overlay PNG. Note:
   hardcodes column index 1 for the keyboard control — samples whose table has
   more columns (e.g. a Windows-Phone column first) need a one-off variant script
-  to pick the right column (done once for MicrophoneEcho; not generalized).
+  to pick the right column (done for MicrophoneEcho — column 2, "Windows" — and
+  AccelerometerSample — column 2, "Windows Phone - Emulator"; not generalized).
 - `tools/obj2model.py`, `tools/fbx_ascii2model.py` — convert static, single-bone
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **AccelerometerSample (#084) ported** (2026-07-10) — the first of the two
+  samples covered by the 2026-07-10 user go/no-go decision (section 8 task 9):
+  a sprite (an asteroid) slides around a starfield background purely from
+  accelerometer/tilt input. Read `Accelerometer.cs`/`Game.cs`/`Program.cs` in
+  full before writing any code, per this task's own brief. Builds 0 warnings
+  (two from-scratch rebuilds — one before, one after removing temporary debug
+  code); ran 7+ seconds with no crash across three separate runs. **The
+  keyboard-tilt scheme is the original's own emulator fallback, ported
+  verbatim, not invented** — `Accelerometer.cs:117-135` (inside the same
+  `#if WINDOWS_PHONE` block as the real-hardware branch, gated at runtime on
+  `DeviceType != DeviceType.Device`, i.e. "running in the Visual Studio phone
+  emulator, which has no physical sensor") already synthesizes a `Vector3`
+  from the arrow keys exactly the way this port's own `Accelerometer.hpp`
+  does (`Left`/`Right` → `X--`/`X++`, `Up`/`Down` → `Y++`/`Y--`, `Z` fixed at
+  `-1`, `Vector3::Normalize()`'d) — this port's `Accelerometer` class has no
+  `#ifdef`/real-sensor branch at all, since that emulator branch is simply
+  always taken (no phone hardware, no phone/emulator distinction to make on
+  this desktop). This corrects the original scope-decision writeup's premise
+  (DEFERRED.md item #15, updated this session) that this sample would need
+  "a keyboard-tilt-emulation control scheme from scratch" — a closer reading
+  of the original source this session found it already had one, just nested
+  one level deeper than Yacht/SnowShovel/Bounce's own non-`#if` fallbacks.
+  Confirmed live: with real (unmodified) keyboard state, the asteroid stays
+  motionless at its correctly-centered rest position (screenshot). Live
+  arrow-key input hit this repo's known `xdotool` shared-desktop caveat
+  (`xdotool getactivewindow` showed a different real user window, `0x400003`,
+  held focus throughout; a `keydown --window`/screenshot/`keyup` round trip
+  produced no visible movement) — worked around with this repo's established
+  temporary debug-auto-trigger pattern (forcing `acceleration.X = 0.5f` and,
+  separately, `helpTimer_ = 10.0f` on the first frame; both reverted before
+  commit): the asteroid visibly slid right and clamped correctly at the
+  screen edge (two screenshots ~2 s apart, same clamped position in both —
+  matching `Update()`'s own edge-clamp logic), and the F1 help overlay
+  rendered and then correctly disappeared after its 10-second timer (two
+  screenshots ~7 s apart). `Accelerometer.htm`'s Sample Controls table has 3
+  columns (`Action | Windows Phone | Windows Phone - Emulator`); generated
+  `Content/help.png` with a one-off variant script reading column 2 (the
+  Emulator/keyboard column), the same precedent as MicrophoneEcho's own
+  one-off column-2 script. Found (not a new gap — a second confirmed sighting
+  of an existing, already-accepted characteristic) that this sample's
+  `help.png` (632×192) is wider than its 480px-wide portrait window, so the
+  centered overlay text is left/right-clipped — `samples/Yacht/Content/
+  help.png` (1472×312) has the identical characteristic in that sample's own
+  identically-480px-wide window, using the same unmodified `Draw()`-time
+  centering code from CLAUDE.md's F1 pattern; not a regression, not fixed,
+  same as Yacht's own unaddressed instance. Converted `asteroid.png`
+  (128×128 RGBA) and `space.png` (480×800 RGB) directly — both were already
+  PNG in the original's `AccelerometerContent/` directory, no reconversion
+  needed. No new DEFERRED.md item filed — every finding is either a faithful
+  direct port of the original's own code or an already-tracked, previously
+  documented pattern. See `samples/AccelerometerSample/missing.md` for the
+  complete account. TiltPerspective (#107, the second half of the same
+  go/no-go decision) is queued as the very next follow-up — not started this
+  session.
 - **PeerToPeer (#103) ported** (2026-07-10) — the third and final sample in this
   repo's `NetworkSession`/`GamerServicesComponent` family, and the first with a
   genuinely different network *topology*: full peer-to-peer broadcast with **no
@@ -517,7 +588,85 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-10, sixth follow-up):** With the originally-scoped
+**Newest session (2026-07-10, seventh follow-up):** Ported
+**AccelerometerSample (#084)**, the first of the two samples covered by
+section 8 task 9's 2026-07-10 user go/no-go decision. Read
+`AccelerometerSample_4_0/Accelerometer/Accelerometer/{Accelerometer.cs,
+Game.cs, Program.cs}` in full, plus the placeholder `missing.md` already on
+disk, per this task's own brief, before writing any code.
+
+**Key finding: the keyboard-tilt scheme is the original's own emulator
+fallback, ported verbatim — not invented, despite how task 9 and DEFERRED.md
+item #15 originally framed the decision.** A direct read of
+`Accelerometer.cs:117-135` found that `GetState()` already has a keyboard
+fallback: gated at runtime on `Microsoft.Devices.Environment.DeviceType !=
+DeviceType.Device` (i.e. "the sample is running in the Visual Studio Windows
+Phone 7 *emulator*, which has no physical accelerometer, rather than on a
+real device"), it synthesizes a `Vector3` from the arrow keys —
+`Left`/`Right` → `X--`/`X++`, `Up`/`Down` → `Y++`/`Y--`, `Z` fixed at `-1`,
+then `Vector3.Normalize()`'d to mimic a real reading including gravity. This
+branch lives *inside* the same `#if WINDOWS_PHONE` block as the real-hardware
+branch (not in a separate non-`#if` branch the way Yacht/SnowShovel/Bounce's
+own fallbacks do), which is why the earlier 2026-07-05 audit's "no `#if
+WINDOWS_PHONE` split" check missed it — that check looked for a branch
+*outside* the `#if`, not a second, `DeviceType`-gated branch nested *inside*
+it. This port's own `Accelerometer.hpp` has **no `#ifdef`/real-sensor branch
+at all** — the emulator branch above is its only implementation, always
+taken, since this desktop build has no phone-vs-emulator distinction to make
+in the first place. DEFERRED.md item #15 was updated with this correction
+(the earlier audit's premise for AccelerometerSample specifically was wrong;
+TiltPerspective has not yet been re-checked against the same correction).
+
+Builds 0 warnings (two from-scratch rebuilds — one before, one after removing
+temporary debug code). Ran under `SDL_VIDEODRIVER=x11` for 7+ seconds across
+three separate runs with no crash. Confirmed live via screenshot that, with
+real (unmodified) keyboard state, the asteroid sprite renders correctly and
+stays motionless at its correctly-centered rest position. Live arrow-key
+input hit this repo's known `xdotool` shared-desktop caveat
+(`xdotool getactivewindow` showed a different real user window, `0x400003`,
+held focus throughout; a `keydown --window`/screenshot/`keyup` round trip
+produced no visible movement) — worked around with this repo's established
+temporary debug-auto-trigger pattern (forcing `acceleration.X = 0.5f`, and
+separately `helpTimer_ = 10.0f`, on the first frame; both reverted before
+commit, re-verified with a clean from-scratch rebuild afterward): the
+asteroid visibly slid right and clamped correctly at the screen edge (two
+screenshots ~2 s apart, same clamped position in both, matching `Update()`'s
+own edge-clamp logic), and the F1 help overlay rendered and then correctly
+disappeared after its 10-second timer (two screenshots ~7 s apart).
+
+`Accelerometer.htm`'s Sample Controls table has 3 columns (`Action | Windows
+Phone | Windows Phone - Emulator`); generated `Content/help.png` with a
+one-off variant script reading column 2 (the Emulator/keyboard column,
+matching this port's real controls) — the same precedent as MicrophoneEcho's
+own one-off column-2 script. Found (not a new gap — a second confirmed
+sighting of an already-accepted characteristic) that this sample's
+`help.png` (632×192) is wider than its 480px-wide portrait window, so the
+centered overlay text is left/right-clipped, exactly like
+`samples/Yacht/Content/help.png` (1472×312) in that sample's own
+identically-480px-wide window using the same unmodified `Draw()`-time
+centering code — not a regression, not fixed, same as Yacht's own
+unaddressed instance. Converted `asteroid.png` (128×128 RGBA) and
+`space.png` (480×800 RGB) directly — both already PNG in the original's
+`AccelerometerContent/` directory, no reconversion needed. No new
+DEFERRED.md item filed — every finding is either a faithful direct port of
+the original's own code or an already-tracked, previously documented
+pattern (fullscreen/30fps omission, Escape-to-exit, the
+`LoadContent()`-time viewport-staleness gotcha already seen in
+SoccerPitch/SnowShovel, and the F1-overlay-width-vs-portrait-window
+characteristic already seen in Yacht). See
+`samples/AccelerometerSample/missing.md` for the complete account.
+
+TiltPerspective (#107), the second half of the same user go/no-go decision,
+is queued as the very next follow-up — not started this session; a future
+session porting it should re-check its own `AccelerometerHelper.cs` (or
+equivalent) against this same "look for a nested DeviceType branch inside
+`#if WINDOWS_PHONE`, not just a top-level `#if` split" correction before
+assuming its own scheme truly must be invented from scratch.
+
+Commit this session: (pending — see final commit of this session's own
+change set below).
+
+**Previous session (2026-07-10, sixth follow-up):** With the originally-scoped
 porting backlog exhausted (10 samples shipped: LensFlare, Graphics3D,
 PickingSample, TrianglePicking, HeightmapCollision, InverseKinematics,
 ChaseCamera, MarbleMaze, NetworkPrediction, PeerToPeer), fixed the one
@@ -1587,9 +1736,11 @@ separately):**
 
 Secondary, lower-urgency items (not blocking, just open):
 - Both pending product/scope decisions are now settled (2026-07-10, user
-  go/no-go): AccelerometerSample (#084)/TiltPerspective (#107) are being
-  ported with an invented keyboard-tilt fallback (section 8, task 9); the 5
-  Avatar samples will not be ported (section 8, task 10, retired).
+  go/no-go): AccelerometerSample (#084) is **done** (ported this session —
+  turned out to need the original's own emulator keyboard fallback, not an
+  invented one, see DEFERRED.md item #15's correction); TiltPerspective
+  (#107) is still pending, queued as the next follow-up (section 8, task 9);
+  the 5 Avatar samples will not be ported (section 8, task 10, retired).
 - The Vulkan backend's multi-`SpriteBatch`-per-frame bug (section 5) is separate
   from the above and only affects the non-default Vulkan backend.
 
@@ -1800,13 +1951,16 @@ No lint/format command and no automated test suite are configured in this repo.
 **Recently completed (2026-07-09/07-10):** LensFlare (#041), Graphics3D (#046),
 PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
 InverseKinematics (#057), ChaseCamera (#058), MarbleMaze (#061),
-NetworkPrediction (#100), and **PeerToPeer (#103)**, all screenshot-verified —
-see section 3 for the full account of each, including the new DEFERRED.md items
-(#22–#27), the item #6/#9 corrections, and item #23's clarification. Tasks 6 and 7
-(below) are both now retired — **this completes the original "port more samples"
-backlog this multi-session porting run set out to work through.** See task 7's
-own entry for a full account of what's left, and this section's new closing note
-for what a future session's task list should look like.
+NetworkPrediction (#100), PeerToPeer (#103), and **AccelerometerSample
+(#084)**, all screenshot-verified — see section 3 for the full account of
+each, including the new DEFERRED.md items (#22–#27), the item #6/#9/#15
+corrections, and item #23's clarification. Tasks 6 and 7 (below) are both
+retired, and task 9 is now half-done (AccelerometerSample shipped;
+TiltPerspective still pending) — **this completes the original "port more
+samples" backlog this multi-session porting run set out to work through.**
+See task 7's own entry for a full account of what's left, and this
+section's new closing note for what a future session's task list should
+look like.
 
 **Backlog-exhaustion note (2026-07-10):** every sample this session's own
 brief could point to as "confirmed-unblocked, zero CNA gap, just needs the
@@ -1835,9 +1989,11 @@ per-mesh `ModelBone` support (item #6/#18) instead — deeper gaps item #26's fi
 alone does not remove. A future session should still re-check this rather than
 trust this session's one-time audit, per the same staleness caveat above. Both
 previously-open product-scope decisions are now settled (2026-07-10, user
-go/no-go — see tasks 9/10 below): port AccelerometerSample/TiltPerspective with
-an invented keyboard-tilt fallback; do not port the 5 Avatar samples. Once
-task 9 ships, the next concrete candidates are all gated on a `cna`-side fix
+go/no-go — see tasks 9/10 below): AccelerometerSample is done (shipped this
+session with the original's own emulator keyboard fallback, not an invented
+one — see DEFERRED.md item #15's correction); TiltPerspective is still
+pending; do not port the 5 Avatar samples. Once task 9 fully ships, the next
+concrete candidates are all gated on a `cna`-side fix
 (item #11, #13, #14, or #6/#18) rather than more porting effort.
 
 1. **✅ DONE (2026-07-10): fixed `SafeArea`'s and `RolePlayingGame`'s
@@ -1999,16 +2155,31 @@ task 9 ships, the next concrete candidates are all gated on a `cna`-side fix
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
      confirm all layers draw.
 
-9. **✅ DECIDED (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
-   TiltPerspective (#107) with an invented keyboard-tilt fallback.** In
-   progress — see section 3 for the account once ported.
-   - Goal: invent a keyboard-based tilt substitute (neither original has any
-     non-phone code to reuse) and document it as a NOXNA input substitution in
-     each sample's `missing.md`, the same way touch→mouse substitutions are
-     documented elsewhere in this repo.
-   - Files: new `samples/AccelerometerSample/src/`, `samples/TiltPerspective/src/`.
-   - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`
-     (and `TiltPerspective_cna_samples`).
+9. **✅ HALF DONE (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
+   TiltPerspective (#107).** AccelerometerSample is **done** — see section 3
+   for the full account. TiltPerspective is the remaining follow-up.
+   - **Correction found while porting AccelerometerSample:** the task was
+     originally framed as "invent a keyboard-based tilt substitute, since
+     neither original has any non-phone code to reuse" — that premise was
+     wrong for AccelerometerSample specifically. A direct read of
+     `Accelerometer.cs:117-135` found the original's own `GetState()` already
+     has a keyboard fallback (the Windows Phone 7 *emulator* branch, gated on
+     `DeviceType != DeviceType.Device`, nested inside the same
+     `#if WINDOWS_PHONE` block as the real-hardware branch) — ported verbatim
+     instead of inventing anything. See DEFERRED.md item #15's correction and
+     `samples/AccelerometerSample/missing.md` for the exact code and mapping.
+     **Not yet re-checked for TiltPerspective** — before assuming
+     TiltPerspective truly needs an invented scheme, re-read its own
+     `AccelerometerHelper.cs` (or equivalent) with this same "look for a
+     nested `DeviceType` branch inside `#if WINDOWS_PHONE`, not just a
+     top-level `#if` split" correction in mind. Only invent a scheme from
+     scratch (documented as a NOXNA input substitution in `missing.md`, the
+     same way touch→mouse substitutions are documented elsewhere in this
+     repo) if that re-check confirms there's genuinely nothing to reuse.
+   - Files: new `samples/TiltPerspective/src/` (AccelerometerSample's own
+     `samples/AccelerometerSample/src/` is done).
+   - Verify: `cmake --build cmake-build-debug --target TiltPerspective_cna_samples`
+     (AccelerometerSample already verified — see section 3/missing.md).
 
 10. **RETIRED (2026-07-10, user go/no-go): the 5 reopened Avatar samples**
     (#085, #086, #087, #094, #101) **will not be ported.** The user decided the

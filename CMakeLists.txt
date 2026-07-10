@@ -165,7 +165,7 @@ add_subdirectory(samples/CustomModelClass)
 
 # Deferred — Phone Hardware / Networking (PLAN.md appendix; the only 6 of ~27
 # kept as future candidates — see ignored.md for the rest)
-# add_subdirectory(samples/AccelerometerSample)
+add_subdirectory(samples/AccelerometerSample)
 # add_subdirectory(samples/TiltPerspective)
 add_subdirectory(samples/MicrophoneEcho)
 add_subdirectory(samples/ClientServerSample)
