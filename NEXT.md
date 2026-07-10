@@ -537,7 +537,7 @@ were not clicked through with real synthetic input this session (the same
 Verification section for the precise scope of what was and wasn't exercised
 live.
 
-Commit this session: see git log — pushed to `develop`.
+Commit this session: `09038ca`, pushed to `develop`.
 
 **Newest session (2026-07-10, second follow-up):** Ported **ChaseCamera (#058)**,
 section 8 task 6's next candidate after InverseKinematics — a spring-physics chase
