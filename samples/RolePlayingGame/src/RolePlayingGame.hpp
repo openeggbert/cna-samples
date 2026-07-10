@@ -573,14 +573,14 @@ inline void TileEngine::Update(const GameTime& gameTime) {
         party && !party->Players.empty() && party->Players[0]->MapSprite ? party->Players[0]->MapSprite->SourceOffset : Vector2::Zero;
     mapOriginPosition_ = mapOriginPosition_ + (viewportCenter_ - (partyLeaderPosition_.ScreenPosition() + leaderOffset));
 
-    mapOriginPosition_.X = Microsoft::Xna::Framework::MathHelper::Min(mapOriginPosition_.X, (float)viewport_.x);
-    mapOriginPosition_.Y = Microsoft::Xna::Framework::MathHelper::Min(mapOriginPosition_.Y, (float)viewport_.y);
+    mapOriginPosition_.X = Microsoft::Xna::Framework::MathHelper::Min(mapOriginPosition_.X, (float)viewport_.getXProperty());
+    mapOriginPosition_.Y = Microsoft::Xna::Framework::MathHelper::Min(mapOriginPosition_.Y, (float)viewport_.getYProperty());
     mapOriginPosition_.X += Microsoft::Xna::Framework::MathHelper::Max(
-        (float)(viewport_.x + viewport_.getWidthProperty()) -
+        (float)(viewport_.getXProperty() + viewport_.getWidthProperty()) -
             (mapOriginPosition_.X + map_->MapDimensions.X * map_->TileSize.X),
         0.0f);
     mapOriginPosition_.Y += Microsoft::Xna::Framework::MathHelper::Max(
-        (float)(viewport_.y + viewport_.getHeightProperty() - Hud::HudHeight) -
+        (float)(viewport_.getYProperty() + viewport_.getHeightProperty() - Hud::HudHeight) -
             (mapOriginPosition_.Y + map_->MapDimensions.Y * map_->TileSize.Y),
         0.0f);
 }

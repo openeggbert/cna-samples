@@ -44,18 +44,18 @@ protected:
         Viewport viewport = getGraphicsDeviceProperty().getViewportProperty();
         Rectangle safeArea = viewport.getTitleSafeAreaProperty();
 
-        int viewportRight  = viewport.x + viewport.getWidthProperty();
-        int viewportBottom = viewport.y + viewport.getHeightProperty();
+        int viewportRight  = viewport.getXProperty() + viewport.getWidthProperty();
+        int viewportBottom = viewport.getYProperty() + viewport.getHeightProperty();
 
-        Rectangle leftBorder(viewport.x, viewport.y,
-                              safeArea.getLeftProperty() - viewport.x,
+        Rectangle leftBorder(viewport.getXProperty(), viewport.getYProperty(),
+                              safeArea.getLeftProperty() - viewport.getXProperty(),
                               viewport.getHeightProperty());
-        Rectangle rightBorder(safeArea.getRightProperty(), viewport.y,
+        Rectangle rightBorder(safeArea.getRightProperty(), viewport.getYProperty(),
                                viewportRight - safeArea.getRightProperty(),
                                viewport.getHeightProperty());
-        Rectangle topBorder(safeArea.getLeftProperty(), viewport.y,
+        Rectangle topBorder(safeArea.getLeftProperty(), viewport.getYProperty(),
                              safeArea.Width,
-                             safeArea.getTopProperty() - viewport.y);
+                             safeArea.getTopProperty() - viewport.getYProperty());
         Rectangle bottomBorder(safeArea.getLeftProperty(), safeArea.getBottomProperty(),
                                 safeArea.Width,
                                 viewportBottom - safeArea.getBottomProperty());

@@ -70,32 +70,39 @@ permanently out of scope and listed in `ignored.md` (not XNA 4.0, not a runnable
 ## 2. Current status
 
 ### Build
-**A full aggregate build currently FAILS** (verified live this session,
-2026-07-09) — 8 errors, all in the pre-existing `SafeArea` sample, unrelated to
-this session's own changes:
-```
-/rv/data/development/github.com/openeggbert/cna-samples/samples/SafeArea/src/SafeAreaOverlay.hpp:47:39:
-error: 'class Microsoft::Xna::Framework::Graphics::Viewport' has no member named 'x'
-```
-(and 7 more of the same shape, for `.x`/`.y` at lines 47/48/50/51/53/56/58).
-`Viewport` no longer exposes direct `.x`/`.y` members upstream in `cna` — same
-class of drift that previously broke `InputReporter`'s direct `GamePadCapabilities`
-field access (section 3's history); `SafeAreaOverlay.hpp` needs the same treatment
-(switch to `viewport.getXProperty()`/`getYProperty()`). **Not fixed this session**
-— out of scope for the task that found it (porting LensFlare); a small, mechanical
-fix for a future session (or right now, if the user wants it fixed opportunistically
-— it's a ~7-line change in one file).
+**FIXED (2026-07-10) — the full aggregate build is green again.**
+`cmake --build cmake-build-debug -j$(nproc)` builds all ~60 samples together
+with **0 errors, 0 warnings**, confirmed via a from-scratch full rebuild
+(re-run a second time afterward with no source changes: `ninja: no work to
+do`, exit 0 — a clean, stable confirmation, not a fluke).
 
-`LensFlare_cna_samples` itself (this session's own new target) builds cleanly with
-0 errors/0 warnings, standalone and repeatedly re-verified:
-```
-cmake --build cmake-build-debug --target LensFlare_cna_samples -j$(nproc)
-```
-Last full aggregate build known to fully succeed was commit `eee6769` on
-`develop` (94 targets, 0 errors/0 warnings) — no longer a live guarantee given the
-`SafeArea` break above; some other sample(s) not touched by this session may also
-be affected if the same `Viewport` API change hit them (not audited beyond
-`SafeArea`, which is the only one the aggregate build reached before stopping).
+Root cause (as diagnosed earlier this session): `Viewport` no longer exposes
+direct `.x`/`.y` public members upstream in `cna` — same class of drift that
+previously broke `InputReporter`'s direct `GamePadCapabilities` field access.
+Two samples were affected, not just the one originally found:
+- `samples/SafeArea/src/SafeAreaOverlay.hpp` (the originally-diagnosed one —
+  8 errors, lines 47/48/50/51/53/56/58).
+- `samples/RolePlayingGame/src/{RolePlayingGame.hpp, TileEngine/
+  TileEngine.hpp}` (found only once the *full* aggregate build was actually
+  re-attempted this session — 10 more errors across both files). This wasn't
+  visible in the earlier partial build attempts because `ninja` stops at the
+  first failing target (`SafeArea`), so `RolePlayingGame` — later in the build
+  graph — was never even reached until `SafeArea` itself was fixed.
+
+Both fixed the same mechanical way: every `viewport.x`/`viewport_.x`/`v.x` (and
+the `.y` equivalent) switched to `viewport.getXProperty()`/`getYProperty()`
+(see `CLAUDE.md`'s property-access table). A repo-wide grep after fixing both
+files (`grep -rnE "[a-zA-Z_][a-zA-Z0-9_]*\.(x|y)\b"` filtered to
+viewport-shaped variable names) found no further instances — but this was
+grepped against the *currently-active* (uncommented) sample list only; the 28
+commented-out placeholder directories were not checked (most have no `src/`
+yet anyway, so the pattern can't exist there regardless).
+
+One pre-existing, unrelated warning was noted and deliberately left alone
+(out of scope for this fix): `samples/RolePlayingGame/src/GameScreens/
+../MenuScreens/LoadingScreen.hpp:51` has an ambiguous-overload warning on a
+`Color(255, 255, 255, TransitionAlpha())` call (an `intcs` vs. `bytecs`
+constructor ambiguity) — nothing to do with `Viewport`, not touched.
 
 ### Tests
 No automated test suite exists in this repo. Each sample is its own manual/visual
@@ -459,10 +466,10 @@ screenshot.
   existed in `cna` but were never enabled/linked here — see section 3).
 
 ### Known NOT working
-- **Full aggregate build** (`cmake --build cmake-build-debug -j$(nproc)` with no
-  `--target`) — fails in `SafeArea` (see Build subsection above). Newly discovered
-  this session, unrelated to LensFlare. Any single-sample `--target` build
-  (including `LensFlare_cna_samples`) is unaffected.
+- ~~Full aggregate build fails~~ **FIXED 2026-07-10** — see Build subsection
+  above. Both affected files (`SafeArea/src/SafeAreaOverlay.hpp`,
+  `RolePlayingGame/src/{RolePlayingGame.hpp,TileEngine/TileEngine.hpp}`) are
+  fixed; the full aggregate build is green.
 - Visual correctness of tank-model-based lit rendering: CustomModelClass (#052)
   and the pre-existing CameraShake both render `tank.model.json` as a thin
   diagonal line instead of a recognizable model — a real, unfixed EasyGL
@@ -508,7 +515,30 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-10, fifth follow-up):** Ported **PeerToPeer (#103)**,
+**Newest session (2026-07-10, sixth follow-up):** With the originally-scoped
+porting backlog exhausted (10 samples shipped: LensFlare, Graphics3D,
+PickingSample, TrianglePicking, HeightmapCollision, InverseKinematics,
+ChaseCamera, MarbleMaze, NetworkPrediction, PeerToPeer), fixed the one
+remaining task fully within this session's own authority (no `cna` edit, no
+user product decision needed): section 8 task 1, the `SafeArea`
+`Viewport.x`/`.y` build breakage. Fixed `samples/SafeArea/src/
+SafeAreaOverlay.hpp` (8 errors) as originally diagnosed, then re-ran the full
+aggregate build to verify — which surfaced a **second, previously-unseen**
+instance of the exact same pattern in `samples/RolePlayingGame/src/
+{RolePlayingGame.hpp, TileEngine/TileEngine.hpp}` (10 more errors). This second
+instance was invisible in every earlier partial-build attempt because `ninja`
+stops at the first failing target (`SafeArea`), and `RolePlayingGame` sits
+later in the build graph — a good reminder that "the aggregate build reached
+target N before failing" only tells you about targets `1..N`, not `N+1..end`.
+Fixed both files the same mechanical way (switch every `viewport.x`/`.y` to
+`getXProperty()`/`getYProperty()`); left one unrelated, pre-existing warning in
+`RolePlayingGame/src/GameScreens/../MenuScreens/LoadingScreen.hpp` alone (an
+`intcs`-vs-`bytecs` `Color` constructor ambiguity, nothing to do with
+`Viewport`). Confirmed via a from-scratch full rebuild (0 errors/0 warnings)
+and a second immediate re-run (`ninja: no work to do`) that the full aggregate
+build is genuinely, stably green — not a one-off.
+
+**Same session, prior follow-up:** Ported **PeerToPeer (#103)**,
 section 8 task 7's last remaining candidate — the third and final sample in this
 repo's `NetworkSession`/`GamerServicesComponent` networking family. Read
 `PeerToPeerSample_4_0/PeerToPeer/{PeerToPeerGame.cs, Tank.cs}` in full, plus
@@ -1429,26 +1459,17 @@ Commits from the newest follow-up session (see the top entry above): `3197b06`,
 
 ## 4. Current blocker / main problem
 
-**A full aggregate build (`cmake --build cmake-build-debug -j$(nproc)`, no
-`--target`) now fails** — newly discovered 2026-07-09, unrelated to any of this
-session's own changes:
-
-- **Exact symptom:** 8 compile errors in
-  `samples/SafeArea/src/SafeAreaOverlay.hpp` (lines 47/48/50/51/53/56/58):
-  `'class Microsoft::Xna::Framework::Graphics::Viewport' has no member named 'x'`
-  (and `'y'`).
-- **Failing command:** `cmake --build cmake-build-debug -j$(nproc)` (aggregate;
-  any single sample's own `--target` build is unaffected unless it also touches
-  `Viewport.x`/`.y` directly — not audited beyond `SafeArea`, the only sample the
-  aggregate build reached before `ninja` stopped on the first failure).
-- **Root cause:** `Viewport` no longer exposes direct `.x`/`.y` members upstream in
-  `cna` (must now use `getXProperty()`/`getYProperty()`) — same class of drift that
-  previously broke `InputReporter`'s direct `GamePadCapabilities` field access
-  (section 3's history).
-- **Fix shape:** mechanical, ~7-line change in one file — switch each
-  `viewport.x`/`viewport.y` to `viewport.getXProperty()`/`viewport.getYProperty()`.
-  Not done this session (out of scope for the task that found it — porting
-  LensFlare); see section 8 for a dedicated task.
+**There is no failing build right now.** The full aggregate build
+(`cmake --build cmake-build-debug -j$(nproc)`, no `--target`) was found broken
+on 2026-07-09 (`SafeArea`'s `Viewport.x`/`.y` usage) and **fixed on 2026-07-10**
+— along with a second, previously-undiscovered instance of the exact same
+pattern in `RolePlayingGame` (only surfaced once the aggregate build actually
+got past `SafeArea`; `ninja` stops at the first failing target, so
+`RolePlayingGame` — later in the build graph — was invisible until then). Both
+are fixed; a full aggregate rebuild is confirmed green (0 errors/0 warnings,
+re-run twice, second run `ninja: no work to do`). See the Build subsection of
+section 2 for the full account. The most significant *remaining* open problem
+is the rendering bug below.
 
 **Update 2026-07-10: likely re-attributed — read DEFERRED.md item #26 before
 investigating this as a clipping bug.** While porting InverseKinematics, a
@@ -1617,12 +1638,9 @@ Secondary, lower-urgency items (not blocking, just open):
   Graphics3D's investigation) this is *not* the cause of the near-plane-clipping
   bug above, but is a real, separate, currently-latent gap. DEFERRED.md item #24
   (new, not started).
-- **NEW BUILD BREAKAGE, unfixed** — `samples/SafeArea/src/SafeAreaOverlay.hpp`
-  accesses `Viewport.x`/`.y` directly; `cna`'s `Viewport` no longer exposes those as
-  public members (property-getter-only now). Breaks both `SafeArea`'s own
-  `--target` build and, as a consequence, the full aggregate build (`ninja` stops
-  at the first failure). Every other sample's own `--target` build is unaffected.
-  See section 4 for the exact errors and section 8 for a dedicated fix task.
+- ~~Build breakage: `SafeArea`/`RolePlayingGame` accessed `Viewport.x`/`.y`
+  directly~~ **FIXED 2026-07-10** — both switched to
+  `getXProperty()`/`getYProperty()`. Full aggregate build confirmed green.
 - **CONFIRMED BUG, workaround applied (ClientServerSample, #091)** —
   `GamerServicesDispatcher::Update()` in `cna` is a no-op, so
   `NetworkSession::Create`/`Find`/`Join`'s synchronous busy-wait loop never
@@ -1820,17 +1838,14 @@ port any of the 5 reopened Avatar samples) remain the most concrete "what's
 next" candidates until either a `cna`-side fix (item #11, #13, or #6/#18) lands
 or the user gives explicit go/no-go on one of those two scope questions.
 
-1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
-   aggregate build.**
-   - Goal: `samples/SafeArea/src/SafeAreaOverlay.hpp` (lines 47/48/50/51/53/56/58)
-     accesses `viewport.x`/`viewport.y` directly; `cna`'s `Viewport` no longer
-     exposes those as public members. Switch each to
-     `viewport.getXProperty()`/`viewport.getYProperty()` (see `CLAUDE.md`'s
-     property-access table).
-   - Files: `samples/SafeArea/src/SafeAreaOverlay.hpp`.
-   - Verify: `cmake --build cmake-build-debug --target SafeArea_cna_samples`,
-     then `cmake --build cmake-build-debug -j$(nproc)` (full aggregate) to
-     confirm no other sample hits the same `Viewport.x`/`.y` pattern.
+1. **✅ DONE (2026-07-10): fixed `SafeArea`'s and `RolePlayingGame`'s
+   `Viewport.x`/`.y` build breakages — full aggregate build is green again.**
+   Fixed both `samples/SafeArea/src/SafeAreaOverlay.hpp` and
+   `samples/RolePlayingGame/src/{RolePlayingGame.hpp,TileEngine/TileEngine.hpp}`
+   (the second one only surfaced once the first was fixed and the aggregate
+   build could reach it). Confirmed via a from-scratch full rebuild (0 errors/0
+   warnings) and a second immediate re-run (`ninja: no work to do`). See
+   section 2's Build subsection for the full account.
 
 2. **Investigate the EasyGL near-plane clipping bug itself (section 4) — READ
    DEFERRED.md item #26 FIRST, try that fix before assuming clip-space math.**
@@ -2044,8 +2059,9 @@ or the user gives explicit go/no-go on one of those two scope questions.
   immediately beforehand, and do not conclude "no visible effect" means a code
   bug without first checking the sample's own state.
 - **No broad refactors or unrelated cleanup** while the near-plane-clipping/
-  `ColorWriteChannels`/`ComponentAdded`-timing/`Clear(Color)`-depth/
-  `SafeArea`-build/Vulkan bugs (section 8, tasks 1–5/8) are open.
+  `ColorWriteChannels`/`ComponentAdded`-timing/`Clear(Color)`-depth/Vulkan bugs
+  (section 8, tasks 2–5/8) are open. (The `SafeArea`/`RolePlayingGame`
+  `Viewport.x`/`.y` build breakage, formerly task 1, is fixed.)
 - **Do not regenerate existing font atlases or `.model.json` assets** unless
   there is a confirmed rendering bug — regenerating is cheap but pointless churn
   otherwise.

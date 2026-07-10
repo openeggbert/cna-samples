@@ -62,8 +62,8 @@ public:
     static Viewport CurrentViewport() { return viewport_; }
     static void SetViewport(Viewport v) {
         viewport_ = v;
-        viewportCenter_ = Vector2(v.x + v.getWidthProperty() / 2.0f,
-                                  v.y + v.getHeightProperty() / 2.0f);
+        viewportCenter_ = Vector2(v.getXProperty() + v.getWidthProperty() / 2.0f,
+                                  v.getYProperty() + v.getHeightProperty() / 2.0f);
     }
 
     static PlayerPosition& PartyLeaderPosition() { return partyLeaderPosition_; }
@@ -75,10 +75,10 @@ public:
     static void Update(const GameTime& gameTime);
 
     static bool CheckVisibility(Rectangle screenRectangle) {
-        return screenRectangle.X > viewport_.x - screenRectangle.Width &&
-               screenRectangle.Y > viewport_.y - screenRectangle.Height &&
-               screenRectangle.X < viewport_.x + viewport_.getWidthProperty() &&
-               screenRectangle.Y < viewport_.y + viewport_.getHeightProperty();
+        return screenRectangle.X > viewport_.getXProperty() - screenRectangle.Width &&
+               screenRectangle.Y > viewport_.getYProperty() - screenRectangle.Height &&
+               screenRectangle.X < viewport_.getXProperty() + viewport_.getWidthProperty() &&
+               screenRectangle.Y < viewport_.getYProperty() + viewport_.getHeightProperty();
     }
 
     static void DrawLayers(SpriteBatch& spriteBatch, bool drawBase, bool drawFringe, bool drawObject) {
