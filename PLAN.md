@@ -402,7 +402,7 @@ excluded — see `ignored.md` for the reason each one will never get a directory
 | 104 | PerformanceUtility | `PerformanceUtility_4_0` | ❌ Ignored — see `ignored.md` (utility library, no standalone executable) |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | ❌ Ignored — see `ignored.md` (Windows Phone push notification service) |
 | 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | ❌ Ignored — see `ignored.md` (phone media library API) |
-| 107 | TiltPerspective | `TiltPerspective_4_0` | 🚧 Placeholder — same scope decision as #084; see `samples/TiltPerspective/missing.md` and DEFERRED.md item 15 |
+| 107 | TiltPerspective | `TiltPerspective_4_0` | ✅ Done (ported 2026-07-10, user-approved go/no-go; unlike #084, this original's own fallback is a non-interactive time-driven wobble with no keyboard branch to promote, so a keyboard-tilt scheme was genuinely invented from scratch — see `samples/TiltPerspective/missing.md`) |
 | 108 | WinFormsContent | `WinFormsContentSample_4_0` | ❌ Ignored — see `ignored.md` (WinForms host window) |
 | 109 | WinFormsGraphics | `WinFormsGraphicsSample_4_0` | ❌ Ignored — see `ignored.md` (WinForms host window) |
 | 110 | WP7MusicManagement | `WP7MusicManagement_4_0` | ❌ Ignored — see `ignored.md` (WP7 media API, no desktop analog) |

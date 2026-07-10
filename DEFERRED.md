@@ -231,9 +231,34 @@ compile-time `#if`. See `samples/Yacht/missing.md`, `samples/SnowShovel/missing.
     (or equivalent) with this same correction in mind before assuming its own
     scheme truly must be invented from scratch.
   - **✅ AccelerometerSample (#084) ported (2026-07-10)** — see
-    `samples/AccelerometerSample/missing.md`. TiltPerspective (#107) is a
-    separate, not-yet-done follow-up (same user go/no-go covers both, per
-    NEXT.md section 8 task 9).
+    `samples/AccelerometerSample/missing.md`.
+  - **✅ TiltPerspective (#107) ported (2026-07-10, follow-up session) — the
+    correction above does NOT apply here; the original audit's premise was
+    correct for this specific sample.** Per this follow-up's own task brief,
+    `AccelerometerHelper.cs` was re-checked against the exact same "look for a
+    nested `DeviceType` branch inside `#if WINDOWS_PHONE`" correction found
+    while porting AccelerometerSample, rather than assumed identical either
+    way. Result: `AccelerometerHelper.cs` has **no** `#if WINDOWS_PHONE` split
+    at all (confirmed by the `.csproj`'s single `Windows Phone` build
+    configuration and a full-file read) and its own no-hardware fallback is a
+    non-interactive, time-driven sinusoidal wobble
+    (`FakeRollTheta += elapsed * FakeRollSpeed`) — genuinely nothing
+    keyboard/gamepad-shaped to promote, unlike AccelerometerSample. A keyboard-
+    tilt scheme was therefore genuinely invented from scratch (NOXNA), per the
+    2026-07-10 user go/no-go: `Left`/`Right` → `X∓`/`X±`, `Up`/`Down` →
+    `Y±`/`Y∓`, `Z` fixed at `-1`, `Vector3::Normalize()`'d — reusing the same
+    shape already established by AccelerometerSample's/Yacht's own *promoted*
+    fallbacks for consistency, even though nothing in this sample's own
+    original resembles it. See `samples/TiltPerspective/missing.md` for the
+    full account, including a second, separate finding (confirmed via the real
+    FNA source, not assumed): the sample's own `GeometricPrimitive.cs` never
+    sets `DirectionalLight0.DiffuseColor`, so its balls render as near-black
+    spheres with only a white specular highlight in **both** the real XNA
+    original and this faithful port — not a CNA gap. **With this sample done,
+    both halves of the 2026-07-10 user go/no-go (task 9) are complete** — see
+    NEXT.md section 8's closing note for what a future session should look at
+    next (nothing further is queued; the remaining candidates all need either
+    a `cna`-side fix or a new user product-scope decision).
 - **Orientation (#102): this sample has nothing to do with the accelerometer at
   all** — it was miscategorized. It demonstrates `GraphicsDeviceManager
   .SupportedOrientations`/`GameWindow.CurrentOrientation`/`OrientationChanged`
@@ -1322,7 +1347,7 @@ already replicates gamer-roster changes.
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
 | 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
 | 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
-| 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample ✅ ported 2026-07-10 (original's own emulator keyboard fallback, not invented); TiltPerspective (still pending, same user go/no-go); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
+| 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample ✅ ported 2026-07-10 (original's own emulator keyboard fallback, not invented); TiltPerspective ✅ ported 2026-07-10 (genuinely invented keyboard-tilt scheme — original has no fallback of any kind, only a non-interactive wobble); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
 | 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
 | 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
 | 18 | Content-pipeline processor extensibility | tools | L | CustomModelEffect | not started |

@@ -14,49 +14,57 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 59 samples are fully ported and wired into the root
-`CMakeLists.txt`. **AccelerometerSample (#084) was ported this session** (see
-section 3) — the first of the two samples covered by the 2026-07-10 user
-go/no-go decision (section 8 task 9). Porting it turned up a correction to
-that decision's own premise: the task was originally framed as "invent a
-keyboard-tilt fallback, since the original never shipped one," but a direct
-read of `Accelerometer.cs:117-135` this session found the original *does*
-ship exactly such a fallback — the Visual Studio Windows Phone 7 emulator
-branch (`DeviceType != DeviceType.Device`), nested inside the same
-`#if WINDOWS_PHONE` block as the real-hardware branch rather than in a
-separate non-`#if` branch (which is why an earlier audit's "no `#if
-WINDOWS_PHONE` split" check missed it — see DEFERRED.md item #15's
-correction). So this port needed the same "un-`#if` an existing branch"
-treatment already established by Yacht/SnowShovel/Bounce, not an invented
-scheme; only TiltPerspective (#107, not yet ported — the second half of the
-same go/no-go decision) still needs re-auditing against this same
-correction before assuming its own scheme truly must be invented. Before
-this, **PeerToPeer (#103) was ported** — the third and final sample in the
-`NetworkSession`/`GamerServicesComponent` networking family (after
-ClientServerSample #091 and NetworkPrediction #100), confirming a *third*
-time that all three of ClientServerSample's original networking workarounds
-(DEFERRED.md items #19/#20/#21) stay gone for an independently-written
-sample, this time one with a genuinely different topology (full
-peer-to-peer broadcast, no host authority over simulation at all). This
-retired section 8 task 7 and, with it, the original "port more samples"
-backlog this session set out to work through — see section 8's rewritten
-task list for what a future session should look at next (re-scanning
-placeholders for anything DEFERRED item #26's fix pattern newly unblocks,
-etc.). The Avatar scope question is settled (2026-07-10, user go/no-go —
-see section 8 task 10): the 5 Avatar samples will not be ported.
-TiltPerspective (#107) is queued as the very next follow-up (see section 8
-task 9). MarbleMaze (#061), ChaseCamera (#058), and InverseKinematics
-(#057) (the original 3-sample lighting-candidate list) were ported in
-earlier sessions and remain done. 27 placeholder directories exist for
-samples still genuinely blocked on real CNA engine work (custom shaders,
-skeletal animation, one content-pipeline gap) or on the still-pending
-TiltPerspective follow-up — verified by direct count: `ls samples | wc -l`
-= 86 total sample directories = 59 active `add_subdirectory` lines + 27
+**Current phase:** 60 samples are fully ported and wired into the root
+`CMakeLists.txt`. **TiltPerspective (#107) was ported this session** (see
+section 3) — the second and last of the two samples covered by the
+2026-07-10 user go/no-go decision (section 8 task 9), completing it. Unlike
+its sibling AccelerometerSample (#084, ported in the prior session), this
+sample's own re-audit against the "look for a nested `DeviceType` branch
+inside `#if WINDOWS_PHONE`" correction (DEFERRED.md item #15) came back
+negative — `AccelerometerHelper.cs` has no `#if WINDOWS_PHONE` split at all
+and its own no-hardware fallback is a non-interactive, time-driven sinusoidal
+wobble, not a keyboard branch of any kind — so this port genuinely had to
+invent a keyboard-tilt control scheme from scratch (NOXNA), reusing the same
+X/Y-arrow-key shape AccelerometerSample's/Yacht's own *promoted* fallbacks
+already established, for consistency. **With this sample done, both halves of
+the 2026-07-10 user go/no-go (task 9) are complete, and there is no further
+approved/queued porting work** — see section 8's closing note. Before this,
+**AccelerometerSample (#084) was ported** — the first of the two samples
+covered by that same decision; porting it turned up the correction described
+above (its own emulator branch, unlike TiltPerspective's, already had a real
+keyboard fallback nested inside `#if WINDOWS_PHONE`, so no invention was
+needed there). Before that, **PeerToPeer (#103) was ported** — the third and
+final sample in the `NetworkSession`/`GamerServicesComponent` networking
+family (after ClientServerSample #091 and NetworkPrediction #100), confirming
+a *third* time that all three of ClientServerSample's original networking
+workarounds (DEFERRED.md items #19/#20/#21) stay gone for an
+independently-written sample, this time one with a genuinely different
+topology (full peer-to-peer broadcast, no host authority over simulation at
+all). This retired section 8 task 7 and, with it, the original "port more
+samples" backlog that session set out to work through — see section 8's
+rewritten task list for what a future session should look at next
+(re-scanning placeholders for anything DEFERRED item #26's fix pattern newly
+unblocks, etc.). The Avatar scope question is settled (2026-07-10, user
+go/no-go — see section 8 task 10): the 5 Avatar samples will not be ported.
+MarbleMaze (#061), ChaseCamera (#058), and InverseKinematics (#057) (the
+original 3-sample lighting-candidate list) were ported in earlier sessions and
+remain done. 26 placeholder directories exist for samples still genuinely
+blocked on real CNA engine work (custom shaders, skeletal animation, one
+content-pipeline gap) — verified by direct count: `ls samples | wc -l` = 86
+total sample directories = 60 active `add_subdirectory` lines + 26
 still-commented placeholder lines in the root `CMakeLists.txt`, with none
-unlisted either way. 67 catalogued directories are permanently out of
-scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`,
-redundant duplicates, or tied to a platform CNA won't target). See
-`PLAN.md`'s Sample Count Summary table for exact per-category counts.
+unlisted either way. 67 catalogued directories are permanently out of scope
+and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
+duplicates, or tied to a platform CNA won't target). See `PLAN.md`'s Sample
+Count Summary table for exact per-category counts.
+
+**No further approved/queued porting work exists as of this session** (see
+section 8's closing note in full): every remaining placeholder is blocked on
+either a `cna`-side engine fix (items #11, #13, #14, #6/#18, or the newer
+#22–#27) or a new user product-scope decision, not on porting effort alone. A
+future session should re-verify this claim (per section 5's own "DEFERRED.md
+blockers can go stale" caveat) rather than trust it indefinitely, and should
+check with the user for new direction before assuming there's nothing to do.
 
 **Important architectural decisions:**
 - One executable per sample; no shared sample library. Each `samples/<Name>/`
@@ -141,6 +149,96 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **TiltPerspective (#107) ported** (2026-07-10, follow-up session) — the
+  second and last of the two samples covered by the 2026-07-10 user go/no-go
+  decision (section 8 task 9), completing it. A small perspective-shifted 3D
+  scene (a textured box, `DebugDraw.hpp`) viewed through a
+  `Matrix.CreatePerspectiveOffCenter`-based camera that skews based on
+  estimated device tilt, plus a ball-in-a-box physics simulation
+  (`BallSimulation.hpp`, 25 balls colliding with the box walls and each other,
+  gravity driven directly by the same tilt reading). Read
+  `TiltPerspectiveSample.cs`/`AccelerometerHelper.cs`/`BallSimulation.cs`/
+  `DebugDraw.cs`/`RandomUtil.cs`/`GeometricPrimitive.cs`/`SpherePrimitive.cs`/
+  `VertexPositionNormal.cs` in full before writing any code, per this task's
+  own brief. Builds 0 warnings (two from-scratch rebuilds — one before, one
+  after removing temporary debug code); ran 8+ seconds with no crash across
+  three separate runs.
+  **Confirmed, per this task's own brief, that (unlike AccelerometerSample)
+  this sample's own fallback genuinely has no interactive branch to
+  promote** — a full read of `AccelerometerHelper.cs` found no `#if
+  WINDOWS_PHONE` split at all (confirmed by the `.csproj`'s single
+  `Windows Phone` configuration) and its own no-hardware path is a
+  non-interactive, time-driven sinusoidal wobble
+  (`FakeRollTheta += elapsed * FakeRollSpeed`) — no `Keyboard`/`GamePad`
+  reference anywhere in the file. So a keyboard-tilt scheme was genuinely
+  invented from scratch this time (NOXNA, per the user go/no-go): `Left`/
+  `Right` → `X∓`/`X±`, `Up`/`Down` → `Y±`/`Y∓`, `Z` fixed at `-1`,
+  `Vector3::Normalize()`'d — reusing the same shape AccelerometerSample's/
+  Yacht's own *promoted* (not invented) fallbacks already established, for
+  consistency, even though nothing in this sample's own original resembles
+  it. Everything downstream (`BallSimulation.hpp`,
+  `TiltPerspectiveGame::ComputeEyeVector()`) reads only
+  `RawAcceleration`/`SmoothAcceleration` exactly like the original, so none of
+  that code needed to change — only the input source did, exactly matching
+  this task's design goal.
+  **Applied DEFERRED.md item #5's still-open remainder** (the same
+  texture-less-procedural-vertex gap Primitives3D's own `missing.md` already
+  flagged): `GeometricPrimitive.hpp`/`SpherePrimitive.hpp` assign a dummy
+  `(0,0)` UV to every procedurally-generated sphere vertex and use the
+  already-proven `VertexPositionNormalTexture` + `BasicEffect` lit path,
+  confirmed this does **not** hit DEFERRED.md item #26's vtable/stride bug
+  (this sample never goes through `ModelTypeReader`/`Content.Load<Model>` at
+  all — the geometry is built procedurally at runtime and uploaded via
+  `VertexBuffer::SetData()`'s typed overload, which manually packs a plain,
+  vtable-free 32-byte struct, confirmed by direct source read of
+  `VertexBuffer.cpp`).
+  **Found and root-caused (via the real FNA source, not assumed) a confirmed,
+  faithfully-reproduced characteristic, not a CNA gap:** the balls render as
+  near-black spheres with only a white specular highlight, because
+  `GeometricPrimitive.cs` itself never sets `DirectionalLight0.DiffuseColor`
+  (FNA's own `DirectionalLight.cs` confirms it defaults to `Vector3.Zero`,
+  and `cna`'s own `DirectionalLight.cpp` matches this exactly) — the
+  per-ball `DiffuseColor` tint is genuinely invisible in the **real XNA
+  original too**, not just this port. A related dead-code finding in the same
+  vein: `TiltPerspectiveSample.cs`'s own accelerometer-driven
+  `worldGeometry.BasicEffect.DirectionalLight0.Direction = lightDirection;`
+  line is immediately overwritten by `DebugDraw.cs`'s own `Draw()` (which
+  unconditionally resets it to `-Vector3.UnitZ`), so the box's lighting never
+  actually reflects tilt in the original either — both reproduced faithfully.
+  Substituted the original's `TouchPanel.GetState().Count > 0` recalibration
+  check with "hold the left mouse button" (continuously re-checked each
+  frame, matching the original's own semantics) — confirmed by direct source
+  read of `cna/src/CNA/Internal/Input/SdlInputBridge.cpp` that CNA's
+  `TouchPanel` is fed only from real SDL finger events, never mouse clicks, so
+  a literal port would have been permanently unreachable on this desktop.
+  `TiltPerspectiveSample.htm` has no Sample Controls table at all (only a
+  descriptive touch/tilt paragraph, the same situation Graphics3D's/
+  MarbleMaze's own `missing.md` already documented) — used a one-off script
+  (not committed to `tools/`) importing `gen_help_png.py`'s own
+  `build_text()`/`render_png()` helpers with hand-written text describing
+  this port's actual controls. Confirmed live via this repo's established
+  temporary debug-auto-trigger pattern (both patches reverted before commit,
+  re-verified with a clean from-scratch rebuild afterward — 0 warnings;
+  `xdotool getactivewindow` showed a different real user window,
+  `0x400003`, held focus throughout, so no synthetic keypresses were sent):
+  forcing the synthesized tilt vector's `X` component confirmed the ball
+  cluster visibly shifts/settles toward the tilted wall and the box's
+  perspective framing visibly changes, proving the keyboard-tilt vector
+  drives both `BallSimulation`'s gravity and the perspective shift, exactly
+  mirroring how the original's own fake wobble would have driven both, just
+  from keyboard state instead of a sine wave; the F1 help overlay rendered
+  and then correctly disappeared after its 10-second timer. Converted
+  `stone4.tga` (256×256 RGB Targa) to PNG directly via ImageMagick, the same
+  established `.tga`→`.png` path already used by ClientServerSample's/
+  AimingSample's own assets. No new DEFERRED.md item filed — the one
+  genuinely new-to-this-sample gap (texture-less procedural vertices) is
+  already fully covered by item #5's existing remainder, and every other
+  finding is either a faithful, source-confirmed reproduction of the
+  original's own code or an already-established repo-wide pattern. See
+  `samples/TiltPerspective/missing.md` for the complete account. **With this
+  sample done, both halves of the 2026-07-10 user go/no-go (task 9) are
+  complete — see section 8's closing note for what (if anything) a future
+  session should look at next.**
 - **AccelerometerSample (#084) ported** (2026-07-10) — the first of the two
   samples covered by the 2026-07-10 user go/no-go decision (section 8 task 9):
   a sprite (an asteroid) slides around a starfield background purely from
@@ -193,8 +291,8 @@ screenshot.
   direct port of the original's own code or an already-tracked, previously
   documented pattern. See `samples/AccelerometerSample/missing.md` for the
   complete account. TiltPerspective (#107, the second half of the same
-  go/no-go decision) is queued as the very next follow-up — not started this
-  session.
+  go/no-go decision) was ported in the very next follow-up session — see the
+  entry above and `samples/TiltPerspective/missing.md`.
 - **PeerToPeer (#103) ported** (2026-07-10) — the third and final sample in this
   repo's `NetworkSession`/`GamerServicesComponent` family, and the first with a
   genuinely different network *topology*: full peer-to-peer broadcast with **no
@@ -588,7 +686,132 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-10, seventh follow-up):** Ported
+**Newest session (2026-07-10, eighth follow-up):** Ported
+**TiltPerspective (#107)**, the second and last of the two samples covered by
+section 8 task 9's 2026-07-10 user go/no-go decision — completing it. Read
+`TiltPerspective_4_0/TiltPerspective/{TiltPerspectiveSample.cs,
+AccelerometerHelper.cs, BallSimulation.cs, DebugDraw.cs, RandomUtil.cs,
+GeometricPrimitive.cs, SpherePrimitive.cs, VertexPositionNormal.cs}` in full,
+plus the placeholder `missing.md` already on disk, per this task's own brief,
+before writing any code.
+
+**Key finding: unlike AccelerometerSample, this sample's own fallback
+genuinely has no interactive branch of any kind to promote — a keyboard-tilt
+scheme really did need to be invented from scratch this time.** Per this
+task's own brief, `AccelerometerHelper.cs` was re-checked against the exact
+same "look for a `DeviceType` branch nested inside `#if WINDOWS_PHONE`"
+correction found while porting AccelerometerSample (DEFERRED.md item #15),
+rather than assumed identical either way. The result differs from
+AccelerometerSample: `AccelerometerHelper.cs` has **no** `#if WINDOWS_PHONE`
+split at all (confirmed by `TiltPerspective.csproj`'s single `Windows Phone`
+build configuration and a full-file read), and its own no-hardware fallback
+(`Sensor == null`, the only reachable path on a desktop build) is a
+non-interactive, purely time-driven sinusoidal wobble
+(`FakeRollTheta += elapsed * FakeRollSpeed`) — no `Keyboard`/`GamePad`
+reference appears anywhere in the file. So, per the 2026-07-10 user go/no-go,
+this port genuinely invented a keyboard-tilt scheme (NOXNA): `Left`/`Right`
+→ `X∓`/`X±`, `Up`/`Down` → `Y±`/`Y∓`, `Z` fixed at `-1`,
+`Vector3::Normalize()`'d — deliberately reusing the same shape
+AccelerometerSample's/Yacht's own *promoted* (not invented) fallbacks already
+established, for consistency across the repo's tilt-emulation samples, even
+though nothing in this sample's own original resembles it. Every downstream
+consumer (`BallSimulation.hpp`'s gravity, `TiltPerspectiveGame::
+ComputeEyeVector()`'s perspective shift) reads only
+`RawAcceleration`/`SmoothAcceleration` exactly like the original, so none of
+that code needed to change — only the input source did, exactly matching
+this task's design goal.
+
+Ported `GeometricPrimitive.cs`/`SpherePrimitive.cs`'s procedural sphere
+generation directly, applying DEFERRED.md item #5's still-open remainder
+(the same texture-less-procedural-vertex gap this task's own brief predicted,
+already flagged by Primitives3D's own `missing.md`): `GeometricPrimitive.hpp`
+assigns a dummy `(0,0)` UV to every vertex and uses the already-proven
+`VertexPositionNormalTexture` + `BasicEffect` lit path instead of a new CNA
+vertex type. Confirmed (rather than assumed) this does **not** hit DEFERRED.md
+item #26's vtable/stride-collision bug: this sample's geometry is generated
+procedurally at runtime and uploaded via `VertexBuffer::SetData()`'s typed
+overload, which manually packs a plain, vtable-free 32-byte struct before
+handing it to the backend (confirmed by direct source read of
+`VertexBuffer.cpp`) — the bug is specific to `ModelTypeReader::Read()`'s own
+stride-vs-`sizeof()` comparison, which this sample's code never goes through
+at all (no `Content.Load<Model>` anywhere in this sample).
+
+**Found and root-caused, via the real FNA reference source rather than
+assumed, a confirmed characteristic that is NOT a CNA gap:** every ball
+renders as a near-black sphere with only a small white specular highlight —
+the per-ball `DiffuseColor` tint (Red/Green/Blue/White/Black) is invisible.
+Root cause: `GeometricPrimitive.cs` itself never sets
+`DirectionalLight0.DiffuseColor` anywhere (confirmed by a full-file grep);
+reading FNA's own `DirectionalLight.cs` confirms a freshly-constructed
+light's `DiffuseColor` defaults to `Vector3.Zero`, and `cna`'s own
+`DirectionalLight.cpp` matches this exactly — so the diffuse term is
+genuinely zero regardless of the ball's own tint, in **both the real XNA
+original and this faithful port**. A related dead-code finding in the same
+vein: `TiltPerspectiveSample.cs`'s own `worldGeometry.BasicEffect.
+DirectionalLight0.Direction = lightDirection;` line (the "light always comes
+from the ceiling" comment) is immediately overwritten by `DebugDraw.cs`'s own
+`Draw()`, which unconditionally resets it to `-Vector3.UnitZ` — the box's
+lighting never actually reflects tilt in the original either. Both are
+reproduced faithfully in this port, not fixed (there's nothing to fix — it's
+what the original does).
+
+Substituted the original's `TouchPanel.GetState().Count > 0` "touch to
+recalibrate level" check with "hold the left mouse button" (re-checked every
+frame, matching the original's own continuous-while-held semantics) —
+confirmed by direct source read of `cna/src/CNA/Internal/Input/
+SdlInputBridge.cpp` that CNA's `TouchPanel` is fed only from real SDL finger
+events, never mouse clicks, so a literal port would have been permanently
+unreachable on this desktop (no touchscreen). `TiltPerspectiveSample.htm` has
+no Sample Controls table at all (only a descriptive touch/tilt paragraph),
+the same situation Graphics3D's/MarbleMaze's own `missing.md` already
+documented — used a one-off scratch script (not committed to `tools/`)
+importing `gen_help_png.py`'s own `build_text()`/`render_png()` helpers with
+hand-written text describing this port's actual controls.
+
+Builds 0 warnings (two from-scratch rebuilds — one before, one after removing
+temporary debug code). Ran under `SDL_VIDEODRIVER=x11` for 8+ seconds across
+three separate runs with no crash. Confirmed live via this repo's established
+temporary debug-auto-trigger pattern (both patches reverted before commit,
+re-verified with a clean from-scratch rebuild afterward — 0 warnings;
+`xdotool getactivewindow` showed a different real user window, `0x400003`,
+held focus throughout, so no synthetic keypresses were sent): forcing the
+synthesized tilt vector's `X` component confirmed the ball cluster visibly
+shifts and settles toward the tilted wall, and the box's perspective framing
+visibly changes between the untilted and tilted runs — direct proof the
+keyboard-tilt vector drives both `BallSimulation`'s gravity
+(`IAccelerometerService::RawAcceleration`) and `TiltPerspectiveGame::
+ComputeEyeVector()`'s perspective shift (`SmoothAcceleration`), exactly
+mirroring how the original's own fake wobble would have driven both, just
+from keyboard state instead of a sine wave. The F1 help overlay rendered and
+then correctly disappeared after its 10-second timer. Also confirmed live
+(passively, with no forced input) that `BallSimulation`'s gravity/collision
+physics runs every frame under level/untilted input: two screenshots several
+seconds apart show the 25 balls visibly changed position/clustering.
+
+Converted `stone4.tga` (256×256 RGB Targa, the box's interior wall texture) to
+PNG directly via ImageMagick (`convert stone4.tga stone4.png`), the same
+established `.tga`→`.png` path already used by ClientServerSample's/
+AimingSample's own assets. No new DEFERRED.md item filed — the one genuinely
+new-to-this-sample gap (texture-less procedural vertices) is already fully
+covered by item #5's existing remainder, and every other finding is either a
+faithful, source-confirmed reproduction of the original's own code (including
+two inert/dead-code characteristics) or an already-established repo-wide
+pattern (fullscreen/screensaver omission, Escape-to-exit, touch-to-mouse
+substitution, the F1-overlay-width-vs-portrait-window characteristic, and the
+"no Sample Controls table" one-off help-script precedent). See
+`samples/TiltPerspective/missing.md` for the complete account.
+
+**With this sample done, both halves of the 2026-07-10 user go/no-go
+(section 8 task 9) are complete.** There is no further approved/queued
+porting work as of this session — every remaining placeholder sample needs
+either a `cna`-side engine fix (DEFERRED.md items #11, #13, #14, #6/#18, or
+the newer #22–#27) or a new user product-scope decision to become concrete
+work, per section 8's closing note (updated this session).
+
+Commit this session: see the git log for this session's commit hash,
+pushed to `develop`.
+
+**Previous session (2026-07-10, seventh follow-up):** Ported
 **AccelerometerSample (#084)**, the first of the two samples covered by
 section 8 task 9's 2026-07-10 user go/no-go decision. Read
 `AccelerometerSample_4_0/Accelerometer/Accelerometer/{Accelerometer.cs,
@@ -1734,12 +1957,14 @@ separately):**
   above, but a real, separate, latent gap).
 
 Secondary, lower-urgency items (not blocking, just open):
-- Both pending product/scope decisions are now settled (2026-07-10, user
-  go/no-go): AccelerometerSample (#084) is **done** (ported this session —
-  turned out to need the original's own emulator keyboard fallback, not an
-  invented one, see DEFERRED.md item #15's correction); TiltPerspective
-  (#107) is still pending, queued as the next follow-up (section 8, task 9);
-  the 5 Avatar samples will not be ported (section 8, task 10, retired).
+- Both pending product/scope decisions are now fully settled (2026-07-10, user
+  go/no-go): AccelerometerSample (#084) **and** TiltPerspective (#107) are both
+  **done** (the former needed the original's own emulator keyboard fallback,
+  not an invented one; the latter needed a genuinely invented keyboard-tilt
+  scheme, since its own original's fallback is a non-interactive time-driven
+  wobble with nothing to promote — see DEFERRED.md item #15's correction,
+  section 8 task 9 now fully done); the 5 Avatar samples will not be ported
+  (section 8, task 10, retired).
 - The Vulkan backend's multi-`SpriteBatch`-per-frame bug (section 5) is separate
   from the above and only affects the non-default Vulkan backend.
 
@@ -1950,16 +2175,18 @@ No lint/format command and no automated test suite are configured in this repo.
 **Recently completed (2026-07-09/07-10):** LensFlare (#041), Graphics3D (#046),
 PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
 InverseKinematics (#057), ChaseCamera (#058), MarbleMaze (#061),
-NetworkPrediction (#100), PeerToPeer (#103), and **AccelerometerSample
-(#084)**, all screenshot-verified — see section 3 for the full account of
-each, including the new DEFERRED.md items (#22–#27), the item #6/#9/#15
-corrections, and item #23's clarification. Tasks 6 and 7 (below) are both
-retired, and task 9 is now half-done (AccelerometerSample shipped;
-TiltPerspective still pending) — **this completes the original "port more
-samples" backlog this multi-session porting run set out to work through.**
-See task 7's own entry for a full account of what's left, and this
-section's new closing note for what a future session's task list should
-look like.
+NetworkPrediction (#100), PeerToPeer (#103), **AccelerometerSample (#084)**,
+and **TiltPerspective (#107)**, all screenshot-verified — see section 3 for
+the full account of each, including the new DEFERRED.md items (#22–#27), the
+item #6/#9/#15 corrections, and item #23's clarification. Tasks 6, 7, and now
+9 (below) are all retired/fully done — **this completes both the original
+"port more samples" backlog this multi-session porting run set out to work
+through, and the 2026-07-10 user go/no-go decision covering these last two
+samples.** See task 7's own entry for a full account of the porting backlog,
+and this section's new closing note for what a future session's task list
+should look like — **as of this session, there is no further approved/queued
+porting work; the next concrete step needs either a `cna`-side fix or a new
+user product-scope decision.**
 
 **Backlog-exhaustion note (2026-07-10):** every sample this session's own
 brief could point to as "confirmed-unblocked, zero CNA gap, just needs the
@@ -1987,13 +2214,19 @@ blocked by a custom HLSL shader (item #11), skeletal animation (item #13), or
 per-mesh `ModelBone` support (item #6/#18) instead — deeper gaps item #26's fix
 alone does not remove. A future session should still re-check this rather than
 trust this session's one-time audit, per the same staleness caveat above. Both
-previously-open product-scope decisions are now settled (2026-07-10, user
-go/no-go — see tasks 9/10 below): AccelerometerSample is done (shipped this
-session with the original's own emulator keyboard fallback, not an invented
-one — see DEFERRED.md item #15's correction); TiltPerspective is still
-pending; do not port the 5 Avatar samples. Once task 9 fully ships, the next
-concrete candidates are all gated on a `cna`-side fix
-(item #11, #13, #14, or #6/#18) rather than more porting effort.
+previously-open product-scope decisions are now fully settled (2026-07-10,
+user go/no-go — see tasks 9/10 below): AccelerometerSample **and**
+TiltPerspective are both done (the former shipped with the original's own
+emulator keyboard fallback, not invented; the latter needed a genuinely
+invented keyboard-tilt scheme, since its own original's fallback is a
+non-interactive time-driven wobble with nothing to promote — see DEFERRED.md
+item #15's correction); the 5 Avatar samples will not be ported. **With task 9
+now fully shipped, every remaining concrete candidate is gated on a `cna`-side
+fix (item #11, #13, #14, #6/#18, or the newer #22–#27) or a new user
+product-scope decision — there is no more approved/queued porting work as of
+this session.** A future session should re-verify this rather than trust it
+indefinitely (per section 5's staleness caveat), and should check with the
+user for new direction before assuming otherwise.
 
 1. **✅ DONE (2026-07-10): fixed `SafeArea`'s and `RolePlayingGame`'s
    `Viewport.x`/`.y` build breakages — full aggregate build is green again.**
@@ -2154,31 +2387,33 @@ concrete candidates are all gated on a `cna`-side fix
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
      confirm all layers draw.
 
-9. **✅ HALF DONE (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
-   TiltPerspective (#107).** AccelerometerSample is **done** — see section 3
-   for the full account. TiltPerspective is the remaining follow-up.
-   - **Correction found while porting AccelerometerSample:** the task was
+9. **✅ FULLY DONE (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
+   TiltPerspective (#107).** Both samples are **done** — see section 3 for the
+   full account of each and `samples/AccelerometerSample/missing.md`/
+   `samples/TiltPerspective/missing.md` for the complete per-sample write-ups.
+   - **Correction found while porting AccelerometerSample, then explicitly
+     re-checked (not assumed) while porting TiltPerspective — the two samples
+     turned out to need genuinely different treatment.** The task was
      originally framed as "invent a keyboard-based tilt substitute, since
-     neither original has any non-phone code to reuse" — that premise was
-     wrong for AccelerometerSample specifically. A direct read of
+     neither original has any non-phone code to reuse." That premise was
+     wrong for AccelerometerSample: a direct read of
      `Accelerometer.cs:117-135` found the original's own `GetState()` already
      has a keyboard fallback (the Windows Phone 7 *emulator* branch, gated on
      `DeviceType != DeviceType.Device`, nested inside the same
      `#if WINDOWS_PHONE` block as the real-hardware branch) — ported verbatim
-     instead of inventing anything. See DEFERRED.md item #15's correction and
-     `samples/AccelerometerSample/missing.md` for the exact code and mapping.
-     **Not yet re-checked for TiltPerspective** — before assuming
-     TiltPerspective truly needs an invented scheme, re-read its own
-     `AccelerometerHelper.cs` (or equivalent) with this same "look for a
-     nested `DeviceType` branch inside `#if WINDOWS_PHONE`, not just a
-     top-level `#if` split" correction in mind. Only invent a scheme from
-     scratch (documented as a NOXNA input substitution in `missing.md`, the
-     same way touch→mouse substitutions are documented elsewhere in this
-     repo) if that re-check confirms there's genuinely nothing to reuse.
-   - Files: new `samples/TiltPerspective/src/` (AccelerometerSample's own
-     `samples/AccelerometerSample/src/` is done).
-   - Verify: `cmake --build cmake-build-debug --target TiltPerspective_cna_samples`
-     (AccelerometerSample already verified — see section 3/missing.md).
+     instead of inventing anything. The premise turned out to be **correct**
+     for TiltPerspective, though, once actually re-checked rather than assumed
+     either way: `AccelerometerHelper.cs` has no `#if WINDOWS_PHONE` split at
+     all, and its own no-hardware fallback is a non-interactive, time-driven
+     sinusoidal wobble with no `Keyboard`/`GamePad` reference anywhere in the
+     file — genuinely nothing to promote. So TiltPerspective's own keyboard-tilt
+     scheme really was invented from scratch (NOXNA), reusing
+     AccelerometerSample's/Yacht's own promoted-fallback shape for consistency.
+     See DEFERRED.md item #15's correction (updated again this session) and
+     both samples' own `missing.md` for the exact code/mapping in each case.
+   - Files: `samples/AccelerometerSample/src/` and
+     `samples/TiltPerspective/src/` (both done).
+   - Verify: both done — see section 3/each sample's `missing.md`.
 
 10. **RETIRED (2026-07-10, user go/no-go): the 5 reopened Avatar samples**
     (#085, #086, #087, #094, #101) **will not be ported.** The user decided the
