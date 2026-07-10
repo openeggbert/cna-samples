@@ -808,8 +808,7 @@ either a `cna`-side engine fix (DEFERRED.md items #11, #13, #14, #6/#18, or
 the newer #22–#27) or a new user product-scope decision to become concrete
 work, per section 8's closing note (updated this session).
 
-Commit this session: see the git log for this session's commit hash,
-pushed to `develop`.
+Commit this session: `70c0c52`, pushed to `develop`.
 
 **Previous session (2026-07-10, seventh follow-up):** Ported
 **AccelerometerSample (#084)**, the first of the two samples covered by
