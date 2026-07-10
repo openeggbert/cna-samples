@@ -177,6 +177,22 @@ resulting cubemap renders as a genuinely reflective/chrome surface. This item re
 open and RimLighting remains its only *blocking* dependent — ReachGraphicsDemo simply
 didn't need `Content.Load<TextureCube>` itself to ship a real, working cubemap.
 
+**Update (2026-07-10, RimLighting #037 ported): this item's only blocking dependent is
+now also unblocked, via the identical bypass.** `OutputCube.dds` is a real, already-baked
+6-face DDS cubemap (unlike EnvmapDemo's procedurally-built one), but it's
+**uncompressed** (`xRGB8888`), so `TextureCube::DDSFromStreamEXT` (CNA's own NOXNA
+direct-DDS-stream loader, checked first) couldn't be used either — it only decodes
+DXT1/DXT3/DXT5-compressed cube maps. Worked around identically to EnvmapDemo: extracted
+each of the 6 faces to an ordinary PNG with ImageMagick
+(`convert OutputCube.dds[N] ... envmap_face.png`), loaded via `Content.Load<Texture2D>`,
+copied into a real `TextureCube` via `SetData()`. Face order confirmed correct (DDS
+index N ↔ `CubeMapFace(N)`, matching `DDSFromStreamEXT`'s own
+`static_cast<CubeMapFace>(face)` loop) — see `samples/RimLighting/missing.md` for the
+full account, including live visual confirmation (a clean, correctly-shaped rim-light
+highlight, not a scrambled or mis-mapped one). This item is no longer known to block any
+sample in this repo's current task list, though it remains open (`cna` itself
+unchanged, per this session's own "do not edit cna/sharp-runtime" constraint).
+
 **Effort:** S
 
 ---
@@ -1459,6 +1475,73 @@ No other currently-ported sample in this repo uses `DualTextureEffect` with a
 
 ---
 
+## 30. `tools/fbx_ascii2model.py` assumed `LayerElementNormal` is always "ByPolygonVertex" — it usually isn't
+
+**Found while porting RimLighting (2026-07-10).** `head.fbx`'s own `LayerElementNormal`
+block declares `MappingInformationType: "ByVertice"` — exactly one normal per unique
+vertex/control-point (same array length as `Vertices:`, confirmed live: both exactly
+8213 entries for this mesh), indexed the same way `Vertices:` is (`pos_idx`), **not**
+per-polygon-corner the way UVs are. `tools/fbx_ascii2model.py`'s `build_buffers()`
+unconditionally indexed the `Normals:` array by `flat_idx` (the per-polygon-corner flat
+index) regardless of this field — only correct for `"ByPolygonVertex"`-mapped files. For
+a `"ByVertice"`-mapped mesh with more polygon corners than unique vertices (the
+overwhelmingly common case for any mesh with vertex sharing), this silently reads
+normals from unrelated array slots for the corners where `flat_idx` happens to stay in
+bounds, and falls back to a hardcoded "straight up" `(0,1,0)` default for every other
+corner (~75% of them, for `head.fbx`).
+
+**Confirmed live via isolation:** a first conversion pass produced a recognizable head
+silhouette with severe, localized jagged/scrambled dark patches wherever the
+environment-map reflection was active. A temporary debug build forcing
+`EnvironmentMapAmount` to `0` (isolating out the reflection term, since
+`DirectionalLight0`'s own `DiffuseColor` is never set anywhere in `Game1.cs`, defaulting
+to black) rendered a perfectly clean, artifact-free silhouette — proving the raw
+geometry/positions were fine and narrowing the defect specifically to normal-dependent
+shading. Direct source read of `head.fbx` plus a length comparison
+(`len(normals) == len(positions) == 8213`, vs. `len(poly_indices) == 32752` corners)
+confirmed the root cause above.
+
+**A repo-wide grep across every FBX file used by this session's already-shipped
+samples found `"ByVertice"` is actually the *more common* of the two mapping modes:**
+`Ship.fbx` (ChaseCamera, converted directly via `tools/fbx_ascii2model.py`) and
+`saucer.fbx`/`model.fbx` (ReachGraphicsDemo, same tool) are all `"ByVertice"` too —
+meaning this bug likely also silently corrupted their own already-shipped `_verts.bin`
+normals (not re-verified or re-shipped as part of this task — out of scope for a
+single-sample porting session). Only `tank.fbx` (ReachGraphicsDemo, converted by its
+own separate one-off script, not this shared tool), `P2Wedge.FBX`/`Cats.FBX`
+(PickingSample/TrianglePicking), and `maze1.FBX`/`marble.FBX` (MarbleMaze, binary FBX,
+different pipeline) are confirmed `"ByPolygonVertex"` or not applicable — those are not
+suspected of being affected.
+
+**Fix (applied 2026-07-10):** `parse_mesh_block()` now also returns the
+`LayerElementNormal`'s own `MappingInformationType`; `build_buffers()` takes it as a new
+parameter (default `"ByPolygonVertex"`, preserving old behavior when absent) and indexes
+`Normals:` by `pos_idx` when the mode is `"ByVertice"`/`"ByControlPoint"`, by `flat_idx`
+otherwise. **Confirmed this does not change any already-shipped `"ByPolygonVertex"`
+asset:** re-ran `P2Wedge.FBX` and `Cats.FBX` (PickingSample) through the fixed tool and
+diff'd the output `_verts.bin`/`_idx.bin` byte-identical to the already-shipped files.
+
+**What's needed for full remediation (not done this session):** re-run
+`tools/fbx_ascii2model.py` against `Ship.fbx` (ChaseCamera) and `saucer.fbx`/`model.fbx`
+(ReachGraphicsDemo), diff the resulting `_verts.bin` against the currently-shipped ones
+(a diff would confirm real impact), and if they differ, re-screenshot each affected
+sample to check whether the corrected normals produce a visibly different (and more
+correct) render — most likely to matter for ReachGraphicsDemo's `EnvmapDemo` (saucer,
+rendered with reflective `EnvironmentMapEffect`, the same effect class that made this
+bug so visually obvious for RimLighting) and less likely to be visually obvious for
+ChaseCamera's `Ship` (rendered with diffuse-textured `BasicEffect`, where wrong normals
+mostly just look like slightly-off shading rather than scrambled reflections).
+
+**Blocked samples:** RimLighting (#037 — fixed via the tool fix, now ships correct
+normals). ChaseCamera (#058) and ReachGraphicsDemo (#005) are *suspected* to have
+subtly-wrong (not necessarily visibly broken) normals in their own already-shipped
+`Ship`/`saucer`/`model` assets — not confirmed broken, not re-shipped.
+
+**Effort:** S (the fix itself is done); re-verifying/re-shipping the 2 other suspected
+samples is effort S each (re-run the tool, diff, screenshot-compare).
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -1476,7 +1559,7 @@ No other currently-ported sample in this repo uses `DualTextureEffect` with a
 | 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
 | 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
-| 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | RimLighting | not started |
+| 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | none blocking (RimLighting/EnvmapDemo both bypassed via direct `TextureCube::SetData()`) | not started |
 | 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample ✅ ported 2026-07-10 (original's own emulator keyboard fallback, not invented); TiltPerspective ✅ ported 2026-07-10 (genuinely invented keyboard-tilt scheme — original has no fallback of any kind, only a non-interactive wobble); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
 | 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
 | 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
@@ -1492,3 +1575,4 @@ No other currently-ported sample in this repo uses `DualTextureEffect` with a
 | 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer ported 2026-07-10, confirmed doesn't use SessionProperties at all — not affected | not started |
 | 28 | EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw in the same frame breaks that frame's 3D rendering | cna | M | ReachGraphicsDemo (EnvmapDemo — worked around via a hand-built 3D quad instead of SpriteBatch) | not started |
 | 29 | EasyGL: DualTextureEffect's shader hardcodes a Position+UV-only (no Normal) vertex attribute layout, unlike BasicEffect/EnvironmentMapEffect | cna | S/M | ReachGraphicsDemo (DualDemo — worked around via a Position+UV-only vertex upload, RawMeshPosTex.hpp) | not started |
+| 30 | tools/fbx_ascii2model.py assumed LayerElementNormal is always "ByPolygonVertex" (usually "ByVertice") | tools | S | RimLighting ✅ fixed; ChaseCamera/ReachGraphicsDemo's own already-shipped Ship/saucer/model assets suspected affected, not re-verified | ✅ tool fixed 2026-07-10; other samples' assets not re-shipped |

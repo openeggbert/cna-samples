@@ -14,9 +14,20 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 61 samples are fully ported and wired into the root
-`CMakeLists.txt`. **ReachGraphicsDemo (#005) was ported this session** (see
-section 3) — a "Phase 1" sample previously flagged (2026-07-10, earlier in this
+**Current phase:** 62 samples are fully ported and wired into the root
+`CMakeLists.txt`. **RimLighting (#037) was ported this session** (see section 3)
+— the sample DEFERRED.md item #14 and section 8 task 6's retirement note both
+flagged as the closest remaining portable placeholder: `EnvironmentMapEffect`-
+based rim lighting against a real 6-face `OutputCube.dds`, with both
+`Content.Load<TextureCube>` (item #14) and `Content.Load<Model>` (item #26)
+bypassed the same way ReachGraphicsDemo's `EnvmapDemo` bypassed its own
+cubemap. Found and fixed a second real `tools/fbx_ascii2model.py` bug in the
+process (DEFERRED.md item #30, new — the tool assumed `LayerElementNormal` is
+always `"ByPolygonVertex"`; it's usually `"ByVertice"`, and a repo-wide grep
+found this likely also affects ChaseCamera's `Ship.fbx` and ReachGraphicsDemo's
+`saucer.fbx`/`model.fbx`, not re-verified/re-shipped this session). Before
+this, **ReachGraphicsDemo (#005) was ported** — a "Phase 1" sample previously
+flagged (2026-07-10, earlier in this
 same multi-session run) as likely-unblocked-but-unverified: its own `missing.md`
 had gone stale, claiming SpriteFont/`Content.Load<Model>`/`EnvironmentMapEffect`/
 `DualTextureEffect` were all missing from CNA when in fact all four are
@@ -71,10 +82,10 @@ unblocks, etc.). The Avatar scope question is settled (2026-07-10, user
 go/no-go — see section 8 task 10): the 5 Avatar samples will not be ported.
 MarbleMaze (#061), ChaseCamera (#058), and InverseKinematics (#057) (the
 original 3-sample lighting-candidate list) were ported in earlier sessions and
-remain done. 25 placeholder directories exist for samples still genuinely
+remain done. 24 placeholder directories exist for samples still genuinely
 blocked on real CNA engine work (custom shaders, skeletal animation, one
 content-pipeline gap) — verified by direct count: `ls samples | wc -l` = 86
-total sample directories = 61 active `add_subdirectory` lines + 25
+total sample directories = 62 active `add_subdirectory` lines + 24
 still-commented placeholder lines in the root `CMakeLists.txt`, with none
 unlisted either way. 67 catalogued directories are permanently out of scope
 and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
@@ -84,7 +95,7 @@ Count Summary table for exact per-category counts.
 **No further approved/queued porting work exists as of this session** (see
 section 8's closing note in full): every remaining placeholder is blocked on
 either a `cna`-side engine fix (items #11, #13, #14, #6/#18, or the newer
-#22–#29) or a new user product-scope decision, not on porting effort alone. A
+#22–#30) or a new user product-scope decision, not on porting effort alone. A
 future session should re-verify this claim (per section 5's own "DEFERRED.md
 blockers can go stale" caveat) rather than trust it indefinitely, and should
 check with the user for new direction before assuming there's nothing to do.
@@ -172,6 +183,25 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **RimLighting (#037) ported** (2026-07-10, tenth follow-up session) —
+  `EnvironmentMapEffect`-based rim lighting: `World`/`View` swapped
+  (`World <- World*View`, `View <- Identity`) so the cube-map lookup happens in
+  view space, against a real 6-face `OutputCube.dds` (all faces dark except a
+  bright "back" face) for the silhouette highlight. Both
+  `Content.Load<TextureCube>` (DEFERRED item #14) and `Content.Load<Model>`
+  (item #26) bypassed via direct `TextureCube`/`VertexBuffer` construction,
+  the same philosophy as ReachGraphicsDemo's `EnvmapDemo`. `head.fbx` also has
+  a real non-identity parent Null bone (translation + 180°-Y rotation), baked
+  into the vertex data at conversion time (the group node is static, no
+  animation Take references it). Found and fixed a second real
+  `tools/fbx_ascii2model.py` bug (DEFERRED item #30, new — assumed
+  `LayerElementNormal` is always `"ByPolygonVertex"`; it's usually
+  `"ByVertice"`, confirmed via a repo-wide grep to likely also affect
+  ChaseCamera's `Ship.fbx` and ReachGraphicsDemo's `saucer.fbx`/`model.fbx`,
+  not re-shipped this session). Builds 0 warnings; ran 15+ seconds with no
+  crash; screenshots confirm a clean, anatomically-consistent rim-light
+  highlight and correct UI. See `samples/RimLighting/missing.md` and section 3
+  for the complete account.
 - **ReachGraphicsDemo (#005) ported** (2026-07-10, follow-up session) — a
   Phase 1 sample ("MIX10 Graphics Effects Demo"): a menu-driven showcase of 5
   of XNA 4.0 Reach-profile stock effects, each its own demo scene, sharing a
@@ -817,7 +847,100 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-10, ninth follow-up):** Ported **ReachGraphicsDemo
+**Newest session (2026-07-10, tenth follow-up):** Ported **RimLighting (#037)**
+— the sample section 8 task 6's retirement note and DEFERRED.md item #14 both
+flagged as "the closest remaining portable sample," needing only the same
+`TextureCube`-bypass technique ReachGraphicsDemo's `EnvmapDemo` had just proven
+a few sessions earlier. Read `Game1.cs`, `Camera/{Arcball,ModelViewerCamera}.cs`,
+and `UI/{UIElement,Button,Slidebar}.cs` in full, plus `EnvmapDemo.hpp`'s own
+header comment and `samples/ReachGraphicsDemo/missing.md`, before writing any
+code, per this task's own brief.
+
+Demonstrates `EnvironmentMapEffect`-based rim lighting: `World`/`View` are
+swapped (`World <- World*View`, `View <- Identity`) so the cube-map lookup
+happens in view space while screen space stays the same, against a cube map
+where every face is dark except a bright "back" face — producing a rim/
+silhouette highlight, per `RimLighting.htm`'s own "How the Sample Works"
+section. **Both of this sample's two real content-pipeline gaps were
+bypassed, not fixed in `cna`:**
+- `Content.Load<TextureCube>` (DEFERRED.md item #14): `OutputCube.dds` is a
+  real, already-baked 6-face DDS cubemap (uncompressed `xRGB8888`, so CNA's
+  own `TextureCube::DDSFromStreamEXT` — checked first — couldn't be used
+  either, it only decodes DXT-compressed cube maps). Extracted the 6 faces to
+  PNGs via ImageMagick (`convert OutputCube.dds[N] ...`), loaded via
+  `Content.Load<Texture2D>`, copied into a real `TextureCube` via `SetData()`
+  — the same bypass philosophy as `EnvmapDemo`'s cubemap, applied to a
+  differently-sourced asset. Face order confirmed correct on the first try
+  (DDS index N ↔ `CubeMapFace(N)`, matching `DDSFromStreamEXT`'s own internal
+  `static_cast`), confirmed both by inspecting the 5-black-1-bright face
+  layout before writing any C++ and by the final render showing a clean,
+  correctly-shaped rim highlight (a wrong mapping would have produced a
+  scrambled or mis-shaped one instead).
+- `Content.Load<Model>` (DEFERRED.md item #26): `head.fbx` bypassed via a new
+  `HeadModel.hpp` (the established `RawModel.hpp`-style pattern), applied
+  proactively. This model also has a genuinely non-identity **parent Null
+  bone** ("group", real translation + 180°-Y rotation) — baked into the
+  vertex data at conversion time by a one-off script (not committed to
+  `tools/`) since the group node is static (no animation Take references it),
+  mathematically identical to what `Model.CopyAbsoluteBoneTransformsTo()`
+  would recompute every frame for this non-animated 2-node hierarchy.
+
+**Found and fixed a second real `tools/fbx_ascii2model.py` bug this
+session (see DEFERRED.md item #30, new):** the tool assumed every FBX's
+`LayerElementNormal` uses `MappingInformationType: "ByPolygonVertex"` (one
+normal per polygon corner) — `head.fbx` actually declares `"ByVertice"` (one
+normal per unique vertex, confirmed live: `len(normals) == len(positions) ==
+8213`, not `len(poly_indices) == 32752`), and the tool's `build_buffers()`
+always indexed by the per-corner flat index regardless, silently corrupting
+~75% of this mesh's normals (falling back to a hardcoded "straight up"
+default). Found via a temporary debug build forcing `EnvironmentMapAmount` to
+`0`, which rendered a perfectly clean silhouette (isolating the defect to the
+reflection/normal-dependent term, not raw geometry) — the un-fixed render
+showed a recognizable head shape but with severe jagged/scrambled dark
+patches wherever the reflection was active. **A repo-wide grep found
+`"ByVertice"` is actually the more common mapping mode of the two** —
+ChaseCamera's `Ship.fbx` and ReachGraphicsDemo's `saucer.fbx`/`model.fbx`
+(all converted via this same shared tool) are `"ByVertice"` too, meaning this
+bug likely also affects their own already-shipped `_verts.bin` normals (not
+re-verified or re-shipped this session — flagged as a follow-up in DEFERRED
+item #30). Fixed the tool to read the mapping mode and index correctly for
+both cases; confirmed **zero regression** by re-running `P2Wedge.FBX`/
+`Cats.FBX` (both `"ByPolygonVertex"`) through the fixed tool and diff'ing the
+output byte-identical to the already-shipped files.
+
+Also confirmed **not** applicable here: DEFERRED.md item #28 (a full-backbuffer
+`SpriteBatch` draw before any 3D draw breaks that frame's 3D rendering) doesn't
+trigger, since this sample's own `Draw()` order (matching the original
+exactly) draws the 3D head model first, then the 2D UI — the opposite order
+from what item #28 requires.
+
+**NOXNA input substitution:** CNA's own `TouchPanel` (confirmed via a fresh
+read of its current source) only reports real touch hardware, with no
+mouse-to-touch synthesis fallback, and this dev machine has no touchscreen —
+`RimLightingGame::SynthesizeTouches()` builds at most one `TouchLocation` per
+frame from `Mouse::GetState()`'s left-button edge transitions, fed through the
+**exact same, unmodified** `Arcball`/`Button`/`Slidebar`/`ModelViewerCamera`
+`HandleTouch(TouchLocation)` methods the C# original uses. Also split each UI
+element's `Draw()` into a 3D part (`Button::DrawBox()`, before any
+`SpriteBatch` `Begin()`) and a 2D part (`DrawText(SpriteBatch&)`, inside this
+repo's own established single-`Begin()`/`End()`-block-per-frame convention),
+instead of each element opening/closing its own block like the C# original.
+
+Builds 0 warnings (multiple from-scratch rebuilds, the last one after removing
+all temporary debug instrumentation — both the `EnvironmentMapAmount`-forcing
+build used to isolate the normals bug, and a `helpTimer_`-forcing build used
+to verify the F1 overlay without live keyboard input). Ran 15+ seconds with no
+crash across several runs; screenshots confirm a clean, anatomically-consistent
+rim-light highlight (ears, jaw, chin, nose bridge, mouth outline) and correct
+UI (button + both sliders showing live `Amount`/`Thickness` text). Interactive
+mouse-drag rotation was **not** exercised live this session (the same
+shared-desktop `xdotool` focus caveat as several other samples this session —
+a real, unrelated window held actual X focus, confirmed via
+`xdotool getactivewindow` before attempting any synthetic input) — the
+arcball/camera code itself was reviewed line-by-line against the C# original
+instead. See `samples/RimLighting/missing.md` for the complete write-up.
+
+**Previous session (2026-07-10, ninth follow-up):** Ported **ReachGraphicsDemo
 (#005)** — see section 2's "Recently implemented / working" entry above for
 the complete account (scope decisions, DEFERRED.md items #28/#29, the
 `tools/fbx_ascii2model.py` multi-UV-layer bug fix, and the full live
@@ -2482,12 +2605,20 @@ user for new direction before assuming otherwise.
      `not started` — see section 9's explicit "do not start" list), skeletal
      animation playback (item #13), or per-mesh `ModelBone` support for
      independently-posed rigid parts (item #6's multi-bone note / item #18).
-     **`RimLighting` (#037) is the closest to portable** — DEFERRED.md item #14
-     confirms via direct source audit it has **zero** custom `.fx` files (stock
-     `EnvironmentMapEffect` + one `TextureCube` asset) — but needs a small,
-     real `cna`-side addition first (a `TextureCubeTypeReader` in
-     `ContentManager.cpp`, effort **S**, item #14) that's out of scope for a
-     pure porting session without the user's sign-off to touch `cna`.
+     **`RimLighting` (#037) was flagged here as the closest to portable, and
+     has since been ported (2026-07-10, tenth follow-up — see section 3):**
+     the premise below (that it needed a real `cna`-side `TextureCubeTypeReader`
+     addition first) turned out to be avoidable, not a hard requirement —
+     `OutputCube.dds` was bypassed the same way ReachGraphicsDemo's `EnvmapDemo`
+     bypassed its own cubemap (extract faces via ImageMagick, load as
+     `Texture2D`, copy into a real `TextureCube` via `SetData()`), with no
+     `cna` change needed. DEFERRED.md item #14 remains open (`cna` itself
+     unchanged) but no longer blocks any sample in this repo's task list. Kept
+     below, struck through in spirit, as a reminder that "needs a `cna` change"
+     should be re-checked for a bypass before being treated as a hard blocker:
+     ~~needs a small, real `cna`-side addition first (a `TextureCubeTypeReader`
+     in `ContentManager.cpp`, effort **S**, item #14) that's out of scope for a
+     pure porting session without the user's sign-off to touch `cna`.~~
    - **Recommended immediate next task at the time this note was written:
      section 8 task 7 (NetworkPrediction/PeerToPeer)** — since executed; task 7
      is now also retired (see its own entry below) and the entire networking
@@ -2602,10 +2733,11 @@ user for new direction before assuming otherwise.
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
   yet. This does **not** apply to the lit-`BasicEffect`-only samples (LensFlare,
   Graphics3D, PickingSample, TrianglePicking, HeightmapCollision,
-  InverseKinematics, ChaseCamera, and MarbleMaze are all now ported — section 8
-  task 6 is retired) — those needed no shader work. `RimLighting` (#037) is the
-  next-closest lit-only candidate but needs one small `cna`-side addition first
-  (DEFERRED.md item #14) — see task 6's retirement note.
+  InverseKinematics, ChaseCamera, MarbleMaze, and now RimLighting are all ported
+  — section 8 task 6 is retired) — none of those needed shader work either,
+  `RimLighting`'s own `EnvironmentMapEffect` + `TextureCube` cubemap bypassed
+  via direct `SetData()` construction instead (DEFERRED.md item #14 remains
+  open but no longer blocks it — see task 6's retirement note).
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).

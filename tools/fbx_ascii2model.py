@@ -147,7 +147,8 @@ def parse_ints(lines, key_idx):
 
 
 def parse_mesh_block(lines, block_start, block_end):
-    """Extract positions, normals, poly_indices, uv_coords, uv_indices from a Mesh block.
+    """Extract positions, normals, poly_indices, uv_coords, uv_indices, and the
+    LayerElementNormal's own MappingInformationType from a Mesh block.
 
     A mesh can have more than one LayerElementUV (e.g. a base diffuse-texture UV set
     plus a separate lightmap UV set, as seen in ReachGraphicsDemo's model.fbx) -- only
@@ -157,6 +158,21 @@ def parse_mesh_block(lines, block_start, block_end):
     repo's single-UV-channel vertex format (VertexPositionNormalTexture) has no way to
     carry a second UV set regardless, so any additional layer is intentionally dropped,
     not merged.
+
+    LayerElementNormal's own MappingInformationType varies per-file: "ByPolygonVertex"
+    (one normal per polygon corner, indexed the same way as UVs -- e.g. tank.fbx,
+    P2Wedge.FBX, Cats.FBX, maze1.FBX, marble.FBX) vs. "ByVertice" (exactly one normal
+    per unique vertex/control-point, indexed the same way as Vertices: -- e.g. Ship.fbx,
+    saucer.fbx, model.fbx, spaceship.fbx, head.fbx -- confirmed by direct grep across
+    every ASCII/binary FBX this repo's samples use: "ByVertice" is actually the more
+    common of the two, not "ByPolygonVertex"). Found while porting RimLighting (#037):
+    build_buffers() used to always index normals by the per-corner flat index
+    regardless of this field, which is only correct for "ByPolygonVertex" files --
+    for a "ByVertice" file this reads normals from essentially arbitrary/wrong slots
+    whenever flat_idx happens to stay in range, and silently falls back to a default
+    "straight up" normal everywhere else (whenever a mesh has more polygon corners than
+    unique vertices, the overwhelmingly common case). See tools/fbx_ascii2model.py's own
+    git history / DEFERRED.md for the full account.
     """
     positions = []
     poly_indices = []
@@ -164,12 +180,29 @@ def parse_mesh_block(lines, block_start, block_end):
     uvs = []
     uv_indices = []
     uv_layer_seen = False
+    normal_mapping_type = 'ByPolygonVertex'
+    current_layer = None
 
     i = block_start
     while i < block_end:
         line = lines[i].strip()
 
-        if line.startswith('Vertices:'):
+        if line.startswith('LayerElementNormal:'):
+            current_layer = 'normal'
+            i += 1
+
+        elif line.startswith('LayerElementUV:'):
+            current_layer = 'uv'
+            i += 1
+
+        elif line.startswith('MappingInformationType:'):
+            if current_layer == 'normal':
+                m = re.search(r'"([^"]*)"', line)
+                if m:
+                    normal_mapping_type = m.group(1)
+            i += 1
+
+        elif line.startswith('Vertices:'):
             # Data may be on the same line after the colon
             after = line[len('Vertices:'):].strip().rstrip(';').rstrip(',')
             if after:
@@ -235,7 +268,7 @@ def parse_mesh_block(lines, block_start, block_end):
         else:
             i += 1
 
-    return positions, normals, poly_indices, uvs, uv_indices
+    return positions, normals, poly_indices, uvs, uv_indices, normal_mapping_type
 
 
 def triangulate(poly_indices, normals, uv_indices):
@@ -266,7 +299,7 @@ def triangulate(poly_indices, normals, uv_indices):
     return triangles
 
 
-def build_buffers(positions, normals, uv_coords, triangles, uv_indices):
+def build_buffers(positions, normals, uv_coords, triangles, uv_indices, normal_mapping_type='ByPolygonVertex'):
     vertex_map = {}
     verts = []
     indices = []
@@ -274,13 +307,23 @@ def build_buffers(positions, normals, uv_coords, triangles, uv_indices):
     default_n  = (0.0, 1.0, 0.0)
     default_uv = (0.0, 0.0)
 
+    # See parse_mesh_block()'s own docstring: "ByVertice" means exactly one normal per
+    # unique vertex/control-point (indexed the same way as Vertices:/pos_idx), while
+    # "ByPolygonVertex" means one normal per polygon corner (indexed the same way as
+    # UVs/flat_idx). Picking the wrong one silently corrupts normals (DEFERRED.md, found
+    # while porting RimLighting #037).
+    normals_by_vertex = normal_mapping_type in ('ByVertice', 'ByControlPoint')
+
     for tri in triangles:
         for (pos_idx, flat_idx) in tri:
             key = (pos_idx, flat_idx)
             if key not in vertex_map:
                 vertex_map[key] = len(verts)
                 p  = positions[pos_idx] if pos_idx < len(positions) else (0,0,0)
-                n  = normals[flat_idx]   if flat_idx < len(normals)   else default_n
+                if normals_by_vertex:
+                    n = normals[pos_idx] if pos_idx < len(normals) else default_n
+                else:
+                    n = normals[flat_idx] if flat_idx < len(normals) else default_n
                 ui = uv_indices[flat_idx] if flat_idx < len(uv_indices) else -1
                 uv = uv_coords[ui] if (0 <= ui < len(uv_coords)) else default_uv
                 verts.append((p[0], p[1], p[2], n[0], n[1], n[2], uv[0], uv[1]))
@@ -350,7 +393,8 @@ def main():
     picking_positions = []  # only populated/used when --picking is given
 
     for (name, bstart, bend) in blocks:
-        positions, normals, poly_indices, uvs, uv_indices = parse_mesh_block(lines, bstart, bend)
+        positions, normals, poly_indices, uvs, uv_indices, normal_mapping_type = parse_mesh_block(lines, bstart, bend)
+        print(f"  {name}: LayerElementNormal MappingInformationType = {normal_mapping_type!r}")
 
         if not positions or not poly_indices:
             print(f"  {name}: skipped (no geometry)")
@@ -363,7 +407,7 @@ def main():
             normals = [transform_normal(n, transform) for n in normals]
 
         triangles = triangulate(poly_indices, normals, uv_indices)
-        verts, indices = build_buffers(positions, normals, uvs, triangles, uv_indices)
+        verts, indices = build_buffers(positions, normals, uvs, triangles, uv_indices, normal_mapping_type)
 
         if len(indices) > 65535:
             print(f"  WARNING: {name} has {len(indices)} indices (>65535), some may be clamped")

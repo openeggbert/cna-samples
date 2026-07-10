@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "pasted__polySurface14",
+      "vertices": "head_pasted__polySurface14_verts.bin",
+      "indices": "head_pasted__polySurface14_idx.bin",
+      "vertexStride": 32,
+      "effect": "EnvironmentMapEffect"
+    }
+  ]
+}

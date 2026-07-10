@@ -165,9 +165,20 @@ in `ignored.md` (never gets a directory).
 |---|---|---|
 | Done (real port, builds) | 62 | this file |
 | 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 0 | this file |
-| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 23 | this file |
-| ❌ Ignored — never gets a directory | 68 | `ignored.md` |
+| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 24 | this file |
+| ❌ Ignored — never gets a directory | 67 | `ignored.md` |
 | **Total** | **153** | |
+
+**Update 2026-07-10 (RimLighting #037):** ported via the same
+construct-the-real-C++-object-directly bypass ReachGraphicsDemo's `EnvmapDemo`
+established for its own cubemap — `Content.Load<TextureCube>` (item #14) and
+`Content.Load<Model>` (item #26) were both bypassed, unblocking what
+`NEXT.md`/`DEFERRED.md` had flagged as "the closest remaining portable sample."
+Found and fixed a real `tools/fbx_ascii2model.py` bug along the way (assumed
+`LayerElementNormal` is always `"ByPolygonVertex"`; it's usually `"ByVertice"` —
+DEFERRED.md item #30, new) that also likely affects ChaseCamera's `Ship.fbx` and
+ReachGraphicsDemo's `saucer.fbx`/`model.fbx` (not re-verified/re-shipped this
+session). See `samples/RimLighting/missing.md` for the full account.
 
 **Update 2026-07-10:** all 10 previously-🔓-unblocked samples were ported this
 session (LensFlare #041, Graphics3D #046, PickingSample #047, TrianglePicking
@@ -282,7 +293,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | 034 | NormalMapping | `NormalMappingSample_4_0` | 🚧 Placeholder — see `samples/NormalMapping/missing.md` |
 | 035 | PerPixelLighting | `PerPixelLightingSample_4_0` | 🚧 Placeholder — see `samples/PerPixelLighting/missing.md` |
 | 036 | VertexLighting | `VertexLightingSample_4_0` | 🚧 Placeholder — see `samples/VertexLighting/missing.md` |
-| 037 | RimLighting | `RimLighting_4_0` | 🚧 Placeholder — see `samples/RimLighting/missing.md` |
+| 037 | RimLighting | `RimLighting_4_0` | ✅ Done (ported 2026-07-10; `EnvironmentMapEffect`-based rim lighting against a real 6-face `OutputCube.dds`, bypassing both `Content.Load<TextureCube>` (item #14) and `Content.Load<Model>` (item #26); found and fixed a real `tools/fbx_ascii2model.py` normal-mapping bug — see `samples/RimLighting/missing.md`, DEFERRED item #30) |
 | 038 | ShadowMapping | `ShadowMappingSample_4_0` | 🚧 Placeholder — see `samples/ShadowMapping/missing.md` |
 | 039 | BillboardSample | `BillboardSample_4_0` | 🚧 Placeholder — see `samples/BillboardSample/missing.md` |
 | 040 | InstancedModel | `InstancedModelSample_4_0` | 🚧 Placeholder — see `samples/InstancedModel/missing.md` |
