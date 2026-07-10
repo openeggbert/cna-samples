@@ -163,23 +163,52 @@ in `ignored.md` (never gets a directory).
 
 | Category | Count | Where |
 |---|---|---|
-| Done (real port, builds) | 48 | this file |
-| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 10 | this file |
-| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 28 | this file |
-| Ignored — never gets a directory | 67 | `ignored.md` |
+| Done (real port, builds) | 61 | this file |
+| 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 0 | this file |
+| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 24 | this file |
+| ❌ Ignored — never gets a directory | 68 | `ignored.md` |
 | **Total** | **153** | |
 
-Of the 41 placeholder-or-unblocked directories: 5 predate this sweep
-(ReachGraphicsDemo, Spacewar, ColorReplacement, BloomSample, SplitScreen) and 36
-were added in one pass across Phase 3, Phase 4, the remaining Phase 6 samples, and
-6 of the 27 "Deferred — Phone Hardware" appendix samples. Of those 36, **13 turned
-out to already be unblocked** when their cited `DEFERRED.md` gap was actually
-checked against `cna`'s live source on 2026-07-06 (see `NEXT.md` section 3 for the
-full story): MicrophoneEcho (#098, ported the same day), ClientServerSample (#091),
-NetworkPrediction (#100), PeerToPeer (#103) — item 17 (networking) — and
-LensFlare (#041), Graphics3D (#046), PickingSample (#047), TrianglePicking (#048),
-HeightmapCollision (#049), CustomModelClass (#052), InverseKinematics (#057),
-ChaseCamera (#058), MarbleMaze (#061) — item 5 (lit 3D rendering). NetRumble
+**Update 2026-07-10:** all 10 previously-🔓-unblocked samples were ported this
+session (LensFlare #041, Graphics3D #046, PickingSample #047, TrianglePicking
+#048, HeightmapCollision #049, InverseKinematics #057, ChaseCamera #058,
+MarbleMaze #061, NetworkPrediction #100, PeerToPeer #103), plus
+AccelerometerSample (#084, user-approved keyboard-tilt fallback — the
+original's own emulator-testing code, ported nearly verbatim) and
+TiltPerspective (#107, same user approval, an invented keyboard-tilt scheme
+since that original's own fallback auto-wobbles instead). See `NEXT.md`
+section 3 for the full account of each, including a major new CNA bug found
+along the way (DEFERRED.md item #26 — a vertex-stride/vtable mismatch in
+`ModelTypeReader::Read()` now believed to be the true cause of the
+long-tracked "near-plane-clipping" rendering symptom, confirmed on 5+ assets
+across 5 samples) and two build-breakage fixes (`SafeArea`,
+`RolePlayingGame` — stale `Viewport.x`/`.y` direct-field access). The 5
+Avatar samples (#085/#086/#087/#094/#101), previously listed as 🔓-reopened
+via `cna`'s substitute-body rendering path, were **permanently declined**
+(user go/no-go, 2026-07-10 — the substitute visual isn't faithful enough to
+be worth porting) and moved back to `ignored.md`.
+
+**Also found this session, not yet acted on:** `ReachGraphicsDemo` (#005)'s
+own `missing.md` write-up is stale — it lists SpriteFont, `Content.Load<Model>`,
+`EnvironmentMapEffect`, and `DualTextureEffect` as all missing, but every one
+of those has since been implemented and proven in `cna` (confirmed via direct
+source/test inspection: `DualTextureEffect.{hpp,cpp}` and matching golden-image
+tests exist; `EnvironmentMapEffect` is used by the already-shipped
+`samples/RimLighting`-adjacent test suite). Of this sample's 6 demo scenes,
+only `SkinnedDemo` (needs DEFERRED item #13, skeletal animation) still looks
+genuinely blocked — `BasicDemo`/`AlphaDemo`/`DualDemo`/`EnvmapDemo`/
+`ParticleDemo` are likely portable today with zero `cna` changes. Flagged for
+a fresh, from-scratch verification pass rather than trusted at face value (see
+`NEXT.md` section 5's standing "DEFERRED.md blockers can go stale" caveat).
+
+Of the 41 placeholder-or-unblocked directories originally identified in an
+earlier sweep: 5 predate that sweep (ReachGraphicsDemo, Spacewar,
+ColorReplacement, BloomSample, SplitScreen) and 36 were added in one pass
+across Phase 3, Phase 4, the remaining Phase 6 samples, and 6 of the 27
+"Deferred — Phone Hardware" appendix samples. Of those 36, **13 turned out to
+already be unblocked** when their cited `DEFERRED.md` gap was actually checked
+against `cna`'s live source on 2026-07-06 (see `NEXT.md` section 3 for the
+full story) — all 13 are now ✅ Done (see the update note above). NetRumble
 (#062) went from double- to single-blocked (item 11 remains). See each
 `missing.md` for the specific `DEFERRED.md` item.
 
@@ -205,7 +234,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 002 | Primitives3D | `Primitives3DSample_4_0` | ✅ Done |
 | 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ✅ Done |
 | 004 | StockEffects | `StockEffectsSample_4_0` | ❌ Out of scope — effect source + CLI compiler, no runnable Game |
-| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ⚠️ Deferred — SpriteFont menus + Model (4 scenes) + SkinnedAnim + custom pipeline types |
+| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | 🔓 Likely unblocked (2026-07-10, not yet verified/ported) — its `missing.md` is stale: SpriteFont/`Content.Load<Model>`/`EnvironmentMapEffect`/`DualTextureEffect` are all now implemented in `cna`; only `SkinnedDemo` (item 13) still looks blocked among its 6 demo scenes; see `samples/ReachGraphicsDemo/missing.md` for the (outdated) write-up pending a fresh audit |
 | 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ✅ Done |
 | 007 | SpriteSheet | `SpriteSheetSample_4_0` | ✅ Done |
 | 008 | ShapeRendering | `ShapeRenderingSample_4_0` | ✅ Done |
@@ -259,15 +288,15 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | 038 | ShadowMapping | `ShadowMappingSample_4_0` | 🚧 Placeholder — see `samples/ShadowMapping/missing.md` |
 | 039 | BillboardSample | `BillboardSample_4_0` | 🚧 Placeholder — see `samples/BillboardSample/missing.md` |
 | 040 | InstancedModel | `InstancedModelSample_4_0` | 🚧 Placeholder — see `samples/InstancedModel/missing.md` |
-| 041 | LensFlare | `LensFlareSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/LensFlare/missing.md` |
+| 041 | LensFlare | `LensFlareSample_4_0` | ✅ Done (ported 2026-07-09/10; confirms the near-plane-clipping/DEFERRED item #26 symptom on a second independent asset; found a real `fbx_ascii2model.py` node-transform bug along the way — see `samples/LensFlare/missing.md`) |
 | 042 | ShatterEffect | `ShatterEffectSample_4_0` | 🚧 Placeholder — see `samples/ShatterEffect/missing.md` |
 | 043 | Particles3D | `Particles3DSample_4_0` | 🚧 Placeholder — see `samples/Particles3D/missing.md` |
 | 044 | Particles2DPipeline | `Particles2DPipeline_4_0` | ✅ Done |
 | 045 | XmlParticles | `XmlParticles_4_0` | 🚧 Placeholder — see `samples/XmlParticles/missing.md` |
-| 046 | Graphics3D | `Graphics3DSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/Graphics3D/missing.md` |
-| 047 | PickingSample | `PickingSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/PickingSample/missing.md` |
-| 048 | TrianglePicking | `TrianglePickingSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/TrianglePicking/missing.md` |
-| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/HeightmapCollision/missing.md` |
+| 046 | Graphics3D | `Graphics3DSample_4_0` | ✅ Done (ported 2026-07-10; found and worked around a real CNA component-lifecycle gap, DEFERRED item #23 — see `samples/Graphics3D/missing.md`) |
+| 047 | PickingSample | `PickingSample_4_0` | ✅ Done (ported 2026-07-10; found the "flat white untextured model" rendering pattern later confirmed on several sibling samples — see `samples/PickingSample/missing.md`) |
+| 048 | TrianglePicking | `TrianglePickingSample_4_0` | ✅ Done (ported 2026-07-10; real per-triangle Möller–Trumbore picking, extended `tools/fbx_ascii2model.py` with a `--picking` sidecar since CNA's `VertexBuffer`/`IndexBuffer` have no `GetData()`, DEFERRED item #25 — see `samples/TrianglePicking/missing.md`) |
+| 049 | HeightmapCollision | `HeightmapCollisionSample_4_0` | ✅ Done (ported 2026-07-10; hand-built runtime terrain mesh — the first sample with a real bound texture, sidestepping the `.model.json` texture-field gap — see `samples/HeightmapCollision/missing.md`) |
 
 ---
 
@@ -284,8 +313,8 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 | 054 | SkinningSample | `SkinningSample_4_0` | 🚧 Placeholder — see `samples/SkinningSample/missing.md` |
 | 055 | SkinnedModelExtensions | `SkinnedModelExtensions_4_0` | 🚧 Placeholder — see `samples/SkinnedModelExtensions/missing.md` |
 | 056 | CPUSkinning | `CPUSkinningSample_4_0` | 🚧 Placeholder — see `samples/CPUSkinning/missing.md` |
-| 057 | InverseKinematics | `InverseKinematics_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/InverseKinematics/missing.md` |
-| 058 | ChaseCamera | `ChaseCamera_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/ChaseCamera/missing.md` |
+| 057 | InverseKinematics | `InverseKinematics_4_0` | ✅ Done (ported 2026-07-10; found DEFERRED item #26 — a `ModelTypeReader` vertex-stride/vtable corruption bug now believed to be the true cause of the "near-plane-clipping" symptom family — see `samples/InverseKinematics/missing.md`) |
+| 058 | ChaseCamera | `ChaseCamera_4_0` | ✅ Done (ported 2026-07-10; reconfirmed DEFERRED item #26 on 2 more assets at both size extremes — see `samples/ChaseCamera/missing.md`) |
 
 ---
 
@@ -307,7 +336,7 @@ Complete games and starter kits — the most demanding ports.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 061 | MarbleMaze | `MarbleMaze_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 5 resolved in `cna`) — ready to port, see `samples/MarbleMaze/missing.md` |
+| 061 | MarbleMaze | `MarbleMaze_4_0` | ✅ Done (ported 2026-07-10, `Source/EX2_Polishing/End/` — a full game: menu, physics, tilt maze, HUD; second confirmed `assimp`-export winding-inversion quirk — see `samples/MarbleMaze/missing.md`) |
 | 062 | NetRumble | `NetRumble_4_0` | 🚧 Placeholder — networking unblocked 2026-07-06, still needs DEFERRED.md item 11 (shaders); see `samples/NetRumble/missing.md` |
 | 063 | HoneycombRush | `HoneycombRush_4_0` | ✅ Done |
 | 064 | HoneycombRushTrainingKit | `HoneycombRushTrainingKit_4_0` | ❌ Ignored — see `ignored.md` |
@@ -351,25 +380,25 @@ excluded — see `ignored.md` for the reason each one will never get a directory
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 084 | AccelerometerSample | `AccelerometerSample_4_0` | 🚧 Placeholder — needs a scope decision, not a CNA gap: CNA's Accelerometer is real (SDL_Sensor), but this desktop has no physical sensor and the original has no fallback input at all — porting means inventing a keyboard-tilt fallback; see `samples/AccelerometerSample/missing.md` and DEFERRED.md item 15 |
-| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
-| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
-| 087 | AvatarShadows | `AvatarShadows_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 084 | AccelerometerSample | `AccelerometerSample_4_0` | ✅ Done (ported 2026-07-10, user-approved go/no-go; the keyboard-tilt fallback turned out to be the original's own emulator-testing code, nested inside `#if WINDOWS_PHONE` — ported nearly verbatim, not invented — see `samples/AccelerometerSample/missing.md`) |
+| 085 | AvatarAnimationBlending | `AvatarAnimationBlendingSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system; user declined the substitute-body port 2026-07-10) |
+| 086 | AvatarMultipleAnimations | `AvatarMultipleAnimationsSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system; user declined the substitute-body port 2026-07-10) |
+| 087 | AvatarShadows | `AvatarShadows_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system; user declined the substitute-body port 2026-07-10) |
 | 088 | BingMaps | `BingMaps_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
 | 089 | BingMapsPathFinding | `BingMapsPathFinding_4_0` | ❌ Ignored — see `ignored.md` (external web API) |
 | 090 | BitmapFontMaker | `BitmapFontMaker_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool, not a `Game`) |
 | 091 | ClientServerSample | `ClientServerSample_4_0` | ✅ Done (ported 2026-07-06; worked around 3 newly-found CNA gaps, see DEFERRED.md items 19–21) |
 | 092 | ContentManifestExtensions | `ContentManifestExtensions_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
 | 093 | CurveEditor | `CurveEditor_4_0` | ❌ Ignored — see `ignored.md` (WinForms tool) |
-| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
+| 094 | CustomAvatarAnimation | `CustomAvatarAnimation_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system; user declined the substitute-body port 2026-07-10) |
 | 095 | GeolocationSample | `GeolocationSample_4_0` | ❌ Ignored — see `ignored.md` (phone GPS hardware, no SDL equivalent) |
 | 096 | InvitesSample | `InvitesSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live account service) |
 | 097 | MemoryMadnessLab | `MemoryMadnessLab_4_0` | ❌ Ignored — see `ignored.md` (WP7 teaching lab, not a standalone sample) |
 | 098 | MicrophoneEcho | `MicrophoneEchoSample_4_0` | ✅ Done (ported 2026-07-06) |
 | 099 | ModelImporterSample | `ModelImporterSample_4_0` | ❌ Ignored — see `ignored.md` (content-pipeline extension, no executable) |
-| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port; see `samples/ClientServerSample/missing.md` for 3 more narrow gaps (items 19–21) likely also applicable here, and `samples/NetworkPrediction/missing.md` |
-| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system) |
-| 103 | PeerToPeer | `PeerToPeerSample_4_0` | 🔓 Unblocked 2026-07-06 (DEFERRED.md item 17 resolved in `cna`) — ready to port; see `samples/ClientServerSample/missing.md` for 3 more narrow gaps (items 19–21) likely also applicable here, and `samples/PeerToPeer/missing.md` |
+| 100 | NetworkPrediction | `NetworkPredictionSample_4_0` | ✅ Done (ported 2026-07-10; confirmed zero networking workarounds needed, items 19–21 stay resolved; found `NetworkSession::SessionProperties` has no mutable/wire-replicated accessor, DEFERRED item #27 — see `samples/NetworkPrediction/missing.md`) |
+| 101 | ObjectPlacementOnAvatar | `ObjectPlacementOnAvatarSample_4_0` | ❌ Ignored — see `ignored.md` (Xbox Live Avatar system; user declined the substitute-body port 2026-07-10) |
+| 103 | PeerToPeer | `PeerToPeerSample_4_0` | ✅ Done (ported 2026-07-10; genuine peer-to-peer broadcast topology, no host authority — confirmed zero networking workarounds needed a third time; confirmed item #27 is sample-specific, not universal — see `samples/PeerToPeer/missing.md`) |
 | 104 | PerformanceUtility | `PerformanceUtility_4_0` | ❌ Ignored — see `ignored.md` (utility library, no standalone executable) |
 | 105 | PushNotifications | `PushNotificationsSample_4_0` | ❌ Ignored — see `ignored.md` (Windows Phone push notification service) |
 | 106 | SavingEmbeddedImages | `SavingEmbeddedImages_4_0` | ❌ Ignored — see `ignored.md` (phone media library API) |
