@@ -596,8 +596,7 @@ and now PeerToPeer are all done, and no further placeholder sample was found to 
 cleanly unblocked (zero CNA gap) the way this list's candidates were — see section
 8's rewritten task list for what a future session should look at next.
 
-Commit this session: see git log (pushed to `develop` immediately after this
-NEXT.md update).
+Commit this session: `119694f`, pushed to `develop`.
 
 **Previous session (2026-07-10, fourth follow-up):** Ported **NetworkPrediction
 (#100)**, section 8 task 7's recommended candidate — the first attempt at either
