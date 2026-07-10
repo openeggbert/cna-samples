@@ -25,8 +25,10 @@ independently-written sample, this time one with a genuinely different topology
 retires section 8 task 7 and, with it, the original "port more samples" backlog
 this session set out to work through — see section 8's rewritten task list for
 what a future session should look at next (re-scanning placeholders for anything
-DEFERRED item #26's fix pattern newly unblocks, the still-undecided
-AccelerometerSample/TiltPerspective/Avatar scope questions, etc.). MarbleMaze
+DEFERRED item #26's fix pattern newly unblocks, etc.). The
+AccelerometerSample/TiltPerspective/Avatar scope questions are now both settled
+(2026-07-10, user go/no-go — see section 8 tasks 9/10): port the former with an
+invented keyboard-tilt fallback, do not port the latter. MarbleMaze
 (#061), ChaseCamera (#058), and InverseKinematics (#057) (the original 3-sample
 lighting-candidate list) were ported in earlier sessions and remain done. 28
 placeholder directories exist for samples still genuinely blocked on real CNA
@@ -1584,10 +1586,10 @@ separately):**
   above, but a real, separate, latent gap).
 
 Secondary, lower-urgency items (not blocking, just open):
-- A product/scope decision is needed before porting AccelerometerSample (#084)/
-  TiltPerspective (#107) (inventing a keyboard-tilt scheme from scratch) or the
-  5 Avatar samples now reopened by `cna`'s new substitute-body rendering path
-  (section 8, items 6–7).
+- Both pending product/scope decisions are now settled (2026-07-10, user
+  go/no-go): AccelerometerSample (#084)/TiltPerspective (#107) are being
+  ported with an invented keyboard-tilt fallback (section 8, task 9); the 5
+  Avatar samples will not be ported (section 8, task 10, retired).
 - The Vulkan backend's multi-`SpriteBatch`-per-frame bug (section 5) is separate
   from the above and only affects the non-default Vulkan backend.
 
@@ -1831,12 +1833,12 @@ directories are blocked by item #26 specifically**: every one of them checked
 blocked by a custom HLSL shader (item #11), skeletal animation (item #13), or
 per-mesh `ModelBone` support (item #6/#18) instead — deeper gaps item #26's fix
 alone does not remove. A future session should still re-check this rather than
-trust this session's one-time audit, per the same staleness caveat above. The
-two still-open product-scope decisions (tasks 9 and 10 below —
-AccelerometerSample/TiltPerspective's keyboard-tilt fallback, and whether to
-port any of the 5 reopened Avatar samples) remain the most concrete "what's
-next" candidates until either a `cna`-side fix (item #11, #13, or #6/#18) lands
-or the user gives explicit go/no-go on one of those two scope questions.
+trust this session's one-time audit, per the same staleness caveat above. Both
+previously-open product-scope decisions are now settled (2026-07-10, user
+go/no-go — see tasks 9/10 below): port AccelerometerSample/TiltPerspective with
+an invented keyboard-tilt fallback; do not port the 5 Avatar samples. Once
+task 9 ships, the next concrete candidates are all gated on a `cna`-side fix
+(item #11, #13, #14, or #6/#18) rather than more porting effort.
 
 1. **✅ DONE (2026-07-10): fixed `SafeArea`'s and `RolePlayingGame`'s
    `Viewport.x`/`.y` build breakages — full aggregate build is green again.**
@@ -1997,22 +1999,25 @@ or the user gives explicit go/no-go on one of those two scope questions.
    - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
      confirm all layers draw.
 
-9. **Decide the scope for AccelerometerSample (#084)/TiltPerspective (#107).**
-   - Goal: get an explicit go/no-go from the user on inventing a keyboard-tilt
-     fallback from scratch (neither original has any non-phone code to reuse)
-     before spending the effort.
-   - Files (if approved): new `samples/AccelerometerSample/src/`,
-     `samples/TiltPerspective/src/`.
-   - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`.
+9. **✅ DECIDED (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
+   TiltPerspective (#107) with an invented keyboard-tilt fallback.** In
+   progress — see section 3 for the account once ported.
+   - Goal: invent a keyboard-based tilt substitute (neither original has any
+     non-phone code to reuse) and document it as a NOXNA input substitution in
+     each sample's `missing.md`, the same way touch→mouse substitutions are
+     documented elsewhere in this repo.
+   - Files: new `samples/AccelerometerSample/src/`, `samples/TiltPerspective/src/`.
+   - Verify: `cmake --build cmake-build-debug --target AccelerometerSample_cna_samples`
+     (and `TiltPerspective_cna_samples`).
 
-10. **Decide whether to port any of the 5 now-reopened Avatar samples** (#085,
-   #086, #087, #094, #101) onto `cna`'s new `AvatarRenderer::
-   EnableRealRenderingEXT` substitute-body path.
-   - Goal: get an explicit go/no-go from the user before spending effort — this
-     is a product decision (substitute art, not the real Xbox Avatar look), not
-     a technical blocker.
-   - Files: none yet.
-   - Verify: N/A until a decision is made.
+10. **RETIRED (2026-07-10, user go/no-go): the 5 reopened Avatar samples**
+    (#085, #086, #087, #094, #101) **will not be ported.** The user decided the
+    substitute-body visual (`AvatarRenderer::EnableRealRenderingEXT`) isn't
+    faithful enough to the original Xbox Avatar look to be worth the effort.
+    Moved back to `ignored.md`'s permanent list (its "reconsider" note removed —
+    this is now a settled decision, not an open question).
+   - Files: N/A (retired).
+   - Verify: N/A (retired).
 
 11. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
    CNA's `.model.json` reader.**
@@ -2041,10 +2046,10 @@ or the user gives explicit go/no-go on one of those two scope questions.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).
-- **Do not invent a keyboard-tilt input scheme for AccelerometerSample/
-  TiltPerspective** without an explicit scope decision first (section 8, task 9).
-- **Do not start porting any of the 5 reopened Avatar samples** without an
-  explicit scope decision first (section 8, task 10).
+- **Do not port any of the 5 reopened Avatar samples** — decided (2026-07-10)
+  not worth the substitute-body visual gap; permanently back in `ignored.md`.
+  (AccelerometerSample/TiltPerspective's keyboard-tilt scheme, by contrast, IS
+  approved — see section 8 task 9 — no caveat needed there anymore.)
 - **Do not assume a newly-unblocked lighting sample renders correctly just
   because it builds** — screenshot it and check for the near-plane clipping
   artifact (section 4) first. Remember it can now manifest as either a thin
