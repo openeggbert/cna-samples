@@ -663,8 +663,7 @@ equivalent) against this same "look for a nested DeviceType branch inside
 `#if WINDOWS_PHONE`, not just a top-level `#if` split" correction before
 assuming its own scheme truly must be invented from scratch.
 
-Commit this session: (pending — see final commit of this session's own
-change set below).
+Commit this session: `81a31c9`, pushed to `develop`.
 
 **Previous session (2026-07-10, sixth follow-up):** With the originally-scoped
 porting backlog exhausted (10 samples shipped: LensFlare, Graphics3D,
