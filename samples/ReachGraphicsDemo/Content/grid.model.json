@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "grid",
+      "vertices": "grid_verts.bin",
+      "indices": "grid_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

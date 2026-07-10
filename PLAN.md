@@ -163,9 +163,9 @@ in `ignored.md` (never gets a directory).
 
 | Category | Count | Where |
 |---|---|---|
-| Done (real port, builds) | 61 | this file |
+| Done (real port, builds) | 62 | this file |
 | 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 0 | this file |
-| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 24 | this file |
+| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 23 | this file |
 | ❌ Ignored — never gets a directory | 68 | `ignored.md` |
 | **Total** | **153** | |
 
@@ -188,18 +188,16 @@ via `cna`'s substitute-body rendering path, were **permanently declined**
 (user go/no-go, 2026-07-10 — the substitute visual isn't faithful enough to
 be worth porting) and moved back to `ignored.md`.
 
-**Also found this session, not yet acted on:** `ReachGraphicsDemo` (#005)'s
-own `missing.md` write-up is stale — it lists SpriteFont, `Content.Load<Model>`,
-`EnvironmentMapEffect`, and `DualTextureEffect` as all missing, but every one
-of those has since been implemented and proven in `cna` (confirmed via direct
-source/test inspection: `DualTextureEffect.{hpp,cpp}` and matching golden-image
-tests exist; `EnvironmentMapEffect` is used by the already-shipped
-`samples/RimLighting`-adjacent test suite). Of this sample's 6 demo scenes,
-only `SkinnedDemo` (needs DEFERRED item #13, skeletal animation) still looks
-genuinely blocked — `BasicDemo`/`AlphaDemo`/`DualDemo`/`EnvmapDemo`/
-`ParticleDemo` are likely portable today with zero `cna` changes. Flagged for
-a fresh, from-scratch verification pass rather than trusted at face value (see
-`NEXT.md` section 5's standing "DEFERRED.md blockers can go stale" caveat).
+**Update (2026-07-10, later the same session): `ReachGraphicsDemo` (#005) has
+now been ported**, confirming the stale-`missing.md` finding above. 5 of its 6
+demo scenes (`BasicDemo`/`AlphaDemo`/`DualDemo`/`EnvmapDemo`/`ParticleDemo`,
+plus the shared menu framework) are done; `SkinnedDemo` was skipped (still
+genuinely blocked on DEFERRED item #13, skeletal animation — replaced with a
+clear in-app "not available" message). Found and worked around 2 new CNA
+rendering gaps in the process (DEFERRED.md items #28/#29) and fixed a real
+bug in `tools/fbx_ascii2model.py` (a multi-UV-layer FBX mesh parsing bug). See
+`samples/ReachGraphicsDemo/missing.md` and `NEXT.md` section 3 for the full
+account.
 
 Of the 41 placeholder-or-unblocked directories originally identified in an
 earlier sweep: 5 predate that sweep (ReachGraphicsDemo, Spacewar,
@@ -234,7 +232,7 @@ These samples validate the most fundamental CNA APIs and must work before anythi
 | 002 | Primitives3D | `Primitives3DSample_4_0` | ✅ Done |
 | 003 | TexturesAndColors | `TexturesAndColorsSample_4_0` | ✅ Done |
 | 004 | StockEffects | `StockEffectsSample_4_0` | ❌ Out of scope — effect source + CLI compiler, no runnable Game |
-| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | 🔓 Likely unblocked (2026-07-10, not yet verified/ported) — its `missing.md` is stale: SpriteFont/`Content.Load<Model>`/`EnvironmentMapEffect`/`DualTextureEffect` are all now implemented in `cna`; only `SkinnedDemo` (item 13) still looks blocked among its 6 demo scenes; see `samples/ReachGraphicsDemo/missing.md` for the (outdated) write-up pending a fresh audit |
+| 005 | ReachGraphicsDemo | `ReachGraphicsDemo_4_0` | ✅ Done (ported 2026-07-10; 5 of 6 demo scenes — `SkinnedDemo` skipped, DEFERRED item #13; found 2 new CNA rendering gaps, DEFERRED items #28/#29, and fixed a real `tools/fbx_ascii2model.py` multi-UV-layer bug — see `samples/ReachGraphicsDemo/missing.md`) |
 | 006 | SpriteEffects | `SpriteEffectsSample_4_0` | ✅ Done |
 | 007 | SpriteSheet | `SpriteSheetSample_4_0` | ✅ Done |
 | 008 | ShapeRendering | `ShapeRenderingSample_4_0` | ✅ Done |
@@ -424,6 +422,15 @@ Full per-directory listing with reasons: [`ignored.md`](ignored.md).
 ---
 
 ## Phase Status Overview
+
+**Note (2026-07-10): this table is known stale** (it was not kept in sync with
+the per-phase porting done across several sessions — e.g. Phase 3's "Done"
+count below has read 1 for a while despite LensFlare/Graphics3D/PickingSample/
+TrianglePicking/HeightmapCollision/InverseKinematics/ChaseCamera all being
+done). The **Sample Count Summary** table above (repo-wide totals) is kept
+current each session; this per-phase breakdown is not. Treat it as historical
+color, not an authoritative count — use the Sample Count Summary table and the
+per-sample rows in the Complete Sample Task List above instead.
 
 | Phase | Samples | Done | 🔓 Unblocked | 🚧 Placeholder | Ignored |
 |---|---|---|---|---|---|

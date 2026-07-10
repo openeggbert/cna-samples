@@ -1,0 +1,53 @@
+{
+  "meshes": [
+    {
+      "name": "pPlane1",
+      "vertices": "model_pPlane1_verts.bin",
+      "indices": "model_pPlane1_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube15",
+      "vertices": "model_pCube15_verts.bin",
+      "indices": "model_pCube15_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube16",
+      "vertices": "model_pCube16_verts.bin",
+      "indices": "model_pCube16_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube17",
+      "vertices": "model_pCube17_verts.bin",
+      "indices": "model_pCube17_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube18",
+      "vertices": "model_pCube18_verts.bin",
+      "indices": "model_pCube18_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube19",
+      "vertices": "model_pCube19_verts.bin",
+      "indices": "model_pCube19_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "pCube20",
+      "vertices": "model_pCube20_verts.bin",
+      "indices": "model_pCube20_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "parts": [
+    {
+      "name": "tank_geo",
+      "parent": null,
+      "animGroup": null,
+      "restTranslation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "vertices": "tank_tank_geo_verts.bin",
+      "indices": "tank_tank_geo_idx.bin",
+      "texture": "turret_alt_diff_tex"
+    },
+    {
+      "name": "r_engine_geo",
+      "parent": "tank_geo",
+      "animGroup": null,
+      "restTranslation": [
+        -139.500503540039,
+        163.812591552734,
+        -10.956600189209
+      ],
+      "vertices": "tank_r_engine_geo_verts.bin",
+      "indices": "tank_r_engine_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "l_engine_geo",
+      "parent": "tank_geo",
+      "animGroup": null,
+      "restTranslation": [
+        139.500503540039,
+        163.812591552734,
+        -10.956600189209
+      ],
+      "vertices": "tank_l_engine_geo_verts.bin",
+      "indices": "tank_l_engine_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "turret_geo",
+      "parent": "tank_geo",
+      "animGroup": "turret",
+      "restTranslation": [
+        0.0,
+        231.753982543945,
+        -35.5949974060059
+      ],
+      "vertices": "tank_turret_geo_verts.bin",
+      "indices": "tank_turret_geo_idx.bin",
+      "texture": "turret_alt_diff_tex"
+    },
+    {
+      "name": "r_back_wheel_geo",
+      "parent": "r_engine_geo",
+      "animGroup": "wheel",
+      "restTranslation": [
+        -134.905899047852,
+        -58.926513671875,
+        -234.273040771484
+      ],
+      "vertices": "tank_r_back_wheel_geo_verts.bin",
+      "indices": "tank_r_back_wheel_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "r_steer_geo",
+      "parent": "r_engine_geo",
+      "animGroup": "steer",
+      "restTranslation": [
+        -31.7506103515625,
+        22.1607513427734,
+        251.485000610352
+      ],
+      "vertices": "tank_r_steer_geo_verts.bin",
+      "indices": "tank_r_steer_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "r_front_wheel_geo",
+      "parent": "r_steer_geo",
+      "animGroup": "wheel",
+      "restTranslation": [
+        85.2137145996094,
+        -112.978843688965,
+        -1.13240051269531
+      ],
+      "vertices": "tank_r_front_wheel_geo_verts.bin",
+      "indices": "tank_r_front_wheel_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "l_back_wheel_geo",
+      "parent": "l_engine_geo",
+      "animGroup": "wheel",
+      "restTranslation": [
+        134.905899047852,
+        -58.926513671875,
+        -234.273040771484
+      ],
+      "vertices": "tank_l_back_wheel_geo_verts.bin",
+      "indices": "tank_l_back_wheel_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "l_steer_geo",
+      "parent": "l_engine_geo",
+      "animGroup": "steer",
+      "restTranslation": [
+        31.7506103515625,
+        22.1607513427734,
+        251.485000610352
+      ],
+      "vertices": "tank_l_steer_geo_verts.bin",
+      "indices": "tank_l_steer_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "l_front_wheel_geo",
+      "parent": "l_steer_geo",
+      "animGroup": "wheel",
+      "restTranslation": [
+        -85.2137145996094,
+        -112.978843688965,
+        -1.13240051269531
+      ],
+      "vertices": "tank_l_front_wheel_geo_verts.bin",
+      "indices": "tank_l_front_wheel_geo_idx.bin",
+      "texture": "engine_diff_tex"
+    },
+    {
+      "name": "canon_geo",
+      "parent": "turret_geo",
+      "animGroup": "cannon",
+      "restTranslation": [
+        0.0,
+        104.642013549805,
+        102.743896484375
+      ],
+      "vertices": "tank_canon_geo_verts.bin",
+      "indices": "tank_canon_geo_idx.bin",
+      "texture": "turret_alt_diff_tex"
+    },
+    {
+      "name": "hatch_geo",
+      "parent": "turret_geo",
+      "animGroup": "hatch",
+      "restTranslation": [
+        62.9840126037598,
+        125.905166625977,
+        -43.5861015319824
+      ],
+      "vertices": "tank_hatch_geo_verts.bin",
+      "indices": "tank_hatch_geo_idx.bin",
+      "texture": "turret_alt_diff_tex"
+    }
+  ]
+}

@@ -164,6 +164,19 @@ to `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`'s built-in type 
 the only real gap — unlike the rest of Phase 3, RimLighting does not need the XL
 HLSL→GLSL shader pipeline (item 11) at all.
 
+**Update (2026-07-10, ReachGraphicsDemo #005's EnvmapDemo ported):** this sample also
+needs a `TextureCube` (its own cubemap, reimplemented at the asset level via a one-off
+Python script standing in for the original's own build-time `CubemapProcessor.cs` —
+see `samples/ReachGraphicsDemo/missing.md`), but did **not** need this item fixed:
+the 6 converted PNG cubemap faces are loaded via the already-proven
+`Content.Load<Texture2D>` path, then their pixel data is copied directly into a real
+`TextureCube` via its own `SetData(CubeMapFace, const Color*, int)` API, bypassing
+`ContentManager`/`TextureCubeTypeReader` entirely (the same bypass philosophy as item
+#26's `RawMesh.hpp`, just applied to a different CNA type). Confirmed live: the
+resulting cubemap renders as a genuinely reflective/chrome surface. This item remains
+open and RimLighting remains its only *blocking* dependent — ReachGraphicsDemo simply
+didn't need `Content.Load<TextureCube>` itself to ship a real, working cubemap.
+
 **Effort:** S
 
 ---
@@ -1329,6 +1342,123 @@ already replicates gamer-roster changes.
 
 ---
 
+## 28. EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw call in the same frame breaks that frame's 3D rendering entirely
+
+**Found while porting ReachGraphicsDemo's EnvmapDemo (2026-07-10).** A
+`SpriteBatch.Begin()/Draw()/End()` call that stretches a texture to cover the *entire*
+backbuffer (`GetSpriteBatch().Draw(*background_, Rectangle(0, 0, 480, 800), ...)`,
+matching `EnvmapDemo.cs`'s own `SpriteBatch.Draw(background, new Rectangle(0, 0, 480,
+800), Color.White);` exactly), executed before any 3D `GraphicsDevice::
+DrawIndexedPrimitives`/`DrawUserIndexedPrimitives` call in that same frame, makes every
+subsequent 3D draw call in that frame render nothing at all — confirmed live via
+screenshot isolation, one variable at a time:
+- Removing just this one `SpriteBatch.Draw()` call (nothing else changed) made the
+  scene's own 3D model (a saucer, loaded via the same `RawMesh`-style bypass already
+  proven working elsewhere in this repo — see item #26) render correctly.
+- Re-adding it after swapping the 3D effect (`EnvironmentMapEffect` → plain
+  `BasicEffect`), after switching to a much closer/simpler camera
+  (`CreateLookAt((0,500,2000), (0,0,0), Up)` instead of the original's own
+  `(4500,-400,0)`-distance camera), and after forcing
+  `RasterizerState::CullNone` — each tested independently — made no difference; the
+  3D content stayed invisible in all three cases as long as the full-backbuffer
+  SpriteBatch draw remained in the frame.
+- Converting the source image from JPEG to an ordinary RGBA PNG also made no
+  difference, ruling out the source texture's own decoded format (e.g. missing alpha
+  channel) as the cause too.
+- The same sample's own `DrawTitle()` calls (a much smaller SpriteBatch draw of text
+  only, also positioned before the 3D content in every one of this sample's 5 ported
+  demo scenes) do **not** trigger the bug — every other demo in this sample draws
+  `DrawTitle()` immediately before its own 3D content and renders correctly. This
+  narrows the trigger specifically to "a SpriteBatch draw covering the *entire*
+  backbuffer," not merely "any SpriteBatch call before a 3D draw in the same frame."
+
+This sample's own explicit `BlendState`/`RasterizerState`/`DepthStencilState`/
+`SamplerState` resets immediately before the 3D draw call do **not** clear whatever
+state is left dirty — whatever the actual GL-level cause is (a stale bound shader
+program, a leftover vertex array/attribute binding, a scissor/viewport side effect,
+etc.), it survives all four of those state resets.
+
+**Where to implement (if fixed in `cna`):** almost certainly
+`cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`'s `SpriteBatch`
+flush/draw path (whichever internal method actually issues the batched full-screen
+quad's `glDrawElements`/`glDrawArrays` call) — not yet directly inspected to find the
+exact GL state it leaves dirty afterward, since isolating and fixing this was out of
+scope for this porting session (no `cna` edits per this repo's own porting-session
+constraints).
+
+**Workaround used in ReachGraphicsDemo (EnvmapDemo, #005):** the background image is
+drawn as a manually-built full-screen quad via `BasicEffect` +
+`DrawUserIndexedPrimitives` (`EnvmapDemo::DrawBackgroundQuad()`, NOXNA — World/View/
+Projection all `Matrix::Identity`, so the quad's own vertex positions are already in
+clip space) instead of `SpriteBatch`, entirely avoiding the problematic call shape.
+Confirmed live this fully resolves the issue: background image, title text, and the
+3D saucer (fully textured, lit, and showing a genuine reflective cubemap look) all
+render correctly together in the same frame. See
+`samples/ReachGraphicsDemo/missing.md` for the complete isolation account.
+
+**Blocked samples:** ReachGraphicsDemo (#005, EnvmapDemo specifically — worked around).
+No other currently-ported sample in this repo draws a full-backbuffer SpriteBatch
+sprite before any 3D content in the same frame, so this is not currently known to
+affect anything else, but any *future* sample doing the same (a full-screen 2D
+background image behind a 3D scene) should watch for this.
+
+**Effort:** M — needs someone to actually step through `EasyGLGraphicsBackend`'s
+`SpriteBatch` draw path and its 3D draw path back-to-back with a GL state debugger/
+`glGetError`-style instrumentation to find exactly what state differs; the fix itself
+is likely small (an explicit state reset) once found.
+
+---
+
+## 29. EasyGL: DualTextureEffect's own shader hardcodes a Position+UV-only (no Normal) vertex attribute layout
+
+**Found while porting ReachGraphicsDemo's DualDemo (2026-07-10).** CNA's
+`EnsureDualTextured3DProgram()` (`EasyGLGraphicsBackend.cpp`) declares:
+```glsl
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec2 aUV;
+```
+— a 2-attribute layout with **no Normal in between** — unlike `BasicEffect`'s/
+`EnvironmentMapEffect`'s own lit shaders (`EnsureLit3DProgram()`/
+`EnsureEnvMapped3DProgram()`), which both expect the 3-attribute Position+Normal+UV
+layout (`VertexPositionNormalTexture`'s own real declaration: Position at location 0,
+Normal at location 1, TextureCoordinate at location 2). This is undocumented and
+differs from the sibling lit-effect shaders in the same file, easy to miss.
+
+Uploading this repo's usual `VertexPositionNormalTexture` (built via the same
+`RawMesh.hpp`-style bypass used for every other model in this repo — see item #26)
+against `DualTextureEffect` makes the shader's `aUV` (declared at location 1) silently
+read from whatever is actually bound at that location — the mesh's own `Normal.xy` —
+instead of the real per-vertex UV. Confirmed live via screenshot: every submesh
+rendered as a flat, uniform color (each face's own constant per-face normal producing
+a constant "fake UV," landing on one arbitrary texel), not the real tiled texture/
+lightmap detail; the model's silhouette/shape was otherwise completely correct, ruling
+out a geometry problem.
+
+**Where to implement (if fixed in `cna`):** either (a) document this required vertex
+layout clearly on `DualTextureEffect` itself (a comment/doc gap, not a behavior gap —
+arguably this is by design, matching real XNA's own `VertexPositionDualTexture`-style
+expectation, in which case the fix is purely documentation), or (b) if genuine
+uniformity across effect types is preferred, extend `EnsureDualTextured3DProgram()` to
+also accept a 3-attribute Position+Normal+UV layout (ignoring Normal) so callers don't
+need a separate vertex-upload path just for this one effect type.
+
+**Workaround used in ReachGraphicsDemo (DualDemo, #005):** a new `RawMeshPosTex.hpp`
+(NOXNA, alongside `RawMesh.hpp`) uploads plain `VertexPositionTexture` (Position + UV
+only, discarding the Normal field from the same already-converted sidecar files) for
+this one demo's meshes specifically. Confirmed live this fully resolves the issue —
+see `samples/ReachGraphicsDemo/missing.md` for the complete account, including a
+second, independent bug found and fixed in the same investigation
+(`tools/fbx_ascii2model.py` silently used the wrong one of 2 UV layers on
+`model.fbx`'s meshes).
+
+**Blocked samples:** ReachGraphicsDemo (#005, DualDemo specifically — worked around).
+No other currently-ported sample in this repo uses `DualTextureEffect` with a
+`VertexPositionNormalTexture`-shaped bypass mesh.
+
+**Effort:** S (documentation) or M (shader/attribute-layout generalization, if pursued).
+
+---
+
 ## Summary Table
 
 | # | Feature | Repo | Effort | Samples blocked |
@@ -1358,5 +1488,7 @@ already replicates gamer-roster changes.
 | 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
-| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze applied the same RawMesh.hpp bypass proactively, not re-confirmed empirically) | not started |
+| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze and ReachGraphicsDemo applied the same RawMesh.hpp-style bypass proactively, not re-confirmed empirically) | not started |
 | 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer ported 2026-07-10, confirmed doesn't use SessionProperties at all — not affected | not started |
+| 28 | EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw in the same frame breaks that frame's 3D rendering | cna | M | ReachGraphicsDemo (EnvmapDemo — worked around via a hand-built 3D quad instead of SpriteBatch) | not started |
+| 29 | EasyGL: DualTextureEffect's shader hardcodes a Position+UV-only (no Normal) vertex attribute layout, unlike BasicEffect/EnvironmentMapEffect | cna | S/M | ReachGraphicsDemo (DualDemo — worked around via a Position+UV-only vertex upload, RawMeshPosTex.hpp) | not started |

@@ -147,12 +147,23 @@ def parse_ints(lines, key_idx):
 
 
 def parse_mesh_block(lines, block_start, block_end):
-    """Extract positions, normals, poly_indices, uv_coords, uv_indices from a Mesh block."""
+    """Extract positions, normals, poly_indices, uv_coords, uv_indices from a Mesh block.
+
+    A mesh can have more than one LayerElementUV (e.g. a base diffuse-texture UV set
+    plus a separate lightmap UV set, as seen in ReachGraphicsDemo's model.fbx) -- only
+    the FIRST one found is kept (matches LayerElementUV index 0, the base texture UV;
+    a naive "last UV: line wins" parse would silently pick up a later, unrelated UV
+    layer instead, corrupting texture coordinates for any multi-UV-layer mesh). This
+    repo's single-UV-channel vertex format (VertexPositionNormalTexture) has no way to
+    carry a second UV set regardless, so any additional layer is intentionally dropped,
+    not merged.
+    """
     positions = []
     poly_indices = []
     normals = []
     uvs = []
     uv_indices = []
+    uv_layer_seen = False
 
     i = block_start
     while i < block_end:
@@ -200,11 +211,13 @@ def parse_mesh_block(lines, block_start, block_end):
                 vals = [float(v.strip()) for v in after.split(',') if v.strip()]
                 raw2, _ = read_data_block(lines, i + 1)
                 vals += [float(v) for v in raw2 if v]
-                uvs = [(vals[j], vals[j+1]) for j in range(0, len(vals)-1, 2)]
+                parsed_uvs = [(vals[j], vals[j+1]) for j in range(0, len(vals)-1, 2)]
                 i += 1
             else:
                 floats, i = parse_floats(lines, i)
-                uvs = [(floats[j], floats[j+1]) for j in range(0, len(floats)-1, 2)]
+                parsed_uvs = [(floats[j], floats[j+1]) for j in range(0, len(floats)-1, 2)]
+            if not uv_layer_seen:
+                uvs = parsed_uvs
 
         elif line.startswith('UVIndex:'):
             after = line[len('UVIndex:'):].strip().rstrip(';').rstrip(',')
@@ -212,10 +225,13 @@ def parse_mesh_block(lines, block_start, block_end):
                 vals = [int(v.strip()) for v in after.split(',') if v.strip()]
                 raw2, _ = read_data_block(lines, i + 1)
                 vals += [int(v) for v in raw2 if v]
-                uv_indices = vals
+                parsed_uv_indices = vals
                 i += 1
             else:
-                uv_indices, i = parse_ints(lines, i)
+                parsed_uv_indices, i = parse_ints(lines, i)
+            if not uv_layer_seen:
+                uv_indices = parsed_uv_indices
+            uv_layer_seen = True
         else:
             i += 1
 

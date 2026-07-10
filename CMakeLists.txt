@@ -67,6 +67,7 @@ add_subdirectory(samples/SpriteSheet)
 add_subdirectory(samples/SafeArea)
 add_subdirectory(samples/InputSequence)
 add_subdirectory(samples/InputReporter)
+add_subdirectory(samples/ReachGraphicsDemo)
 
 # Phase 2 — 2D Games  (uncomment as implemented)
 add_subdirectory(samples/Platformer)
@@ -137,7 +138,6 @@ add_subdirectory(samples/Orientation)
 # ---------------------------------------------------------------------------
 
 # Phase 1/2 stragglers missed by earlier add_subdirectory sweeps
-# add_subdirectory(samples/ReachGraphicsDemo)
 # add_subdirectory(samples/ColorReplacement)
 
 # Phase 3 — 3D Graphics & Shaders (remaining)

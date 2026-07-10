@@ -14,9 +14,30 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 60 samples are fully ported and wired into the root
-`CMakeLists.txt`. **TiltPerspective (#107) was ported this session** (see
-section 3) — the second and last of the two samples covered by the
+**Current phase:** 61 samples are fully ported and wired into the root
+`CMakeLists.txt`. **ReachGraphicsDemo (#005) was ported this session** (see
+section 3) — a "Phase 1" sample previously flagged (2026-07-10, earlier in this
+same multi-session run) as likely-unblocked-but-unverified: its own `missing.md`
+had gone stale, claiming SpriteFont/`Content.Load<Model>`/`EnvironmentMapEffect`/
+`DualTextureEffect` were all missing from CNA when in fact all four are
+implemented and already proven elsewhere in this repo. Of its own 6 demo
+scenes, 5 were ported (`BasicDemo`, `AlphaDemo`, `DualDemo`, `EnvmapDemo`,
+`ParticleDemo`, plus the shared `MenuComponent`/`TitleMenu`/`DemoGame`
+framework); `SkinnedDemo` was skipped (still genuinely blocked on DEFERRED.md
+item #13, skeletal animation — replaced with a clear "not available" message,
+matching the same "port the surrounding framework faithfully, guard the
+actually-unavailable feature" pattern InverseKinematics' Avatar half already
+established). Found and worked around **two new, previously-undocumented CNA
+rendering gaps** in the process (DEFERRED.md items #28/#29 — a full-backbuffer
+`SpriteBatch` draw before any 3D draw call in the same frame breaks that
+frame's 3D rendering entirely; `DualTextureEffect`'s own EasyGL shader
+hardcodes a Position+UV-only, no-Normal vertex layout unlike every other stock
+effect) plus a real bug in `tools/fbx_ascii2model.py` (silently used the wrong
+one of 2 UV layers on a multi-UV-layer FBX mesh, fixed with no regression on
+any already-shipped single-UV-layer asset). See section 3 for the full account
+of each finding, all confirmed live via screenshot isolation. Before this,
+**TiltPerspective (#107) was ported** (see section 3) — the second and last of
+the two samples covered by the
 2026-07-10 user go/no-go decision (section 8 task 9), completing it. Unlike
 its sibling AccelerometerSample (#084, ported in the prior session), this
 sample's own re-audit against the "look for a nested `DeviceType` branch
@@ -26,9 +47,11 @@ and its own no-hardware fallback is a non-interactive, time-driven sinusoidal
 wobble, not a keyboard branch of any kind — so this port genuinely had to
 invent a keyboard-tilt control scheme from scratch (NOXNA), reusing the same
 X/Y-arrow-key shape AccelerometerSample's/Yacht's own *promoted* fallbacks
-already established, for consistency. **With this sample done, both halves of
-the 2026-07-10 user go/no-go (task 9) are complete, and there is no further
-approved/queued porting work** — see section 8's closing note. Before this,
+already established, for consistency. With this sample done, both halves of
+the 2026-07-10 user go/no-go (task 9) were complete at the time — see section 8
+for how ReachGraphicsDemo (this session's newest port, above) was picked up
+next regardless, since it had been separately flagged as likely-unblocked in
+the same session, not part of that go/no-go. Before this,
 **AccelerometerSample (#084) was ported** — the first of the two samples
 covered by that same decision; porting it turned up the correction described
 above (its own emulator branch, unlike TiltPerspective's, already had a real
@@ -48,10 +71,10 @@ unblocks, etc.). The Avatar scope question is settled (2026-07-10, user
 go/no-go — see section 8 task 10): the 5 Avatar samples will not be ported.
 MarbleMaze (#061), ChaseCamera (#058), and InverseKinematics (#057) (the
 original 3-sample lighting-candidate list) were ported in earlier sessions and
-remain done. 26 placeholder directories exist for samples still genuinely
+remain done. 25 placeholder directories exist for samples still genuinely
 blocked on real CNA engine work (custom shaders, skeletal animation, one
 content-pipeline gap) — verified by direct count: `ls samples | wc -l` = 86
-total sample directories = 60 active `add_subdirectory` lines + 26
+total sample directories = 61 active `add_subdirectory` lines + 25
 still-commented placeholder lines in the root `CMakeLists.txt`, with none
 unlisted either way. 67 catalogued directories are permanently out of scope
 and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
@@ -61,7 +84,7 @@ Count Summary table for exact per-category counts.
 **No further approved/queued porting work exists as of this session** (see
 section 8's closing note in full): every remaining placeholder is blocked on
 either a `cna`-side engine fix (items #11, #13, #14, #6/#18, or the newer
-#22–#27) or a new user product-scope decision, not on porting effort alone. A
+#22–#29) or a new user product-scope decision, not on porting effort alone. A
 future session should re-verify this claim (per section 5's own "DEFERRED.md
 blockers can go stale" caveat) rather than trust it indefinitely, and should
 check with the user for new direction before assuming there's nothing to do.
@@ -149,6 +172,114 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **ReachGraphicsDemo (#005) ported** (2026-07-10, follow-up session) — a
+  Phase 1 sample ("MIX10 Graphics Effects Demo"): a menu-driven showcase of 5
+  of XNA 4.0 Reach-profile stock effects, each its own demo scene, sharing a
+  `MenuComponent`/`MenuEntry`/`TitleMenu`/`DemoGame` framework (crossfade
+  transition effects between scenes, "zoomy text" click feedback, idle
+  attract-mode auto-cycling). Read `DemoGame.cs`/`MenuComponent.cs`/
+  `MenuEntry.cs`/`TitleMenu.cs`/`BasicDemo.cs`/`AlphaDemo.cs`/`DualDemo.cs`/
+  `EnvmapDemo.cs`/`ParticleDemo.cs`/`SkinnedDemo.cs`/`Sky.cs`/`Tank.cs`/
+  `ContentPipelineExtension/CubemapProcessor.cs` in full before writing any
+  code, per this task's own brief. Builds 0 warnings (multiple from-scratch
+  rebuilds); ran 10+ seconds with no crash across several runs; attract mode
+  observed live (unforced) correctly auto-cycling through demo scenes with
+  their own crossfade transition animations playing; F1 help overlay
+  confirmed appearing/disappearing correctly.
+  **Scope: 5 of 6 demo scenes ported** (`BasicDemo`, `AlphaDemo`, `DualDemo`,
+  `EnvmapDemo`, `ParticleDemo`, plus the full shared framework);
+  **`SkinnedDemo` skipped** — still genuinely blocked on DEFERRED.md item #13
+  (no skeletal animation system in CNA at all); replaced with a clear
+  "not available, needs DEFERRED item #13" message, following the same
+  "port the surrounding framework faithfully, only the actually-unavailable
+  feature is inert" pattern InverseKinematics' Avatar half already
+  established — but unlike that case, there was no existing CNA class/state
+  to guard against here (the underlying animation types simply don't exist),
+  so the guard is a hand-written message rather than a permanently-false
+  runtime condition.
+  **Correction to this task's own original brief:** the brief assumed
+  `TitleMenu.cs` used `Sky.cs`/`Tank.cs` for its own 3D background scene,
+  offering a "simplify to a static title screen" fallback if that turned out
+  too large — a full read of `TitleMenu.cs` found this premise was simply
+  wrong: `Sky.cs` is used only by `SkinnedDemo.cs` and `Tank.cs` only by
+  `BasicDemo.cs`/`AlphaDemo.cs`; `TitleMenu.cs`'s own `Draw()` has no 3D
+  content of any kind (flat background + rotated title text + floating
+  SpriteBatch-only "xna" labels). So TitleMenu needed no scope reduction at
+  all and is ported fully and faithfully.
+  **Every model in this sample is loaded via the established DEFERRED.md item
+  #26 bypass** (`RawMesh.hpp`/`RawMeshPosTex.hpp`/`TankModel.hpp`, applied
+  proactively from the start, not re-confirmed against a plain
+  `Content.Load<Model>` build first, per this session's now-5+-times-confirmed
+  precedent). `grid.x` (converted via `assimp export`, no ASCII-FBX parser
+  path for `.x` files) hit the same `assimp`-introduced triangle-winding
+  inversion already seen on ChaseCamera's/MarbleMaze's own `.x`-derived
+  assets — fixed with a permanent, isolated `RasterizerState::CullNone` for
+  just that one mesh's own draw call. `tank.fbx`'s own `Connect: "OO"` lines
+  revealed a genuine nested (parent, child) bone hierarchy (unlike every
+  other model in this repo, all flat/single-bone) — `TankModel.hpp`
+  reimplements this hierarchy directly in C++ (a NOXNA 12-part parent-index
+  table + per-frame `local * parentAbsolute` chain, mirroring
+  `Model.CopyAbsoluteBoneTransformsTo()` exactly), reading each part's own
+  un-baked mesh-local vertex data plus its own rest translation via a new
+  one-off Python conversion script (not committed to `tools/`). Confirmed
+  live: the tank renders fully textured (2 materials) and shaded, with the
+  turret visibly rotating frame-to-frame.
+  **Found and fixed a real bug in `tools/fbx_ascii2model.py`:** `model.fbx`
+  (DualDemo's model) has 2 UV layers per mesh (a base diffuse-texture UV plus
+  a separate lightmap UV) — the tool's own parser silently kept whichever
+  `UV:`/`UVIndex:` block it saw *last* (the lightmap layer), instead of the
+  intended base-texture layer (layer 0), corrupting texture coordinates.
+  Fixed to keep only the first UV layer found; confirmed this does not
+  change any already-shipped single-UV-layer asset (`tank.fbx`/`saucer.fbx`
+  re-converted byte-identical to their previously-shipped `_verts.bin` files).
+  **Found and worked around 2 new, previously-undocumented CNA rendering
+  gaps, both confirmed live via careful screenshot isolation (one variable
+  changed at a time):**
+  1. DEFERRED.md item #28 (new) — a `SpriteBatch` draw that stretches a
+     texture to cover the *entire* backbuffer, executed before any 3D draw
+     call in the same frame, makes every subsequent 3D draw in that frame
+     render nothing at all (confirmed independent of effect type, camera
+     distance, cull mode, and source texture format — narrowed specifically
+     to "full-backbuffer SpriteBatch draw before 3D content," since this
+     sample's own smaller `DrawTitle()` SpriteBatch calls, positioned the
+     same way in every other demo scene, are unaffected). Worked around in
+     EnvmapDemo by replacing the SpriteBatch background-image draw with a
+     hand-built full-screen quad via `BasicEffect` + 
+     `DrawUserIndexedPrimitives` (`DrawBackgroundQuad()`, NOXNA).
+  2. DEFERRED.md item #29 (new) — `DualTextureEffect`'s own EasyGL shader
+     (`EnsureDualTextured3DProgram()`) hardcodes a Position+UV-only (no
+     Normal) vertex attribute layout, unlike `BasicEffect`'s/
+     `EnvironmentMapEffect`'s Position+Normal+UV lit shaders — uploading the
+     usual `VertexPositionNormalTexture` against it silently reads the
+     mesh's own Normal.xy as if it were UV, producing a flat/uniform color
+     per submesh. Worked around with a new `RawMeshPosTex.hpp` (NOXNA)
+     uploading plain `VertexPositionTexture` for DualDemo's meshes only.
+  Also applied DEFERRED.md item #24's already-known `Clear(Color)`-never-
+  clears-depth gap as a sample-level workaround in EnvmapDemo (2-arg
+  `Clear(Color, float)` instead), since that scene's cross-frame depth-buffer
+  reuse actually mattered here (unlike most other samples, where it's latent).
+  **Visual result, confirmed live via screenshot:** BasicDemo's tank renders
+  fully textured/shaded/animated on a checkered floor; DualDemo's 7-part
+  scene shows real tiled texture detail plus the lightmap's glowing
+  "hotspot" pattern correctly blended in; EnvmapDemo's saucer shows a
+  genuinely reflective/chrome cubemap surface (dark blue/black tones with
+  warm highlights, consistent with the source coastal photo) over its own
+  correctly-rendered full-screen background image; AlphaDemo's 25 imposter
+  tank billboards render correctly shaped via real alpha-test discard but
+  noticeably dark (a plausible faithful single-directional-light
+  characteristic, not conclusively root-caused as a bug — see missing.md).
+  Live interactive mouse input was not exercised (same `xdotool`
+  shared-desktop focus caveat as every other sample this session) — verified
+  instead via this repo's established temporary debug-auto-trigger pattern
+  (an env-var-gated `SetActiveMenu()` hook plus a forced `helpTimer_`, both
+  reverted before commit, reconfirmed via a clean 0-warning rebuild
+  afterward). Screenshot tooling itself was intermittently unreliable this
+  session (captured stale frames from a previous demo scene despite the
+  running process's own logged internal state being correct at capture time)
+  — matches this repo's own already-documented "screenshot tooling has
+  intermittently failed" caveat (section 5), not a code defect; re-capturing
+  always eventually produced a screenshot matching the real, logged state.
+  See `samples/ReachGraphicsDemo/missing.md` for the complete account.
 - **TiltPerspective (#107) ported** (2026-07-10, follow-up session) — the
   second and last of the two samples covered by the 2026-07-10 user go/no-go
   decision (section 8 task 9), completing it. A small perspective-shifted 3D
@@ -686,7 +817,30 @@ screenshot.
 
 ## 3. Recent changes
 
-**Newest session (2026-07-10, eighth follow-up):** Ported
+**Newest session (2026-07-10, ninth follow-up):** Ported **ReachGraphicsDemo
+(#005)** — see section 2's "Recently implemented / working" entry above for
+the complete account (scope decisions, DEFERRED.md items #28/#29, the
+`tools/fbx_ascii2model.py` multi-UV-layer bug fix, and the full live
+verification account). Summary: this Phase 1 sample's own `missing.md` had
+gone stale (flagged earlier this same multi-session run, section 8's prior
+closing notes) — a fresh audit confirmed 5 of its 6 demo scenes were
+portable with zero `cna` changes (only `SkinnedDemo` remains blocked, on
+DEFERRED.md item #13). Ported the shared menu framework plus `BasicDemo`,
+`AlphaDemo`, `DualDemo`, `EnvmapDemo`, and `ParticleDemo` faithfully; skipped
+`SkinnedDemo` with a clear in-app "not available" message. Builds 0 warnings
+(multiple from-scratch rebuilds, the last one after removing all temporary
+debug instrumentation); ran 10+ seconds with no crash across several runs.
+Found and worked around 2 new CNA rendering gaps (DEFERRED.md items #28, #29)
+and fixed a real bug in `tools/fbx_ascii2model.py` (silently used the wrong
+one of a mesh's 2 UV layers), all confirmed live via screenshot isolation —
+see `samples/ReachGraphicsDemo/missing.md` for the complete write-up. This
+was the last remaining item explicitly flagged as "not yet acted on" from the
+prior session's own closing notes; per section 8's own restated position,
+there is still no further approved/queued porting work beyond this as of this
+session's own close (a future session should re-verify this rather than
+trust it indefinitely, per section 5's standing staleness caveat).
+
+**Previous session (2026-07-10, eighth follow-up):** Ported
 **TiltPerspective (#107)**, the second and last of the two samples covered by
 section 8 task 9's 2026-07-10 user go/no-go decision — completing it. Read
 `TiltPerspective_4_0/TiltPerspective/{TiltPerspectiveSample.cs,
@@ -2205,14 +2359,19 @@ this exact reason; (2) DEFERRED.md item #26's fix, if/when someone applies it
 (see task 2 below), removes a real constraint on *how* any future
 `Content.Load<Model>`-based sample must be ported (straight loading vs. a
 `RawMesh.hpp`/`RawModel.hpp`-style bypass) even though — checked directly this
-session, not assumed — **none of the 28 currently-commented placeholder
-directories are blocked by item #26 specifically**: every one of them checked
-(`ReachGraphicsDemo`, `ColorReplacement`, `BillboardSample`, `InstancedModel`,
+session, not assumed — **none of the (then-28, now-25) currently-commented
+placeholder directories are blocked by item #26 specifically**: every one of
+them checked (`ColorReplacement`, `BillboardSample`, `InstancedModel`,
 `NetRumble`, `ShipGame`, and the rest of the shader/`Phase 3`/`Phase 4` list) is
 blocked by a custom HLSL shader (item #11), skeletal animation (item #13), or
 per-mesh `ModelBone` support (item #6/#18) instead — deeper gaps item #26's fix
-alone does not remove. A future session should still re-check this rather than
-trust this session's one-time audit, per the same staleness caveat above. Both
+alone does not remove. **Update (2026-07-10, later the same session):**
+`ReachGraphicsDemo` — originally in this same list as "not blocked by item #26
+but also not yet independently confirmed portable" — has since been ported in
+full (5 of its 6 demo scenes; see this section's newest entry above), applying
+item #26's bypass proactively throughout, exactly as this note predicted it
+would need. A future session should still re-check the remaining 25 rather
+than trust this session's one-time audit, per the same staleness caveat above. Both
 previously-open product-scope decisions are now fully settled (2026-07-10,
 user go/no-go — see tasks 9/10 below): AccelerometerSample **and**
 TiltPerspective are both done (the former shipped with the original's own
