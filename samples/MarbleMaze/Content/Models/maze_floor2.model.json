@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "maze_floor2",
+      "vertices": "maze_floor2_verts.bin",
+      "indices": "maze_floor2_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

@@ -403,17 +403,22 @@ is also resolved. Use `tools/make_font.py` to generate font assets, then load wi
 
 ---
 
-## 9. Mouse Input — Viewport.AspectRatio
+## 9. Mouse Input — Viewport.AspectRatio ✅ RESOLVED (confirmed 2026-07-10)
 
-**What is missing (minor):**
-`Viewport` has no `AspectRatio` convenience property.  Currently computed manually
+**Was:** `Viewport` had no `AspectRatio` convenience property; computed manually
 as `(float)Width / (float)Height` in each sample.
 
-**Where to implement:** `cna/include/Microsoft/Xna/Framework/Graphics/Viewport.hpp`
+**Now:** confirmed via direct source read while porting MarbleMaze (2026-07-10)
+that `Viewport::getAspectRatioProperty()` already exists and is implemented
+(`cna/include/Microsoft/Xna/Framework/Graphics/Viewport.hpp:54` and the
+matching `.cpp`). Used directly in `samples/MarbleMaze/src/Objects/Camera.hpp`'s
+`Initialize()` — no manual `(float)Width/Height` workaround needed. Per this
+repo's own "risky assumption" caveat (NEXT.md section 5), this item had gone
+stale silently; marked resolved now that it's been re-verified live.
 
-**Blocked samples:** Non-blocking workaround exists; cosmetic only.
+**Where implemented:** `cna/include/Microsoft/Xna/Framework/Graphics/Viewport.hpp`
 
-**Effort:** S
+**Effort:** — (done)
 
 ---
 
@@ -1190,7 +1195,7 @@ all of them.
 | 6 | Model asset conversion, static geometry (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
 | 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
-| 9 | Viewport.AspectRatio | cna | S | 0 (workaround) |
+| 9 | Viewport.AspectRatio | cna | — | 0 | ✅ done (confirmed already implemented, 2026-07-10) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
 | 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
@@ -1207,4 +1212,4 @@ all of them.
 | 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
 | 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
 | 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
-| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets) | not started |
+| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze applied the same RawMesh.hpp bypass proactively, not re-confirmed empirically) | not started |

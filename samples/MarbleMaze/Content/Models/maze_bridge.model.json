@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "maze_bridge",
+      "vertices": "maze_bridge_verts.bin",
+      "indices": "maze_bridge_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

@@ -14,11 +14,13 @@ CNA C++, preserving the original class hierarchy and naming
 (`Microsoft::Xna::Framework::*`). The ported samples double as integration tests for
 CNA and as a migration reference for anyone porting XNA/MonoGame code to CNA.
 
-**Current phase:** 55 samples are fully ported and wired into the root
-`CMakeLists.txt`. 1 more is confirmed unblocked (no remaining CNA gap) and ready
-to port (MarbleMaze — see section 8 task 6; ChaseCamera and InverseKinematics were
-the other two candidates from the original list and are now both ported, see
-section 3). 28 placeholder directories exist for
+**Current phase:** 56 samples are fully ported and wired into the root
+`CMakeLists.txt`. MarbleMaze (#061) — section 8 task 6's last remaining
+candidate — was ported this session (see section 3), meaning **all 3** of the
+original 3-sample lighting-candidate list (ChaseCamera, InverseKinematics,
+MarbleMaze) are now done; no more confirmed-unblocked-and-ready samples are
+queued from that original list (see section 8, task 6, for the note on what
+replaces it as "next smallest task"). 28 placeholder directories exist for
 samples still genuinely blocked on real CNA engine work (custom shaders, skeletal
 animation, one content-pipeline gap). 67 catalogued directories are permanently out
 of scope and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
@@ -100,6 +102,55 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **MarbleMaze (#061) ported** (2026-07-10) — a full "Phase 4 — Full Games"
+  title: `ScreenManager`-based menu/gameplay flow (main menu, loading/
+  instructions, gameplay, pause, high score) wrapping a marble-in-a-tilting-maze
+  physics sim (`Marble.hpp`/`Maze.hpp`/`DrawableComponent3D.hpp`, direct
+  `TriangleSphereCollisionDetection.hpp` port). Builds 0 warnings; ran 8+
+  seconds with no crash across several runs. Applied DEFERRED.md item #26's
+  `RawMesh.hpp` bypass proactively from the start (not re-confirmed
+  empirically against a plain `Content.Load<Model>` build this time, given 4
+  prior independent confirmations already on record — see missing.md),
+  generalized beyond ChaseCamera's/InverseKinematics' single-mesh-per-model
+  shape to support the maze's 6 separately-textured sub-meshes (walls, 3 floor
+  variants, topWall, floorSides) sharing one `BasicEffect`. Found a **second**
+  confirmed instance of the `assimp export`-introduced triangle-winding
+  inversion first seen on ChaseCamera's `Ground.x` — this time on an `.FBX`
+  source, across 5 of the maze's 6 parts at once (only `walls` was unaffected);
+  fixed with a permanent `RasterizerState::CullNone` around the whole maze
+  draw, isolated live via screenshot (only `walls` visible before, full maze
+  visible after, no other change). No `.htm` exists for this sample (a 101-page
+  `.doc` tutorial instead) — used a one-off `gen_help_png.py`-based script for
+  the F1 overlay text, describing this port's own direct keyboard-tilt mapping
+  (derived algebraically from `Accelerometer.cs`'s own emulator/keyboard
+  fallback — the established DEFERRED.md item #15 pattern, not an invented
+  scheme; no `CalibrationScreen` ported, since its only call site is
+  `DeviceType.Device`-gated dead code on desktop). Confirmed via this repo's
+  established temporary debug-auto-trigger pattern (reverted before commit,
+  since a different real user window held focus throughout — confirmed via
+  `xdotool getactivewindow`): the full 3D scene renders correctly (maze fully
+  textured/shaded after the winding fix; marble textured, lit, and resting
+  stably on the floor with no falling-through over 11+ seconds of passive
+  observation — direct proof the runtime-reconstructed collision triangle
+  lists work); maze tilt physics correctly rotates the display while collision
+  math stays in the maze's unrotated rest frame, exactly matching the
+  original's architecture; F1 help overlay renders correctly. The
+  menu→loading→gameplay screen *transitions themselves* were not clicked
+  through live this session (same `xdotool` focus caveat) — see missing.md's
+  Verification section for the precise scope of what was and wasn't exercised.
+  Also found and fixed a stale DEFERRED.md item: #9 (`Viewport.AspectRatio`)
+  claimed the property didn't exist, but a live grep of `cna`'s current source
+  found `getAspectRatioProperty()` already implemented — marked resolved.
+  `Content.Load<Model>`'s custom-`ContentProcessor` gap (item #18,
+  `MarbleMazeProcessor`'s build-time triangle-list extraction) was worked
+  around by reconstructing the same data at runtime from `RawMesh`'s own
+  already-loaded vertex/index buffers (`RawMesh::ExpandTrianglePositions()`) —
+  no new sidecar file format needed, unlike TrianglePicking's `--picking` tool
+  flag. See `samples/MarbleMaze/missing.md` for the complete account,
+  including several smaller documented deviations (synchronous asset loading
+  instead of a background thread; `std::fstream` high-score persistence
+  instead of `IsolatedStorageFile`; a fixed "Player" high-score name instead of
+  `Guide.BeginShowKeyboardInput`).
 - **ChaseCamera (#058) ported** (2026-07-10) — a spring-physics chase camera
   (`ChaseCamera.hpp`, pure `Vector3`/`Matrix` math ported directly, no CNA gaps)
   following a ship (`Ship.hpp`, simple flight physics + mouse/keyboard/gamepad
@@ -365,6 +416,128 @@ screenshot.
 ---
 
 ## 3. Recent changes
+
+**Newest session (2026-07-10, third follow-up):** Ported **MarbleMaze (#061)**,
+section 8 task 6's last remaining candidate from the original 3-sample list
+(ChaseCamera and InverseKinematics were ported earlier this session — see
+below). Unlike the single-mechanic "Phase 3 — 3D Graphics" samples ported so
+far, this is a full "Phase 4 — Full Games" title: a complete
+`ScreenManager`-based menu/gameplay flow (`GameStateManagement`'s vanilla
+plain-text `MenuEntry`/dynamic `UpdateMenuEntryLocations()` variant, not
+HoneycombRush's customized button-texture copy of the same library already in
+this repo) wrapping a marble-rolling-through-a-tilting-maze physics simulation.
+
+Read `Source/EX2_Polishing/End/MarbleMazeGame/MarbleMazeGame/`'s full C# source
+(4687 lines across `MarbleMazeGame.cs`, `Objects/{Camera,DrawableComponent3D,
+Marble,Maze}.cs`, `Misc/{Accelerometer,AudioManager,IntersectDetails,
+TriangleSphereCollisionDetection}.cs`, the whole `ScreenManager/` library, and
+all 7 `Screens/*.cs` files) plus `MarbleMazePipeline/MarbleMazeProcessor.cs`
+(the custom build-time `ContentProcessor` — see below) before writing any code,
+per this task's own brief.
+
+**Per this task's own brief, given DEFERRED.md item #26 was already
+independently confirmed 4 times across InverseKinematics' and ChaseCamera's own
+assets, this session did not re-test a plain `Content.Load<Model>` build before
+committing to the `RawMesh.hpp` (NOXNA) bypass** — applied proactively from the
+start, generalized beyond ChaseCamera's/InverseKinematics' one-mesh-per-model
+shape to support `maze1.FBX`'s 6 separately-textured sub-meshes (`walls`, 3
+differently-textured `Floor` sub-parts, `topWall`, `floorSides` — confirmed via
+`assimp info` that each maps to exactly one material, no further
+multi-material reconciliation needed) sharing one `BasicEffect` (texture
+swapped per part before each draw). This decision was independently
+overdetermined by DEFERRED.md item #18 too (no custom-`ContentProcessor`
+extensibility, needed for `MarbleMazeProcessor`'s own per-mesh triangle-list
+extraction) and item #6's "no per-mesh texture in `.model.json`" addendum
+(the maze structurally needs 6 different textures, which `Content.Load<Model>`
+could never have produced correctly regardless of item #26's status) — even if
+item #26 somehow didn't apply here, the other two gaps would still have forced
+the same bypass. `MarbleMazeProcessor`'s own build-time triangle-list
+extraction (feeding `Maze.cs`'s ground/wall/floor-side collision test) was
+reconstructed at runtime instead, from the *same* vertex/index data `RawMesh`
+already loads for rendering (`RawMesh::ExpandTrianglePositions()` — no new
+picking/collision sidecar file format needed, unlike TrianglePicking's
+`--picking` tool flag). `maze1.FBX`'s `Start`/`Finish`/`spawnPt1..4` bone-only
+marker nodes (no geometry, pure transform nodes) were extracted once, offline,
+via a one-off `pyassimp` script walking the FBX's node hierarchy, then
+hardcoded as `Vector3` constants — cross-checked for self-consistency against
+the exported mesh geometry's own bounding box.
+
+**Found a second, independent confirmed instance of the `assimp export`
+triangle-winding inversion first seen on ChaseCamera's `Ground.x`** (see that
+session's own entry below): with CNA's default
+`RasterizerState::CullCounterClockwise`, 5 of the maze's 6 parts (everything
+except `walls`) rendered as fully invisible; forcing `RasterizerState::CullNone`
+around the whole maze draw made every part appear correctly, fully textured
+and shaded, with no other change — isolated live via screenshot comparison.
+Kept as a permanent fix (not a workaround needing later cleanup), the same
+class of per-asset accommodation this repo's own `HeightmapCollision`/
+`GeneratedGeometry` terrain and `ChaseCamera`'s `Ground.x` already needed —
+not filed as a new DEFERRED.md item, just a second confirmed sighting of the
+same tool quirk (now seen on both `.x` and `.FBX` sources).
+
+No `.htm` documentation exists for this sample (a 101-page Word tutorial
+instead, `3D Game Development With XNA.doc`) — used a one-off script
+(`gen_marblemaze_help.py`, following the established Graphics3D/MicrophoneEcho
+precedent for samples whose `.htm` can't be scraped normally) that imports
+`tools/gen_help_png.py`'s `render_png()` directly with hand-written text
+describing this port's actual control scheme: direct arrow-key maze tilt,
+algebraically derived from `Accelerometer.cs`'s own emulator/keyboard fallback
+combined with `GameplayScreen.cs`'s `DeviceType.Emulator` branch (the
+established DEFERRED.md item #15 "un-`#if` the existing non-phone fallback"
+pattern, not an invented control scheme) — confirmed by source read that the
+real accelerometer path and the double-tap calibration branch are both
+`DeviceType.Device`-gated dead code on any non-phone build, so neither
+`Accelerometer.cs` nor `CalibrationScreen.cs` was ported at all.
+
+Several smaller, explicitly-documented simplifications (all in missing.md):
+`LoadingAndInstructionScreen`'s background-thread asset load became a
+synchronous call (CNA's EasyGL graphics-resource creation isn't confirmed safe
+off the GL thread); `HighScoreScreen`'s `IsolatedStorageFile` persistence
+became plain `std::fstream` against a local file; `FinishCurrentGame()`'s
+`Guide.BeginShowKeyboardInput` on-screen-keyboard name entry became a fixed
+`"Player"` string; C#'s `LinkedList<Vector3>` checkpoint traversal became a
+`std::vector<Vector3>` + index; C#'s `public new bool IsActive` field-hiding
+`GameScreen.IsActive` became the same mechanism in C++ (a same-named field
+correctly hides the base method for unqualified access, matching C#'s `new`
+without needing an explicit keyword); the original's interleaved
+`SpriteBatch.Begin()`/3D-draws/`SpriteBatch.End()` (needing a
+`DepthStencilState` re-enable dance) was reordered to 3D-first-then-2D,
+matching this repo's other mixed-3D/2D samples and sidestepping that dance
+entirely. A new `Screens/ScreensGlue.hpp` (NOXNA, no C# equivalent) resolves
+the 6 screen classes' mutual circular references (unremarkable in C#, needing
+forward-declaration + deferred-method-body treatment in C++) — the same
+technique this repo's own `ScreenManager.hpp`/`MenuScreen.hpp` already use in
+miniature for `GameScreen`/`MenuEntry`'s own two-way reference.
+
+Also found and corrected a stale DEFERRED.md entry while writing `Camera.hpp`:
+item #9 (`Viewport.AspectRatio`) claimed the property didn't exist, but a live
+grep of `cna`'s current source found `getAspectRatioProperty()` already
+implemented and used directly — marked resolved (per this repo's own "risky
+assumption" caveat, section 5: `cna` is under active concurrent development and
+DEFERRED.md blockers can go stale silently).
+
+Builds 0 warnings (verified via a from-scratch object-file rebuild, grepped for
+"warning"/"error", none found). Ran under `SDL_VIDEODRIVER=x11` for 8+ seconds
+with no crash across several separate runs. Confirmed live via this repo's
+established temporary debug-auto-trigger pattern (all reverted before commit,
+since a different real user window held focus throughout this session,
+confirmed repeatedly via `xdotool getactivewindow`): the main menu renders
+correctly; the F1 help overlay renders correctly; the full 3D gameplay scene
+(all 6 maze parts plus the marble) renders correctly, fully textured and
+shaded, with the marble resting stably on the floor for 11+ seconds of passive
+observation with no falling-through (direct proof the runtime-reconstructed
+collision triangle lists work); forcing a constant tilt input showed the maze
+visibly rotating, correctly clamped at ±30°, with the marble staying correctly
+positioned on the tilted floor throughout — confirming the physics-in-
+unrotated-frame architecture (only the *display* transform rotates; the
+marble's actual position/velocity math is entirely independent of the tilt)
+works end-to-end. The menu→loading→gameplay screen *transitions* themselves
+were not clicked through with real synthetic input this session (the same
+`xdotool` focus limitation) — see `samples/MarbleMaze/missing.md`'s
+Verification section for the precise scope of what was and wasn't exercised
+live.
+
+Commit this session: see git log — pushed to `develop`.
 
 **Newest session (2026-07-10, second follow-up):** Ported **ChaseCamera (#058)**,
 section 8 task 6's next candidate after InverseKinematics — a spring-physics chase
@@ -1349,11 +1522,13 @@ No lint/format command and no automated test suite are configured in this repo.
 
 ## 8. Next smallest tasks
 
-**Recently completed (2026-07-09):** LensFlare (#041), Graphics3D (#046),
-PickingSample (#047), and TrianglePicking (#048), all screenshot-verified — see
-section 3 for the full account of each, including the new DEFERRED.md items
-(#22–#25), the item #6 addendum PickingSample added, and TrianglePicking's
-clarification to item #23.
+**Recently completed (2026-07-09/07-10):** LensFlare (#041), Graphics3D (#046),
+PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
+InverseKinematics (#057), ChaseCamera (#058), and MarbleMaze (#061), all
+screenshot-verified — see section 3 for the full account of each, including
+the new DEFERRED.md items (#22–#26), the item #6/#9 corrections, and item
+#23's clarification. Task 6 (below) is retired now that MarbleMaze — its last
+tracked candidate — is done; see its own entry for what's recommended next.
 
 1. **Fix `SafeArea`'s `Viewport.x`/`.y` build breakage — blocks the full
    aggregate build.**
@@ -1434,49 +1609,38 @@ clarification to item #23.
      were tested independently and this one wasn't confirmed as a contributing
      cause, but wasn't fully ruled out as a compounding factor either).
 
-6. **Port the last remaining unblocked lighting sample: MarbleMaze.**
-   PickingSample (#047), TrianglePicking (#048), HeightmapCollision (#049),
-   InverseKinematics (#057), and ChaseCamera (#058), previously in this list,
-   are now all ported — see section 3.
-   - Goal: same pattern as LensFlare/Graphics3D/PickingSample/TrianglePicking/
-     HeightmapCollision/InverseKinematics/ChaseCamera — port using stock
-     `Model`/`BasicEffect` (or a `RawModel.hpp`-style bypass if
-     `Content.Load<Model>` renders nothing — see below), screenshot-verify,
-     expect (per task 2 — **DEFERRED.md item #26, now independently confirmed
-     FOUR times across InverseKinematics' and ChaseCamera's own assets, at
-     vertex counts from 6 to 32458 — treat any stride-32 `.model.json` in this
-     repo as presumptively affected, not just a hypothesis**) either the
-     thin-line or fully-invisible symptom depending on camera distance; that
-     alone is not a reason to suspect a new bug. Also expect the "flat white, no
-     shading gradient" finding PickingSample/TrianglePicking/HeightmapCollision
-     surfaced (DEFERRED.md item #6's addendum) on any model whose original
-     relied on a texture for material color/shading contrast, **unless** you
-     bypass `Content.Load<Model>` and bind a real `Texture2D` directly to the
-     `BasicEffect` the way ChaseCamera's `RawModel.hpp`/HeightmapCollision's
-     `Terrain.hpp` both do — in that case expect fully textured/shaded
-     rendering instead. If a future sample's `.model.json` mesh ever exceeds
-     65535 vertices, also expect the newer 16-bit-index-only nuance
-     HeightmapCollision found (item #6's second addendum) — build that mesh
-     directly at runtime with a real 32-bit `IndexBuffer` instead, the same way
-     `Terrain.hpp` does, rather than routing it through `Content.Load<Model>`.
-     **Recommended approach given item #26's now-strong confirmation record:**
-     don't wait to see a blank screen before bypassing — go straight to a
-     `RawModel.hpp`-style loader (read the `tools/obj2model.py`/
-     `tools/fbx_ascii2model.py`-produced `_verts.bin`/`_idx.bin` directly,
-     construct real `VertexPositionNormalTexture` objects field-by-field, upload
-     via the typed `VertexBuffer::SetData` overload, bind a real `Texture2D`)
-     for any mesh this sample needs to actually render, and only fall back to
-     plain `Content.Load<Model>` if a quick empirical test shows it actually
-     renders correctly (worth still doing the empirical test once, the way
-     ChaseCamera's port did, for one more repo-wide data point — but budget for
-     the bypass being needed).
-   - Note: MarbleMaze has a much larger source tree (140 files); only a
-     specific subdirectory (`Source/EX2_Polishing/End/`) is likely the actual
-     port target per its `missing.md` — read that file first.
-   - Files: new `samples/MarbleMaze/src/`; read `samples/MarbleMaze/missing.md`
-     first.
-   - Verify: `cmake --build cmake-build-debug --target MarbleMaze_cna_samples`,
-     run under `SDL_VIDEODRIVER=x11`, screenshot.
+6. **RETIRED (2026-07-10) — task 6's original 3-sample list is now fully
+   ported.** PickingSample (#047), TrianglePicking (#048), HeightmapCollision
+   (#049), InverseKinematics (#057), ChaseCamera (#058), and now MarbleMaze
+   (#061) are all done — see section 3 for each. **DEFERRED.md item #26 is now
+   confirmed independently across 5 assets** (cylinder, ship, ground, plus
+   MarbleMaze's own marble+6 maze parts assumed-but-not-independently-tested —
+   see its missing.md) at vertex counts from 6 to 32458 — treat any stride-32
+   `.model.json` in this repo as presumptively affected; go straight to a
+   `RawMesh.hpp`/`RawModel.hpp`-style bypass (read the converted
+   `_verts.bin`/`_idx.bin` directly, construct real `VertexPositionNormalTexture`
+   objects field-by-field, upload via the typed `VertexBuffer::SetData`
+   overload, bind a real `Texture2D`) for any future sample's model rather than
+   assuming `Content.Load<Model>` will render correctly.
+   - **What's next, per a dedicated research pass this session:** no further
+     placeholder sample was found to be cleanly unblocked (zero CNA gap) the
+     way this original 3-sample list was. Every remaining "Todo" placeholder
+     needs at least one of: custom HLSL→GLSL shader conversion (item #11, still
+     `not started` — see section 9's explicit "do not start" list), skeletal
+     animation playback (item #13), or per-mesh `ModelBone` support for
+     independently-posed rigid parts (item #6's multi-bone note / item #18).
+     **`RimLighting` (#037) is the closest to portable** — DEFERRED.md item #14
+     confirms via direct source audit it has **zero** custom `.fx` files (stock
+     `EnvironmentMapEffect` + one `TextureCube` asset) — but needs a small,
+     real `cna`-side addition first (a `TextureCubeTypeReader` in
+     `ContentManager.cpp`, effort **S**, item #14) that's out of scope for a
+     pure porting session without the user's sign-off to touch `cna`.
+   - **Recommended immediate next task instead: section 8 task 7
+     (NetworkPrediction/PeerToPeer)** — genuinely zero CNA gaps today (all 3 of
+     ClientServerSample's original networking workarounds are resolved
+     upstream), not yet executed by any session.
+   - Files: N/A (retired).
+   - Verify: N/A (retired).
 
 7. **Port NetworkPrediction (#100) or PeerToPeer (#103).**
    - Goal: all three of ClientServerSample's original workarounds are gone now
@@ -1544,8 +1708,10 @@ clarification to item #23.
   `.shader.json` workflow in `cna` (DEFERRED.md item #11) — no tooling exists
   yet. This does **not** apply to the lit-`BasicEffect`-only samples (LensFlare,
   Graphics3D, PickingSample, TrianglePicking, HeightmapCollision,
-  InverseKinematics, and ChaseCamera are now ported; MarbleMaze is the last one
-  left — section 8, task 6) — those need no shader work.
+  InverseKinematics, ChaseCamera, and MarbleMaze are all now ported — section 8
+  task 6 is retired) — those needed no shader work. `RimLighting` (#037) is the
+  next-closest lit-only candidate but needs one small `cna`-side addition first
+  (DEFERRED.md item #14) — see task 6's retirement note.
 - **Do not start a skeletal-animation sample** (SkinningSample,
   CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
   `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).

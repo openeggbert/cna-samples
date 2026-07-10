@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "marble",
+      "vertices": "marble_verts.bin",
+      "indices": "marble_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

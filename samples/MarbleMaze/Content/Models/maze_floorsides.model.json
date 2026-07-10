@@ -1,0 +1,11 @@
+{
+  "meshes": [
+    {
+      "name": "maze_floorsides",
+      "vertices": "maze_floorsides_verts.bin",
+      "indices": "maze_floorsides_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}
