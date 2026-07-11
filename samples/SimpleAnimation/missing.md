@@ -248,30 +248,43 @@ No `cna` change was made or needed; the fix is entirely a `cna-samples`
 content/tooling change (`tools/fbx_ascii2model.py` + 2 new PNGs + 12
 `"texture"` field values added to this sample's own `tank.model.json`).
 
-## Follow-up (2026-07-11): turret underside/culling investigation — SEPARATE from the texture fix
-**Distinct problem, do not conflate with the texture fix above.** A dark, disc-shaped surface is
-visible under/behind the turret dome that should be hidden (legitimate interior/underside
+## Follow-up (2026-07-11): turret underside/culling investigation — SEPARATE from the texture fix — RESOLVED
+**Distinct problem, do not conflate with the texture fix above.** A dark, disc-shaped surface was
+visible under/behind the turret dome that should have been hidden (legitimate interior/underside
 `turret_geo` geometry). Confirmed against a live, authoritative original XNA 4.0 screenshot
 (real C# `SimpleAnimation`, built and run on Windows 7/VirtualBox by the project owner) that this
-artifact is **not** present in real XNA — a genuine, confirmed CNA-vs-XNA rendering mismatch.
+artifact was **not** present in real XNA — a genuine, confirmed CNA-vs-XNA rendering mismatch.
 
-**Full investigation, evidence, and current status**: `cna_graphics/docs/xna_culling_compatibility_audit.md`
+**Full investigation, evidence, and final resolution**: `cna_graphics/docs/xna_culling_compatibility_audit.md`
 (cross-repo document, since the investigation spans both `cna`'s own `RasterizerState.CullMode`
 framework and this sample's own converted mesh data).
 
-**Summary of that document's own conclusion**: `cna`'s `CullMode` framework was proven correct and
-XNA-compatible via 2 new dedicated regression tests (36/36 checks pass across all 3 backends,
-covering real camera/projection/transform/draw-path combinations well beyond what this sample
-alone exercises) — **no `cna` change was made or needed**. The symptom itself was root-caused to a
-localized winding-orientation defect in `turret_geo`'s own converted mesh data (`tank_turret_geo_idx.bin`)
-— a real, internally self-consistent sub-region (not the whole mesh) whose winding doesn't match
-what real XNA's content pipeline evidently produced from the same source FBX. **Not yet fixed** —
-the exact affected triangle range needs further isolation (a blanket reversal of the whole mesh
-would be wrong) before a targeted fix can be safely applied. `Tank.hpp` was **not** modified by
-this investigation (confirmed via `git diff` showing zero net change) — no sample-specific
-`CullMode` workaround was added, per the investigation's own explicit requirement that any fix be
-generic (framework- or asset-level), not a per-sample hack.
+**Summary of that document's own conclusion (now RESOLVED)**: `cna`'s `CullMode` framework was
+proven correct and XNA-compatible — first via 2 new dedicated regression tests (36/36 checks pass
+across all 3 backends, covering real camera/projection/transform/draw-path combinations well
+beyond what this sample alone exercises), then **independently confirmed against real XNA 4.0**
+(not just FNA source reading) via a minimal C# `CullModeTest` project the project owner ran on the
+same Windows 7 VM: real XNA's default `CullMode` state matches CNA's own default exactly. **No
+`cna` change was made or needed.**
 
-A new `tools/xna-reference/CullModeTest/` XNA 4.0 project (see that directory's own `README.md`)
-was prepared for the project owner to run on the same Windows 7 VM as a final, pixel-exact
-cross-check independent of this sample's own model entirely — not yet run.
+The symptom itself was first (incorrectly) root-caused to a defect localized to `turret_geo`
+alone; after the project owner pointed out the wheels were also visibly wrong, re-investigation
+(a whole-model, not per-mesh, diagnostic `CullMode` flip) corrected this to a **systematic
+winding reversal across all 12 of `tank.fbx`'s converted mesh parts** — every one of
+`tank_*_idx.bin`, not just `turret_geo`'s own file. **Fixed**: all 12 index buffers had their
+triangle winding reversed (originals backed up first). Verified visually at 3 different rotation
+angles against the authoritative XNA reference screenshot — closed turret dome, solid wheel
+drums, no new gaps introduced elsewhere, animation unaffected. `Tank.hpp`/
+`SimpleAnimationGame.hpp` were **not** net-modified by this investigation (several diagnostic
+edits were made and fully reverted, confirmed via `git diff` showing zero net change each time) —
+no sample-specific `CullMode` workaround was added; the fix is entirely in the mesh data, and the
+app renders correctly under `cna`'s real, unmodified default `RasterizerState`.
+
+The `tools/xna-reference/CullModeTest/` XNA 4.0 project (see that directory's own `README.md`)
+was run by the project owner on the same Windows 7 VM — its result was the decisive evidence that
+closed the "is this a CNA bug or an asset bug" question in §6 of the audit document.
+
+**Not fixed here, flagged for later**: `CameraShake`, `CustomModelClass`, and `ReachGraphicsDemo`
+each have their own independent copies of the same `tank_*_idx.bin` files and almost certainly
+share the identical defect — out of this task's scope, worth checking when next touching those
+samples' own turret/wheel rendering.
