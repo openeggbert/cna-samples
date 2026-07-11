@@ -288,3 +288,36 @@ closed the "is this a CNA bug or an asset bug" question in §6 of the audit docu
 each have their own independent copies of the same `tank_*_idx.bin` files and almost certainly
 share the identical defect — out of this task's scope, worth checking when next touching those
 samples' own turret/wheel rendering.
+
+## Follow-up (2026-07-11): depth-occlusion investigation — a SEPARATE bug from both fixes above — RESOLVED, cna-side only
+**Distinct problem, do not conflate with either fix above.** After the winding fix (previous
+section) was applied and verified, the project owner reported the tank was closer to the
+original but still wrong in a new way: some parts rendered fully visible when they should have
+been occluded by other parts in front of them — a depth/occlusion problem, not placement or
+winding.
+
+**Root cause was entirely in `cna`, not in this sample or its assets**: `GraphicsDevice`'s own
+constructor only ever pushed its `RasterizerState` default to the backend (an earlier fix, Task
+896) — `BlendState`/`DepthStencilState` were left as C++-level fields only, never actually
+applied to the backend. `Tank.hpp::Draw()` never explicitly sets any of the 3 state objects
+itself, which is **correct, idiomatic XNA code** mirroring real `Tank.cs` exactly — so it was
+silently exercising each backend's own internal hardcoded default instead of XNA's real
+`DepthStencilState.Default`. On EasyGL this meant depth testing was plain OpenGL's raw default:
+disabled.
+
+**Full investigation and resolution**: `cna_graphics/docs/xna_depth_occlusion_compatibility_audit.md`.
+
+**Fixed entirely in `cna`** (`GraphicsDevice`'s constructor now syncs `BlendState`/
+`DepthStencilState`/`RasterizerState`, matching real FNA's own constructor line-for-line) — **no
+`cna-samples` change was needed or made**. Diagnostic isolation proved this before the real fix
+was written: a temporary explicit `DepthStencilState`-only override placed directly in
+`SimpleAnimationGame::Draw()` reproduced a pixel-identical corrected render to the real
+constructor-level fix (0 differing pixels), then the diagnostic was removed entirely and the
+constructor fix alone reproduced that same pixel-identical result — confirming the true fix
+belongs in `cna`, not here. `Tank.hpp`/`SimpleAnimationGame.hpp` are unchanged by this
+investigation.
+
+Verified visually via a deterministic static pose (all rotation properties forced to 0, fixed
+camera): the turret dome, previously showing dark "window" gaps letting the background bleed
+through, is now closed and solid; the engine/exhaust tube connecting the two sides of the hull no
+longer bleeds through the turret's silhouette.
