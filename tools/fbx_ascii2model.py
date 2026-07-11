@@ -9,6 +9,16 @@ Vertex format: VertexPositionNormalTexture (stride 32)
 
 Index format: uint16 little-endian
 
+Each output mesh JSON entry also gets an optional "texture" field, automatically
+resolved from the FBX's own Material/Texture node graph (Texture:: node's own
+RelativeFilename, basename with the extension stripped, Connect:'d to that mesh's
+Model:: node) -- CNA's ModelTypeReader (Task 932) binds this to the mesh's BasicEffect
+if present. The field is simply omitted for a mesh with no Texture:: Connect edge in
+the source FBX (a real "no material" case, not an error). The referenced asset name is
+expected to resolve to a same-named PNG placed directly under the sample's own
+Content/ directory -- converting the source .tga/.dds art to PNG remains a separate,
+manual step this tool does not perform.
+
 Usage:
   python3 tools/fbx_ascii2model.py <input.fbx> <output_dir/basename> [--picking <output.bin>]
   e.g.: python3 tools/fbx_ascii2model.py Content/tank.fbx Content/tank
@@ -344,6 +354,55 @@ def write_buffers(verts, indices, vert_path, idx_path):
             f.write(struct.pack('<H', idx))
 
 
+def find_texture_relative_filenames(lines):
+    """Find every `Texture: "Texture::name", "TextureVideoClip" { ... RelativeFilename:
+    "xxx.tga" ... }` block and return {"Texture::name": "xxx"} (basename, extension
+    stripped -- matches this repo's own Content.Load<Texture2D> asset-name convention:
+    a same-named PNG is expected directly under the sample's Content/ directory, since
+    .tga -> .png conversion is a separate manual step this repo always does, not
+    performed by this tool)."""
+    texture_re = re.compile(r'^\s*Texture:\s*"(Texture::[^"]+)"')
+    relfile_re = re.compile(r'RelativeFilename:\s*"([^"]+)"')
+    result = {}
+    i = 0
+    while i < len(lines):
+        m = texture_re.match(lines[i])
+        if m:
+            tex_name = m.group(1)
+            depth = lines[i].count('{') - lines[i].count('}')
+            j = i + 1
+            while j < len(lines) and depth > 0:
+                stripped = lines[j]
+                rf = relfile_re.search(stripped)
+                if rf and tex_name not in result:
+                    fname = rf.group(1).replace('\\', '/').rsplit('/', 1)[-1]
+                    result[tex_name] = os.path.splitext(fname)[0]
+                depth += stripped.count('{') - stripped.count('}')
+                j += 1
+            i = j
+        else:
+            i += 1
+    return result
+
+
+def find_mesh_texture_assignments(lines):
+    """Find every `Connect: "OO", "Texture::X", "Model::Y"` edge and resolve it through
+    find_texture_relative_filenames() to return {"mesh_name": "texture_asset_name"} --
+    the same per-mesh diffuse-texture assignment real XNA's own content pipeline reads
+    from the FBX material graph. A mesh with no Texture:: Connect edge (untextured in
+    the source asset) is simply absent from the returned dict."""
+    texture_relfile = find_texture_relative_filenames(lines)
+    connect_re = re.compile(r'Connect:\s*"OO",\s*"(Texture::[^"]+)",\s*"Model::([^"]+)"')
+    result = {}
+    for line in lines:
+        m = connect_re.search(line)
+        if m:
+            tex_node, mesh_name = m.group(1), m.group(2).replace(' ', '_')
+            if tex_node in texture_relfile:
+                result[mesh_name] = texture_relfile[tex_node]
+    return result
+
+
 def find_mesh_blocks(lines):
     """Find all Mesh blocks, return list of (name, start, end) line indices."""
     blocks = []
@@ -389,6 +448,11 @@ def main():
     blocks = find_mesh_blocks(lines)
     print(f"Found {len(blocks)} mesh blocks")
 
+    mesh_textures = find_mesh_texture_assignments(lines)
+    if mesh_textures:
+        print(f"Found {len(mesh_textures)} mesh -> texture assignments from the FBX "
+              f"Material/Texture graph")
+
     mesh_entries = []
     picking_positions = []  # only populated/used when --picking is given
 
@@ -425,13 +489,16 @@ def main():
         if picking_path is not None:
             picking_positions.extend(verts[idx][0:3] for idx in indices)
 
-        mesh_entries.append({
+        entry = {
             "name": name,
             "vertices": vert_rel,
             "indices":  idx_rel,
             "vertexStride": 32,
             "effect": "BasicEffect"
-        })
+        }
+        if name in mesh_textures:
+            entry["texture"] = mesh_textures[name]
+        mesh_entries.append(entry)
 
     json_path = out_base + '.model.json'
     with open(json_path, 'w') as f:

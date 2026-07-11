@@ -513,6 +513,52 @@ XNA's own `ModelProcessor` behavior) and branch to the `std::uint32_t`
 `SetData` overload accordingly. See `samples/HeightmapCollision/missing.md`
 for the full write-up.
 
+**Addendum (2026-07-11): SimpleAnimation's per-mesh texture gap fixed; found a
+real, separate bug in `tools/fbx_ascii2model.py`'s node-transform baking that
+makes wholesale regeneration unsafe for this asset.** `SimpleAnimation`
+(#050)'s tank rendered flat white/cream because `tank.model.json` (reused from
+`CameraShake`) predates `cna` Task 932's per-mesh `"texture"` field — fixed by
+extending `tools/fbx_ascii2model.py` with a generic FBX
+`Material`/`Texture`/`Connect` graph parser that emits an optional `"texture"`
+field per mesh (`find_texture_relative_filenames()`/
+`find_mesh_texture_assignments()`), then hand-adding the resolved values (12
+meshes, confirmed via direct FBX `Connect:` read: `turret_alt_diff_tex` for
+`tank_geo`/`turret_geo`/`canon_geo`/`hatch_geo`, `engine_diff_tex` for the
+other 8 parts) to the existing `tank.model.json` — **not** by regenerating the
+file wholesale. **Regenerating was tested first, in a scratch directory, and
+found to corrupt this asset:** the tool's node-transform baking (added for
+LensFlare's single-mesh case, unconditionally applies each mesh's own
+`PreRotation`/`LclRotation`/`LclScaling`/`LclTranslation` directly to its raw
+vertex positions) breaks down for a multi-bone, multi-mesh asset positioned via
+the `ModelBone` hierarchy (SplitScreen/SimpleAnimation/TankOnHeightmap's own
+approach, see this item's multi-bone addendum above) for two independent
+reasons, both confirmed empirically: (1) `tank_geo`'s own FBX node has `Lcl
+Scaling = 0.01` (every other part's is `1,1,1`) — baking it directly into
+`tank_geo`'s vertices shrinks the tank body to 1% size, since in the real XNA
+pipeline this scale is meant to live in the node's own `ModelBone.Transform`
+(applied at draw/hierarchy time, exactly like the translations this item's own
+`ApplyRestTransforms()` port-side workaround already handles), not be baked
+into geometry; (2) the tool bakes only each mesh's own *immediate* node
+transform, not composed through the real multi-level nested parent chain
+(confirmed: `tank.fbx`'s hierarchy is `tank_geo → {r,l}_engine_geo →
+{r,l}_{back_wheel,steer}_geo → {r,l}_front_wheel_geo`, 3 levels deep) — so a
+regenerated `r_front_wheel_geo` mesh would carry only its own delta from
+`r_steer_geo`, missing `r_steer_geo`'s and `r_engine_geo`'s own contributions.
+**Net effect:** for any already-shipped `tank.model.json`-derived asset (also
+affects `CameraShake`'s and `CustomModelClass`'s own copies), do **not**
+regenerate via `tools/fbx_ascii2model.py` without independently re-deriving
+correct per-mesh rest transforms afterward — the currently-shipped vertex/index
+buffers (raw, un-baked local-space positions) are the ones proven correct
+against this repo's own `ModelBone`-hierarchy positioning approach. This is a
+`cna-samples`-only tooling gap (not a `cna` defect) — not fixed here, since
+fixing the tool's baking logic to compose through a real parent chain and
+route scale through bone transforms instead of vertex data is a real, separate
+task or a future session should scope explicitly rather than as a drive-by
+fix. See `samples/SimpleAnimation/missing.md`'s texture-fix write-up for the
+full account, including the live screenshot verification and the
+`CameraShake` regression check (pixel-identical to before, confirming no
+cross-sample effect from this fix).
+
 ---
 
 ## 7. Audio (SoundEffect, SoundEffectInstance, Song) ✅ RESOLVED
