@@ -163,11 +163,23 @@ in `ignored.md` (never gets a directory).
 
 | Category | Count | Where |
 |---|---|---|
-| Done (real port, builds) | 62 | this file |
+| Done (real port, builds) | 63 | this file |
 | 🔓 Unblocked (placeholder exists, CNA gap since resolved — ready to port) | 0 | this file |
-| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 24 | this file |
+| 🚧 Placeholder (still blocked on a CNA gap or scope decision) | 23 | this file |
 | ❌ Ignored — never gets a directory | 67 | `ignored.md` |
 | **Total** | **153** | |
+
+**Update 2026-07-11 (SimpleAnimation #050):** status line corrected from stale
+🚧 Placeholder to ✅ Done — the sample has had real source since Tasks 936/937 (per-mesh
+`ModelBone` support); two real CNA bugs (tank-mesh winding reversal, `GraphicsDevice`
+default-state depth-occlusion gap) were found and fixed against it this session — see
+`samples/SimpleAnimation/missing.md` and `../cna_graphics/plan_graphics.md` Phase 79 (Task 1006)
+for the full account and remaining future-review items. **A parallel, repo-wide re-audit of all
+153 catalogued samples — including the 67 in `ignored.md` — is now tracked one-task-per-sample in
+`../cna_graphics/plan_graphics.md`'s new Phase 79**, prompted directly by this discovery (a sample
+marked "Done" here can still hide a real, unfound CNA-level bug). Treat Phase 79 as the current
+authoritative per-sample re-verification tracker; this file's own per-sample status lines will be
+corrected here as each Phase 79 task closes.
 
 **Update 2026-07-10 (RimLighting #037):** ported via the same
 construct-the-real-C++-object-directly bypass ReachGraphicsDemo's `EnvmapDemo`
@@ -315,7 +327,7 @@ Post-processing, advanced lighting, shadows, picking, terrain.
 
 | # | Sample Name | Source Directory | Status |
 |---|---|---|---|
-| 050 | SimpleAnimation | `SimpleAnimation_4_0` | 🚧 Placeholder — see `samples/SimpleAnimation/missing.md` |
+| 050 | SimpleAnimation | `SimpleAnimation_4_0` | ✅ Done (status corrected 2026-07-11 — this row was stale; the sample has had real, working source since the multi-bone `ModelBone` fix, Tasks 936/937. Two real CNA bugs found and fixed against it 2026-07-11: a systematic tank-mesh winding reversal (`../cna_graphics` Task 954) and a `GraphicsDevice` default-state depth-occlusion bug, Task 955. See `samples/SimpleAnimation/missing.md` for the full account. Flagged for a future pixel-perfect re-review — see `../cna_graphics/plan_graphics.md` Phase 79, Task 1006.) |
 | 051 | CustomModelAnimation | `CustomModelAnimation_4_0` | 🚧 Placeholder — see `samples/CustomModelAnimation/missing.md` |
 | 052 | CustomModelClass | `CustomModelClassSample_4_0` | ✅ Done (ported 2026-07-06; renders correctly except the pre-existing CameraShake near-plane clipping bug, same asset) |
 | 053 | CustomModelEffect | `CustomModelEffectSample_4_0` | 🚧 Placeholder — see `samples/CustomModelEffect/missing.md` |
