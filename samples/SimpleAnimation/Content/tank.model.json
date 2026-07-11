@@ -1,0 +1,88 @@
+{
+  "meshes": [
+    {
+      "name": "tank_geo",
+      "vertices": "tank_tank_geo_verts.bin",
+      "indices": "tank_tank_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "r_engine_geo",
+      "vertices": "tank_r_engine_geo_verts.bin",
+      "indices": "tank_r_engine_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "r_back_wheel_geo",
+      "vertices": "tank_r_back_wheel_geo_verts.bin",
+      "indices": "tank_r_back_wheel_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "r_steer_geo",
+      "vertices": "tank_r_steer_geo_verts.bin",
+      "indices": "tank_r_steer_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "r_front_wheel_geo",
+      "vertices": "tank_r_front_wheel_geo_verts.bin",
+      "indices": "tank_r_front_wheel_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "l_engine_geo",
+      "vertices": "tank_l_engine_geo_verts.bin",
+      "indices": "tank_l_engine_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "l_back_wheel_geo",
+      "vertices": "tank_l_back_wheel_geo_verts.bin",
+      "indices": "tank_l_back_wheel_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "l_steer_geo",
+      "vertices": "tank_l_steer_geo_verts.bin",
+      "indices": "tank_l_steer_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "l_front_wheel_geo",
+      "vertices": "tank_l_front_wheel_geo_verts.bin",
+      "indices": "tank_l_front_wheel_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "turret_geo",
+      "vertices": "tank_turret_geo_verts.bin",
+      "indices": "tank_turret_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "canon_geo",
+      "vertices": "tank_canon_geo_verts.bin",
+      "indices": "tank_canon_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    },
+    {
+      "name": "hatch_geo",
+      "vertices": "tank_hatch_geo_verts.bin",
+      "indices": "tank_hatch_geo_idx.bin",
+      "vertexStride": 32,
+      "effect": "BasicEffect"
+    }
+  ]
+}

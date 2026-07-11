@@ -153,7 +153,7 @@ add_subdirectory(samples/PickingSample)
 add_subdirectory(samples/TrianglePicking)
 
 # Phase 4 — Models & Animation
-# add_subdirectory(samples/SimpleAnimation)
+add_subdirectory(samples/SimpleAnimation)
 # add_subdirectory(samples/CustomModelAnimation)
 add_subdirectory(samples/CustomModelClass)
 # add_subdirectory(samples/CustomModelEffect)

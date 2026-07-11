@@ -345,16 +345,38 @@ of a single synthetic "Root," both landed 2026-07-10) closes exactly the gap
 this caveat describes — confirmed via direct source read, not just the commit
 message. **Caveat on the fix itself:** each newly-created `ModelBone`'s own
 `Transform` is left as `Identity`; getting correct per-part *relative
-positions* (not just a working `Model.Bones["name"]` lookup) still needs
-`tank.model.json` regenerated with this repo's own already-fixed
-`tools/fbx_ascii2model.py` (tracked as `cna` Task 938, explicitly left for
-"whoever picks up the sample port" — not done as part of this update). Net
-effect: **SplitScreen (#076), SimpleAnimation (#050), and TankOnHeightmap
-(#074) are plausibly unblocked** (the specific blocker each one's own
-`missing.md` cites is fixed) but will likely need that asset regeneration
-step to render correctly, not just build. Not independently re-verified live
-per-sample as part of this update — a future session porting any of these
-three should confirm this holds before assuming it's fully done.
+positions* (not just a working `Model.Bones["name"]` lookup) needs each
+part's own real rest-transform supplied some other way, since `.model.json`
+still has no schema field for it (`cna` Task 938 — regenerating the asset with
+this repo's own already-fixed `tools/fbx_ascii2model.py` — remains
+unstarted/tracked for "whoever picks up the sample port").
+
+**Update (2026-07-11, SimpleAnimation #050 ported — first live confirmation):**
+the multi-bone fix above was live-verified end-to-end by actually porting
+SimpleAnimation. **`tank.model.json` did NOT need regenerating** — the
+existing, unmodified, already-shipped asset (from `samples/CameraShake/Content/`)
+was reused byte-for-byte. Instead, since `tank.fbx`'s own node hierarchy is
+genuinely *nested* (e.g. `l_back_wheel_geo` is a child of `l_engine_geo`,
+which is a child of the root `tank_geo` — confirmed via `tank.fbx`'s own
+`Connect: "OO"` lines) and `cna`'s reader only ever builds a *flat* one-level
+bone tree (every mesh parented directly to Root), the port's own code sets
+each of the 11 non-root meshes' `ModelBone::Transform` directly in C++ right
+after `Content.Load<Model>()`, to the correct **absolute** rest offset —
+computed by composing each part's own `Lcl Translation` through its real
+parent chain (a plain vector sum here, since every rotation/PreRotation in
+this asset is exactly zero, confirmed by direct read of `tank.fbx`). This is
+mathematically identical to what a real nested `CopyAbsoluteBoneTransformsTo`
+walk would produce; no `cna` edit, no NOXNA bypass class, no asset
+regeneration needed — see `samples/SimpleAnimation/missing.md` for the full
+derivation and live screenshot verification (all 4 wheels, both steer
+pivots, turret, cannon, and hatch confirmed rendering in correct relative
+position, animating correctly, across multiple frames/camera angles).
+**SplitScreen (#076) and TankOnHeightmap (#074) can very likely reuse this
+same rest-transform table directly** (same `tank.fbx`, same
+`tank.model.json`, confirmed identical asset in TankOnHeightmap's own
+`missing.md` via `md5sum`) — a future session porting either should start
+from `samples/SimpleAnimation/src/Tank.hpp` rather than re-deriving the
+transforms from scratch.
 
 **Original caveat write-up below, kept for history (the gap it describes is
 now fixed, see above):** found while investigating SplitScreen (2026-07-04),

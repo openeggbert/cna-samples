@@ -199,6 +199,53 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **SimpleAnimation (#050) ported** (2026-07-11) — the first of 3 samples
+  (SimpleAnimation, SplitScreen, TankOnHeightmap) sharing the same multi-bone
+  blocker and the same `tank.fbx` asset, picked to validate the newly-landed
+  `cna` multi-bone `ModelBone` fix (Tasks 936/937, see the re-verification
+  pass entry below) in isolation before the other two build on top of it.
+  Builds 0 warnings (targeted + full aggregate rebuild, `ninja: no work to do`
+  on re-run); ran 5+ seconds with no crash across 3 runs.
+  **Confirmed empirically (not assumed) that `tank.model.json` did not need
+  regenerating** — reused byte-for-byte from `samples/CameraShake/Content/`.
+  Found the real remaining gap the fix's own caveat only partially
+  described: `tank.fbx`'s node hierarchy is genuinely *nested* (e.g.
+  `l_back_wheel_geo` is a child of `l_engine_geo`, itself a child of the root
+  `tank_geo`), but `cna`'s reader only ever builds a *flat* one-level bone
+  tree. Worked around entirely port-side (NOXNA, no `cna` edit, no bypass
+  class): `Tank::Load()`'s `ApplyRestTransforms()` sets each of the 11
+  non-root meshes' `ModelBone::Transform` directly via
+  `Matrix::CreateTranslation`, to each part's correct **absolute** rest
+  offset, computed by composing `tank.fbx`'s own `Lcl Translation` values
+  through the real parent chain (a plain vector sum, since every
+  rotation/PreRotation in this asset is exactly zero — confirmed by direct
+  read of `tank.fbx`). Everything else in `Tank.hpp` is an unmodified, direct
+  port of `Tank.cs`'s own technique using the real `Model`/`ModelBone`/
+  `CopyAbsoluteBoneTransformsTo` API. Confirmed live via screenshot: all 4
+  wheels, both steer pivots, the turret, cannon, and hatch render in correct
+  relative position and animate correctly (wheel spin, steering sweep,
+  turret swivel, cannon elevation, hatch open/close), stable across multiple
+  frames and camera angles — without the fix (tested during development),
+  every part rendered piled at the tank body's own local origin, confirming
+  the gap was real. Also found and worked around an unrelated, NOXNA-tagged
+  finding: with no explicit `PreferredBackBufferWidth`/`Height` set (matching
+  the original, which sets none), CNA's `Viewport` still reports XNA's
+  800×480 default internally but the actual SDL window this machine created
+  was 1740×1044 (~2.175× larger) — set an explicit 1280×720 size (matching
+  this repo's own established convention for desktop 3D samples) to sidestep
+  it; no DEFERRED.md item filed (not confirmed as a `cna` bug, no other
+  sample hits this path since all already set an explicit size). F1 help
+  overlay confirmed rendering correctly via this repo's established temporary
+  debug-auto-trigger pattern (forced `helpTimer_ = 10.0f`, reverted before
+  commit — a different real user window held focus throughout, confirmed via
+  `xdotool getactivewindow`). No `SpriteFont`/background/ground plane in this
+  port, matching the real original's own minimalism exactly (confirmed by a
+  full read of `SimpleAnimation.cs` — no `SpriteBatch`/`SpriteFont` reference
+  anywhere in it). See `samples/SimpleAnimation/missing.md` for the complete
+  account and DEFERRED.md item #6's own updated multi-bone section for the
+  cross-sample implication (SplitScreen/TankOnHeightmap can very likely reuse
+  `Tank.hpp`'s rest-transform table directly, same asset, confirmed via
+  `md5sum` in TankOnHeightmap's own `missing.md`).
 - **DEFERRED.md/NEXT.md re-verification pass (2026-07-11), no sample ported this
   entry** — `cna`'s `develop` had moved substantially since the prior session
   (Tasks 927-949, all landed 2026-07-10) without this repo's own docs being
@@ -2796,28 +2843,38 @@ user for new direction before assuming otherwise.
    - Files: N/A (retired).
    - Verify: N/A (retired).
 
-11. **✅ `cna`-side half DONE (2026-07-10, Tasks 936/937) — the porting half is
-   NEW, UNSTARTED WORK for a future session.** `ModelMesh::setParentBoneProperty()`
-   plus `ModelTypeReader::Read()` building one real `ModelBone` per mesh both
-   landed and were confirmed via direct source read (2026-07-11) — exactly the
-   fix this task asked for. **Caveat:** each new bone's `Transform` defaults to
-   `Identity`; correct per-part *relative positions* likely still need
-   `samples/CameraShake/Content/tank.model.json` (or a fresh conversion)
-   regenerated with this repo's own already-fixed `tools/fbx_ascii2model.py`
-   — not done as part of this update (`cna` Task 938, explicitly left for
-   "whoever picks up the sample port").
-   - **What's next:** SplitScreen (#076), SimpleAnimation (#050), and
-     TankOnHeightmap (#074) are plausibly unblocked — each one's own
-     `missing.md` cited exactly this gap as its blocker. Not yet independently
-     re-verified live (build + screenshot) per sample. A future session should
-     start with SplitScreen (it has a `missing.md` write-up already describing
-     the exact fix needed, written before the fix existed — good place to
-     confirm the fix matches what was expected) and treat the model-transform
-     caveat above as the first thing to check if parts render in the wrong
-     place.
+11. **✅ `cna`-side half DONE (2026-07-10, Tasks 936/937). ✅ SimpleAnimation
+   (#050) ported and live-verified (2026-07-11) — SplitScreen and
+   TankOnHeightmap remain NEW, UNSTARTED WORK for a future session, but the
+   hard part (deriving correct rest transforms) is already solved and
+   reusable.** `ModelMesh::setParentBoneProperty()` plus `ModelTypeReader::Read()`
+   building one real `ModelBone` per mesh both landed and were confirmed via
+   direct source read — exactly the fix this task asked for. The "Identity
+   transform" caveat this task originally flagged turned out to need a
+   port-side fix, not an asset regeneration: see
+   `samples/SimpleAnimation/missing.md` and DEFERRED.md item #6's own updated
+   multi-bone section for the full account — `tank.fbx`'s hierarchy is
+   genuinely nested (not flat), so `SimpleAnimation/src/Tank.hpp`'s
+   `ApplyRestTransforms()` sets each of the 11 non-root meshes' `ModelBone::Transform`
+   directly in C++ to its correct absolute rest offset, composed through the
+   real parent chain from `tank.fbx`'s own `Lcl Translation` values (`cna`
+   Task 938, regenerating the asset, was NOT needed and remains unstarted/
+   optional). Confirmed live via screenshot: tank fully assembled, all parts
+   in correct relative position, all 5 animations (wheel spin, steering,
+   turret swivel, cannon elevation, hatch) visibly active and stable across
+   frames.
+   - **What's next:** SplitScreen (#076) and TankOnHeightmap (#074) remain
+     unported. Both use the exact same `tank.fbx`/`tank.model.json` (confirmed
+     via `md5sum` in TankOnHeightmap's own `missing.md`) — a future session
+     should copy/reuse `samples/SimpleAnimation/src/Tank.hpp` (or extract it
+     into a shared per-sample copy, per this repo's own "no shared
+     `samples/common/` library" rule — copy, don't share) rather than
+     re-deriving the rest-transform table from scratch. SplitScreen adds
+     dual-viewport split-screen camera/rendering logic on top; TankOnHeightmap
+     adds a heightmap terrain (can reuse `HeightmapCollision`'s already-proven
+     `Terrain.hpp` pattern).
    - Files: `samples/SplitScreen/src/` (currently only `missing.md` + `.htm` —
-     needs a full port), likewise `samples/SimpleAnimation/`,
-     `samples/TankOnHeightmap/`.
+     needs a full port), likewise `samples/TankOnHeightmap/`.
    - Verify: build each sample, run under `SDL_VIDEODRIVER=x11`, screenshot,
      confirm independently-posed tank parts (wheels/turret/cannon/hatch) render
      in their correct relative positions, not stacked at the mesh's local origin.
