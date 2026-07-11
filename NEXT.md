@@ -92,13 +92,29 @@ and listed in `ignored.md` (not XNA 4.0, not a runnable `Game`, redundant
 duplicates, or tied to a platform CNA won't target). See `PLAN.md`'s Sample
 Count Summary table for exact per-category counts.
 
-**No further approved/queued porting work exists as of this session** (see
-section 8's closing note in full): every remaining placeholder is blocked on
-either a `cna`-side engine fix (items #11, #13, #14, #6/#18, or the newer
-#22–#30) or a new user product-scope decision, not on porting effort alone. A
-future session should re-verify this claim (per section 5's own "DEFERRED.md
-blockers can go stale" caveat) rather than trust it indefinitely, and should
-check with the user for new direction before assuming there's nothing to do.
+**Update (2026-07-11): the "no further approved/queued porting work" claim
+below is now stale — see section 8's new "Superseding update" note for the
+full account.** `cna`'s `develop` landed a large batch of fixes (Tasks
+927-949) since the previous session, confirmed via direct source read and a
+live rebuild+screenshot this session, not just trusted from commit messages.
+Most notably, DEFERRED.md item #26 (the vertex-corruption bug behind the
+long-tracked "near-plane-clipping"/invisible-model bug family) is fixed, and
+so is the multi-bone `ModelBone` gap that blocked SplitScreen (#076),
+SimpleAnimation (#050), and TankOnHeightmap (#074) — see section 8 task 11.
+**There is new, concrete porting work available now.** Skeletal animation
+(item #13) remains only partially done (foundation classes only, no
+loader/renderer wiring) — do not start SkinningSample/CustomModelAnimation/
+SkinnedModelExtensions/CPUSkinning yet. Custom shader conversion (item #11)
+and content-pipeline extensibility (item #18) remain fully open.
+
+**Original 2026-07-10 claim, now superseded (kept for history):** every
+remaining placeholder is blocked on either a `cna`-side engine fix (items #11,
+#13, #14, #6/#18, or the newer #22–#30) or a new user product-scope decision,
+not on porting effort alone. A future session should re-verify this claim (per
+section 5's own "DEFERRED.md blockers can go stale" caveat) rather than trust
+it indefinitely, and should check with the user for new direction before
+assuming there's nothing to do. **(2026-07-11: this re-verification happened —
+see above; the claim was wrong, not stale-and-still-right.)**
 
 **Important architectural decisions:**
 - One executable per sample; no shared sample library. Each `samples/<Name>/`
@@ -183,6 +199,50 @@ screenshot.
   `.obj`/`.fbx` models to CNA's `.model.json` format.
 
 ### Recently implemented / working
+- **DEFERRED.md/NEXT.md re-verification pass (2026-07-11), no sample ported this
+  entry** — `cna`'s `develop` had moved substantially since the prior session
+  (Tasks 927-949, all landed 2026-07-10) without this repo's own docs being
+  updated to match. Per section 5's own standing "DEFERRED.md blockers can go
+  stale" caveat, did a full live re-verification rather than trusting either
+  the old docs or the new commit messages: rebuilt the full aggregate project
+  from scratch against current `cna` `develop` HEAD (0 errors/0 warnings,
+  `ninja: no work to do` on re-run), then read `cna`'s own current source for
+  every DEFERRED.md item flagged as plausibly affected, and live-tested the
+  highest-impact one directly (ran `CameraShake_cna_samples` under
+  `SDL_VIDEODRIVER=x11`, screenshot-confirmed its tank — loaded via plain
+  `Content.Load<Model>`, no bypass — now renders as a complete solid shape
+  instead of the previously-documented thin-line/invisible symptom).
+  **Findings, all confirmed via direct source read (not assumed from commit
+  messages):** DEFERRED.md item **#26** (`ModelTypeReader` vertex-corruption
+  bug, the true root cause of the multi-session "near-plane-clipping" bug
+  family) is fixed (`cna` Task 927) — the single biggest fix in the batch.
+  Item **#14** (TextureCube) is fixed (Task 934). Item **#24** (`Clear(Color)`
+  depth) is fixed (Task 928). Item **#25** (`VertexBuffer`/`IndexBuffer::GetData()`)
+  is fixed (Task 930). The multi-bone addendum under item **#6** is fixed
+  (Tasks 936/937: `ModelMesh::setParentBoneProperty()` + `ModelTypeReader`
+  building one real `ModelBone` per mesh), plausibly unblocking SplitScreen
+  (#076), SimpleAnimation (#050), and TankOnHeightmap (#074) — not yet
+  independently ported/verified. Item **#23** turned out to have never been a
+  real CNA bug (Task 929: FNA has the identical subscribe-after-`Initialize()`
+  ordering DEFERRED.md had claimed was CNA-specific) — the existing
+  `AddComponent()` workarounds in Graphics3D/PickingSample remain correct and
+  should not be removed. Item **#13** (skeletal animation) is only
+  **partially** done (Tasks 939/940 added `AnimationClip`/`Keyframe`/
+  `AnimationPlayer`/`SkinningData` classes and designed the on-disk schema,
+  but `ModelTypeReader` parsing, `Model::Draw` wiring, and a conversion tool —
+  Tasks 941-944 — are all still unstarted) — still blocks every
+  skeletal-animation sample; do not start those yet. Items #11, #18, #22,
+  #27, #28 (investigated by `cna` Task 933, not reproduced — stays open), and
+  #29 remain open and unchanged. Also found and fixed a stale project memory
+  file (`feedback_cna_multiple_spritebatch.md` claimed the Vulkan
+  multi-SpriteBatch-per-frame bug was still open; it was actually fixed by
+  `cna` Task 664 on 2026-07-07, three days *before* that memory file was even
+  written). Updated DEFERRED.md (per-item status corrections + summary table)
+  and this file's own section 1/section 8 closing notes to match — see
+  section 8's new "Superseding update" note for the task-list impact. **No
+  sample was ported this entry** — this was purely a documentation-accuracy
+  and re-verification pass; SplitScreen/SimpleAnimation/TankOnHeightmap are
+  now real candidates for the next session (section 8 task 11).
 - **RimLighting (#037) ported** (2026-07-10, tenth follow-up session) —
   `EnvironmentMapEffect`-based rim lighting: `World`/`View` swapped
   (`World <- World*View`, `View <- Identity`) so the cube-map lookup happens in
@@ -2464,7 +2524,32 @@ should look like — **as of this session, there is no further approved/queued
 porting work; the next concrete step needs either a `cna`-side fix or a new
 user product-scope decision.**
 
-**Backlog-exhaustion note (2026-07-10):** every sample this session's own
+**Superseding update (2026-07-11):** the "no further approved/queued porting
+work" conclusion below is now **stale** — `cna`'s `develop` picked up a large
+batch of fixes (Tasks 927-949, all landed 2026-07-10, discovered and verified
+this session) that resolve most of the concrete blockers this list names.
+Confirmed via direct source read/live rebuild+screenshot, not just commit
+messages: DEFERRED.md items **#26** (the vertex-corruption bug behind the
+whole "near-plane-clipping" bug family — the single biggest fix, see item #2
+below and DEFERRED.md item #26's own updated write-up), **#14** (TextureCube),
+**#24** (Clear depth), **#25** (VertexBuffer/IndexBuffer GetData), and the
+**multi-bone addendum under #6** (unblocks SplitScreen/SimpleAnimation/
+TankOnHeightmap — see task 11 below) are all now fixed. Item **#23** turned out
+to never have been a real bug (FNA has the identical behavior). Item **#13**
+(skeletal animation) is only partially done — foundation classes landed but
+the model-loader/renderer wiring and conversion tool did not, so it still
+blocks every skeletal-animation sample; do not start those yet. Items #11
+(shader conversion), #18 (ContentProcessor extensibility), #22
+(ColorWriteChannels), #27 (SessionProperties replication), #28 (investigated,
+not reproduced), and #29 (DualTextureEffect vertex layout) all remain open,
+unchanged. **There IS new approved-shape porting work available now**
+(SplitScreen/SimpleAnimation/TankOnHeightmap, task 11) — a future session
+should pick this up rather than trust the "nothing left" conclusion below,
+which predates this discovery. This repo's own standing caveat (section 5:
+"DEFERRED.md blockers can go stale") turned out to cut both ways — a blocker
+can also silently *resolve* upstream, not just go stale-and-wrong.
+
+**Backlog-exhaustion note (2026-07-10, PARTIALLY SUPERSEDED — see note above):** every sample this session's own
 brief could point to as "confirmed-unblocked, zero CNA gap, just needs the
 port written" has now been ported (see the list above). No further placeholder
 sample was independently confirmed to be in that same state as of this session —
@@ -2518,34 +2603,30 @@ user for new direction before assuming otherwise.
    warnings) and a second immediate re-run (`ninja: no work to do`). See
    section 2's Build subsection for the full account.
 
-2. **Investigate the EasyGL near-plane clipping bug itself (section 4) — READ
-   DEFERRED.md item #26 FIRST, try that fix before assuming clip-space math.**
-   - Goal: get tank/terrain/spaceship models to render fully instead of
-     degenerating to a thin line (moderate camera distance) or disappearing
-     entirely (longer camera distance). **Strong new lead (2026-07-10, found
-     while porting InverseKinematics):** `ModelTypeReader::Read()`
-     (`ContentManager.cpp`) almost certainly uploads corrupted vertex data for
-     every stride-32 `.model.json` in this repo, due to an `IVertexType` vtable
-     inflating `sizeof()` of every CNA vertex struct past the clean XNA sizes
-     the `.model.json` format declares — see DEFERRED.md item #26 for the full
-     mechanism, confirmed via a live `sizeof()` probe and a working fix
-     (`samples/InverseKinematics/src/CylinderModel.hpp`, which bypasses the
-     reader and renders correctly where the equivalent `Content.Load<Model>`
-     path rendered nothing). **Recommended first step, cheaper than opening
-     `EasyGLGraphicsBackend.cpp` cold:** apply the same
-     `ModelTypeReader::Read()` fix item #26 describes (compare declared stride
-     against the *intended* clean XNA size, not `sizeof()` of the polymorphic
-     struct) and re-run CameraShake — if the tank suddenly renders fully, this
-     was never a clipping bug at all.
-   - Files: `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`
-     (`ModelTypeReader::Read()`, item #26's fix) first; only look at
-     `cna/src/CNA/Internal/Backends/EasyGL/EasyGLGraphicsBackend.cpp`
-     (clipping/projection path) if the item #26 fix doesn't resolve it.
-   - Verify: run `CameraShake_cna_samples`, `CustomModelClass_cna_samples`,
-     `LensFlare_cna_samples`, and `Graphics3D_cna_samples` under
-     `SDL_VIDEODRIVER=x11`; confirm the tank/ground/terrain/spaceship are fully
-     visible in a screenshot at both camera-distance regimes, not a thin line or
-     nothing.
+2. **✅ DONE (fixed upstream in `cna` 2026-07-10, confirmed live 2026-07-11):
+   the near-plane-clipping bug family was DEFERRED.md item #26 all along, and
+   it's fixed.** `cna` Task 927 rewrote `ModelTypeReader::Read()` to build
+   vertex objects field-by-field at hardcoded clean XNA offsets instead of
+   `reinterpret_cast`-ing raw file bytes against the vtable-inflated
+   `sizeof()` of CNA's own vertex structs. Verified this session: rebuilt the
+   full aggregate project against current `cna` `develop` HEAD (0 errors/0
+   warnings) and ran `CameraShake_cna_samples` under `SDL_VIDEODRIVER=x11` —
+   its tank (loaded via plain `Content.Load<Model>`, no bypass) now renders as
+   a complete, correctly-shaped solid silhouette, where it previously degraded
+   to a thin line or full invisibility. See DEFERRED.md item #26's own updated
+   write-up for the full account.
+   - **New optional follow-up (not done this session, not blocking anything):**
+     the bypass code this repo wrote around this bug while it was still open
+     (`InverseKinematics/src/CylinderModel.hpp`, `ChaseCamera/src/RawModel.hpp`,
+     `MarbleMaze`/`ReachGraphicsDemo`'s own `RawMesh.hpp`-family files,
+     `RimLighting`'s/ReachGraphicsDemo's `TextureCube` bypass now that item #14
+     is also fixed) is no longer strictly necessary and could be replaced with
+     plain `Content.Load<Model>()`/`Content.Load<TextureCube>()` calls for
+     closer fidelity to each sample's C# original, per this repo's own porting
+     philosophy (CLAUDE.md: "as similar as possible to the XNA 4.0 C# original").
+     Low priority, purely cosmetic/fidelity cleanup on already-working, already-
+     shipped samples — a future session should treat this as optional, not
+     assume it's expected.
 
 3. **Fix the EasyGL `BlendState.ColorWriteChannels` gap (DEFERRED.md item #22).**
    - Goal: `EasyGLGraphicsBackend` never calls `glColorMask` (or equivalent), so
@@ -2562,28 +2643,21 @@ user for new direction before assuming otherwise.
      observation in `samples/LensFlare/missing.md` — not established either way
      yet.
 
-4. **Fix `Game::DoInitialize()`'s `ComponentAdded` subscription timing
-   (DEFERRED.md item #23).**
-   - Goal: move the `Components_.ComponentAdded +=`/`ComponentRemoved +=`
-     subscription in `Game::DoInitialize()` to before the call to `Initialize()`
-     (or into `Game`'s constructor, matching FNA/XNA exactly), so components
-     added to `Components` from within a user `Initialize()` override get their
-     own `Initialize()`/`LoadContent()` called automatically, like real XNA.
-   - Files: `cna/src/Microsoft/Xna/Framework/Game.cpp` (`DoInitialize()`).
-   - Verify: remove Graphics3D's `AddComponent()` workaround (its explicit
-     `component->Initialize()` calls) and confirm its 4 `Checkbox`es still work
-     correctly — this is the regression test.
+4. **✅ RETIRED (2026-07-10, `cna` Task 929) — not a bug.** Investigated
+   directly against real FNA source: FNA has the *identical*
+   subscribe-after-`Initialize()` ordering DEFERRED.md item #23 originally
+   claimed was a CNA defect. No `cna` change made or needed. Graphics3D's/
+   PickingSample's `AddComponent()` workaround remains correct (it's handling
+   a real XNA/FNA gotcha, not a CNA-specific one) and should NOT be removed.
+   See DEFERRED.md item #23's corrected write-up.
 
-5. **Fix `GraphicsDevice::Clear(Color)` to also clear the depth buffer
-   (DEFERRED.md item #24).**
-   - Goal: make the single-argument `Clear(Color)` overload match real XNA —
-     clear color + depth + stencil together, not just color.
-   - Files: `cna/src/Microsoft/Xna/Framework/Graphics/GraphicsDevice.cpp`.
-   - Verify: re-run the near-plane-clipping repro samples (task 2) after this
-     fix lands, in case stale depth-buffer contents were contributing to any of
-     their symptoms (not established either way this session — the two bugs
-     were tested independently and this one wasn't confirmed as a contributing
-     cause, but wasn't fully ruled out as a compounding factor either).
+5. **✅ DONE (2026-07-10, `cna` Task 928) — `GraphicsDevice::Clear(Color)` now
+   also clears depth/stencil**, matching FNA. Confirmed via `cna`'s own Task
+   928 notes the fix is "behaviorally inert" in practice (both backends
+   already cleared depth some other way), so no observable regression risk;
+   it's a real correctness fix, not yet independently re-verified against
+   this repo's own samples but not expected to change any rendering. See
+   DEFERRED.md item #24.
 
 6. **RETIRED (2026-07-10) — task 6's original 3-sample list is now fully
    ported.** PickingSample (#047), TrianglePicking (#048), HeightmapCollision
@@ -2669,12 +2743,21 @@ user for new direction before assuming otherwise.
    - Files: N/A (retired).
    - Verify: N/A (retired).
 
-8. **Fix the Vulkan multiple-SpriteBatch-per-frame bug.**
-   - Goal: a second `Begin()/End()` in the same frame must not discard the
-     first.
-   - Files: `cna/src/.../Vulkan/VulkanGraphicsBackend.cpp`.
-   - Verify: run GameStateManagement or CatapultWars on the Vulkan backend;
-     confirm all layers draw.
+8. **✅ RETIRED (found already fixed, 2026-07-11) — the Vulkan
+   multiple-SpriteBatch-per-frame bug.** Discovered while cross-referencing
+   `cna`'s recent commit history that this was fixed by `cna` Task 664
+   (`VulkanSpriteBatchBackend::Begin()` no longer clobbers the prior batch;
+   per-cycle `BatchSnapshot` + a real running cursor) on 2026-07-07 — well
+   before this task was ever added to this list, and well before this repo's
+   own memory file about it was written. Not independently re-verified live
+   this session (EasyGL remains the default backend; would need
+   `SDL_VIDEODRIVER=x11` + an explicit Vulkan-backend run to confirm visually),
+   but confirmed via direct source read that the fix is present. See the
+   project's own `feedback_cna_multiple_spritebatch` memory file (updated
+   2026-07-11) for the full account.
+   - Files: N/A (retired).
+   - Verify: N/A (retired; optional live re-confirmation on the Vulkan backend
+     specifically, not required).
 
 9. **✅ FULLY DONE (2026-07-10, user go/no-go): port AccelerometerSample (#084)/
    TiltPerspective (#107).** Both samples are **done** — see section 3 for the
@@ -2713,14 +2796,31 @@ user for new direction before assuming otherwise.
    - Files: N/A (retired).
    - Verify: N/A (retired).
 
-11. **(User-owned, tracked for visibility) Add per-mesh `ModelBone` support to
-   CNA's `.model.json` reader.**
-   - Goal: unblock SplitScreen (#076), TankOnHeightmap (#074), SimpleAnimation
-     (#050).
-   - Files: `cna/src/Microsoft/Xna/Framework/Content/ContentManager.cpp`'s
-     `ModelTypeReader::Read()`, plus a new `ModelMesh` parent-bone setter.
-   - Verify: `samples/SplitScreen/` (currently only `missing.md` + `.htm`) can
-     be built and renders independently-posed tank parts.
+11. **✅ `cna`-side half DONE (2026-07-10, Tasks 936/937) — the porting half is
+   NEW, UNSTARTED WORK for a future session.** `ModelMesh::setParentBoneProperty()`
+   plus `ModelTypeReader::Read()` building one real `ModelBone` per mesh both
+   landed and were confirmed via direct source read (2026-07-11) — exactly the
+   fix this task asked for. **Caveat:** each new bone's `Transform` defaults to
+   `Identity`; correct per-part *relative positions* likely still need
+   `samples/CameraShake/Content/tank.model.json` (or a fresh conversion)
+   regenerated with this repo's own already-fixed `tools/fbx_ascii2model.py`
+   — not done as part of this update (`cna` Task 938, explicitly left for
+   "whoever picks up the sample port").
+   - **What's next:** SplitScreen (#076), SimpleAnimation (#050), and
+     TankOnHeightmap (#074) are plausibly unblocked — each one's own
+     `missing.md` cited exactly this gap as its blocker. Not yet independently
+     re-verified live (build + screenshot) per sample. A future session should
+     start with SplitScreen (it has a `missing.md` write-up already describing
+     the exact fix needed, written before the fix existed — good place to
+     confirm the fix matches what was expected) and treat the model-transform
+     caveat above as the first thing to check if parts render in the wrong
+     place.
+   - Files: `samples/SplitScreen/src/` (currently only `missing.md` + `.htm` —
+     needs a full port), likewise `samples/SimpleAnimation/`,
+     `samples/TankOnHeightmap/`.
+   - Verify: build each sample, run under `SDL_VIDEODRIVER=x11`, screenshot,
+     confirm independently-posed tank parts (wheels/turret/cannon/hatch) render
+     in their correct relative positions, not stacked at the mesh's local origin.
 
 ---
 
@@ -2739,8 +2839,15 @@ user for new direction before assuming otherwise.
   via direct `SetData()` construction instead (DEFERRED.md item #14 remains
   open but no longer blocks it — see task 6's retirement note).
 - **Do not start a skeletal-animation sample** (SkinningSample,
-  CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) without
-  `AnimationClip`/`Keyframe`/`AnimationPlayer` existing in `cna` (item #13).
+  CustomModelAnimation, SkinnedModelExtensions, CPUSkinning) — **update
+  2026-07-11: `AnimationClip`/`Keyframe`/`AnimationPlayer`/`SkinningData`
+  classes now exist in `cna` (Task 939/940, landed 2026-07-10), but this does
+  NOT unblock these samples yet** — `ModelTypeReader` doesn't parse the new
+  skeleton/animation fields, `Model::Draw` isn't wired to consume
+  `AnimationPlayer`'s output, and no FBX/X → skeletal-`.model.json` conversion
+  tool exists (`cna` Tasks 941-944, all still ⬜). `Content.Load<Model>()`
+  cannot produce an animated model today. See DEFERRED.md item #13's updated
+  write-up before assuming otherwise.
 - **Do not port any of the 5 reopened Avatar samples** — decided (2026-07-10)
   not worth the substitute-body visual gap; permanently back in `ignored.md`.
   (AccelerometerSample/TiltPerspective's keyboard-tilt scheme, by contrast, IS
@@ -2758,10 +2865,16 @@ user for new direction before assuming otherwise.
 - **Do not hammer `xdotool` input** without re-verifying window focus
   immediately beforehand, and do not conclude "no visible effect" means a code
   bug without first checking the sample's own state.
-- **No broad refactors or unrelated cleanup** while the near-plane-clipping/
-  `ColorWriteChannels`/`ComponentAdded`-timing/`Clear(Color)`-depth/Vulkan bugs
-  (section 8, tasks 2–5/8) are open. (The `SafeArea`/`RolePlayingGame`
-  `Viewport.x`/`.y` build breakage, formerly task 1, is fixed.)
+- **No broad refactors or unrelated cleanup** while `ColorWriteChannels` (item
+  #22, section 8 task 3) is still open. **Update 2026-07-11: the other bugs
+  this bullet used to list are now resolved** — near-plane-clipping (item #26,
+  task 2), `ComponentAdded`-timing (item #23, task 4 — turned out not to be a
+  bug at all), `Clear(Color)`-depth (item #24, task 5), and the Vulkan
+  multi-SpriteBatch bug (task 8) — see each task's own retirement note above.
+  Regenerating already-shipped bypass code to use item #26's fix directly
+  (section 8 task 2's own new "optional follow-up" note) is still explicitly
+  optional/low-priority, not required, and should not be done as an
+  unscoped drive-by refactor either.
 - **Do not regenerate existing font atlases or `.model.json` assets** unless
   there is a confirmed rendering bug — regenerating is cheap but pointless churn
   otherwise.

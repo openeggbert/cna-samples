@@ -145,7 +145,16 @@ workaround, port-side, no CNA change needed)
 
 ---
 
-## 14. TextureCube content loading (`Content.Load<TextureCube>`)
+## 14. TextureCube content loading (`Content.Load<TextureCube>`) ✅ RESOLVED (2026-07-11 confirmed)
+
+**Resolved in `cna`'s `develop` (Task 934, landed 2026-07-10):** a real
+`TextureCubeTypeReader` was added to `ContentManager.cpp`'s built-in type
+readers, exactly the shape this item originally asked for. `Content.Load<TextureCube>(...)`
+now works directly — RimLighting's/ReachGraphicsDemo's own bypasses (extract
+DDS faces via ImageMagick, load as `Texture2D`, copy into `TextureCube` via
+`SetData()`) are no longer strictly necessary, though neither was revisited
+to use the new reader as part of this documentation update (not blocking,
+optional simplification only).
 
 **What is missing:**
 `ContentManager.cpp` has no `TextureCubeTypeReader` registered — `Content.Load<TextureCube>(...)`
@@ -329,10 +338,30 @@ animation (walk cycles, skinned character rigs, etc. — not just render a rigid
 multi-part mesh), see item 13 below instead — that capability does not exist in CNA
 yet, regardless of asset conversion.
 
-**Caveat found while investigating SplitScreen (2026-07-04): the "asset conversion
-only, no CNA code changes needed" claim above only holds for models with a *single*
-bone (the common case so far — Ground, tank-as-rendered-by-CameraShake, etc., which
-never move any part independently).** `examples/easygl_model_draw_test.cpp`'s 2-bone
+**Update (2026-07-11 confirmed): the multi-bone gap below is now RESOLVED.**
+`cna`'s `develop` (Task 936: `ModelMesh::setParentBoneProperty(ModelBone*)`;
+Task 937: `ModelTypeReader` now builds one real `ModelBone` per mesh instead
+of a single synthetic "Root," both landed 2026-07-10) closes exactly the gap
+this caveat describes — confirmed via direct source read, not just the commit
+message. **Caveat on the fix itself:** each newly-created `ModelBone`'s own
+`Transform` is left as `Identity`; getting correct per-part *relative
+positions* (not just a working `Model.Bones["name"]` lookup) still needs
+`tank.model.json` regenerated with this repo's own already-fixed
+`tools/fbx_ascii2model.py` (tracked as `cna` Task 938, explicitly left for
+"whoever picks up the sample port" — not done as part of this update). Net
+effect: **SplitScreen (#076), SimpleAnimation (#050), and TankOnHeightmap
+(#074) are plausibly unblocked** (the specific blocker each one's own
+`missing.md` cites is fixed) but will likely need that asset regeneration
+step to render correctly, not just build. Not independently re-verified live
+per-sample as part of this update — a future session porting any of these
+three should confirm this holds before assuming it's fully done.
+
+**Original caveat write-up below, kept for history (the gap it describes is
+now fixed, see above):** found while investigating SplitScreen (2026-07-04),
+the "asset conversion only, no CNA code changes needed" claim above only held
+for models with a *single* bone (the common case so far — Ground,
+tank-as-rendered-by-CameraShake, etc., which never move any part
+independently). `examples/easygl_model_draw_test.cpp`'s 2-bone
 proof constructs `ModelBone`s directly in C++ — it does **not** exercise the
 `.model.json` *file format*/reader's ability to build a multi-bone hierarchy from
 JSON. In reality, `ContentManager.cpp`'s `ModelTypeReader::Read()` only ever creates
@@ -550,7 +579,35 @@ support in both EasyGL and Vulkan backends).
 
 ---
 
-## 13. Skeletal Animation Playback (AnimationClip / Keyframe / AnimationPlayer)
+## 13. Skeletal Animation Playback (AnimationClip / Keyframe / AnimationPlayer) — PARTIALLY IMPLEMENTED (2026-07-11 confirmed), still blocks all samples
+
+**Update (2026-07-11):** `cna`'s `develop` (Tasks 939/940, landed 2026-07-10)
+added the foundation classes this item asked for:
+`include`/`src/Microsoft/Xna/Framework/Graphics/AnimationPlayer.hpp`/`.cpp`
+(namespace `Microsoft::Xna::Framework::Graphics`, NOXNA-marked), with
+`Keyframe`/`AnimationClip` as NOXNA aliases of the existing `SkinnedModelEXT`
+types (`KeyframeEXT`/`AnimationClipEXT`), a `SkinningData` struct
+(`BoneCount`/`SkeletonHierarchy`/`BindPose`/`InverseBindPose`/`AnimationClips`),
+and `AnimationPlayer` itself (`StartClip()`, `Update(time, relativeToCurrentTime,
+loop)`, `GetBoneTransforms()`/`GetWorldTransforms()`/`GetSkinTransforms()`).
+Task 939 also designed the on-disk schema: `.model.json` will reuse the
+existing `.skinnedmodel.json` format's `"skeleton"`/`"animations"` fields and
+`.skeleton.bin`/`.clip.bin` binary layouts verbatim, with per-vertex skin data
+via the already-existing `VertexPositionNormalTextureSkinned` (stride 52).
+
+**Still missing — this item remains a real blocker:** none of this is wired
+into the actual loading/rendering path yet. `ModelTypeReader::Read()` does not
+parse the new skeleton/animation fields (tracked as `cna` Task 941, ⬜ not
+started), `Model::Draw()` isn't wired to consume `AnimationPlayer`'s output
+bone-transform array (Task 942, ⬜), and no FBX/X → skeletal-`.model.json`
+conversion tool exists yet (Task 943, ⬜). **`Content.Load<Model>()` cannot
+produce an animated model today** — do not start SkinningSample,
+CustomModelAnimation, SkinnedModelExtensions, CPUSkinning, or
+ReachGraphicsDemo's skipped `SkinnedDemo` yet; the class-library half of this
+gap closed, the loader/renderer/tooling half (the parts an actual sample port
+needs) did not.
+
+**Original write-up below (still accurate for the still-missing parts):**
 
 **What is missing:**
 Unlike items 6 and 11 (which are pure asset-conversion gaps — CNA's own runtime
@@ -930,7 +987,25 @@ a similar depth-only or stencil-only trick would hit the same gap.
 
 ---
 
-## 23. `Game::DoInitialize()` wires up `Components_.ComponentAdded` *after* calling the user's `Initialize()` override
+## 23. `Game::DoInitialize()` wires up `Components_.ComponentAdded` *after* calling the user's `Initialize()` override — CORRECTED (2026-07-11): not a CNA bug
+
+**Reconciled in `cna`'s `develop` (Task 929, landed 2026-07-10):** investigated
+directly against real FNA source and found this item's own root-cause claim
+below was factually wrong — **FNA has the identical subscribe-after-`Initialize()`
+ordering**, not the "subscribes immediately in the constructor" behavior this
+item originally asserted. So `cna`'s behavior already matches real XNA/FNA;
+there is no defect to fix here. Graphics3D's/PickingSample's own `AddComponent()`
+workaround (explicit `component->Initialize()` call after `Components.Add()`)
+remains the *correct* thing to do for a component added during `Initialize()`
+— it's accommodating a real XNA/FNA ordering gotcha every original C# sample
+using this pattern would also have to work around (typically by adding
+components from the constructor instead, which is what most XNA samples do
+in practice), not compensating for a CNA-specific defect. No `cna` code
+changed. The workaround stays in every sample that uses it; no regression
+risk since nothing was modified.
+
+**Original write-up below, kept for full history of the (incorrect) root-cause
+theory and the workaround, which remains valid regardless:**
 
 **Found while porting Graphics3D (2026-07-09).** Real XNA/FNA's `Game`
 constructor subscribes to `Components.ComponentAdded`/`ComponentRemoved`
@@ -1006,7 +1081,16 @@ calls `base.Initialize()` last, matching real XNA convention). See
 
 ---
 
-## 24. `GraphicsDevice::Clear(Color)` (single-argument overload) never clears the depth buffer
+## 24. `GraphicsDevice::Clear(Color)` (single-argument overload) never clears the depth buffer ✅ RESOLVED (2026-07-11 confirmed)
+
+**Resolved in `cna`'s `develop` (Task 928, landed 2026-07-10):** `Clear(const Color&)`
+now also clears depth/stencil, matching FNA. Per `cna`'s own Task 928 notes the
+fix is "behaviorally inert" in practice on both backends (each already cleared
+depth by other means), but it's a real FNA-parity correctness fix and removes
+this as a latent risk for any future sample relying on cross-frame depth-buffer
+reuse (e.g. ReachGraphicsDemo's `EnvmapDemo`, which already worked around this
+at the sample level with the 2-argument `Clear(Color, float)` overload — that
+workaround is now redundant but harmless).
 
 **Found while porting Graphics3D (2026-07-09)**, while investigating that
 sample's invisible-model bug (item 5's near-plane-clipping-family entry — this
@@ -1053,7 +1137,14 @@ sample using this Clear overload, and is worth fixing on general principle.
 
 ---
 
-## 25. `VertexBuffer`/`IndexBuffer` have no `GetData()` (no readback of GPU buffer contents)
+## 25. `VertexBuffer`/`IndexBuffer` have no `GetData()` (no readback of GPU buffer contents) ✅ RESOLVED (2026-07-11 confirmed)
+
+**Resolved in `cna`'s `develop` (Task 930, landed 2026-07-10):** both classes
+gained a real `GetData<T>()`, CPU-shadow-buffer based, covering all vertex
+types and both 16-/32-bit index widths. TrianglePicking's own tool-level
+`--picking` sidecar workaround (below) still works and was not revisited, but
+a future sample needing readback from a `Model` it did not itself convert can
+now use the real API directly instead of needing a new offline-tool flag.
 
 **Found while porting TrianglePicking (2026-07-09).** This sample's C# original
 (`TrianglePickingSample`) needs its models' raw triangle vertex positions at runtime
@@ -1111,7 +1202,37 @@ call itself is a single line per backend on both EasyGL and Vulkan).
 
 ---
 
-## 26. `ModelTypeReader::Read()` uploads corrupted vertex data for every stride-32 `.model.json` (vtable-size mismatch) — likely the true cause of the "near-plane-clipping" bug family
+## 26. `ModelTypeReader::Read()` uploads corrupted vertex data for every stride-32 `.model.json` (vtable-size mismatch) — likely the true cause of the "near-plane-clipping" bug family ✅ RESOLVED (2026-07-11 confirmed)
+
+**Resolved in `cna`'s `develop` (Task 927, landed 2026-07-10).** Confirmed by
+direct source read: `ModelTypeReader::Read()` (`ContentManager.cpp`) no longer
+compares the declared `"vertexStride"` against `sizeof()` of the polymorphic,
+vtable-carrying `Graphics::VertexPositionXxx` structs — it now reads each
+vertex's fields at hardcoded clean XNA offsets (16/20/24/32) and constructs
+real objects field-by-field, the same general shape this repo's own bypasses
+(`CylinderModel.hpp`/`RawModel.hpp`/`RawMesh.hpp`) already used. **Confirmed
+live (2026-07-11):** rebuilt the full aggregate project against current `cna`
+`develop` HEAD (0 errors/0 warnings) and ran `CameraShake_cna_samples` (which
+already used plain `Content.Load<Model>("tank")`/`Content.Load<Model>("ground")`,
+no bypass) under `SDL_VIDEODRIVER=x11` — the tank, previously invisible/reduced
+to a thin line at this sample's camera distance, now renders as a complete,
+correctly-shaped solid silhouette. (It renders flat white, not textured — a
+separate, already-documented, pre-existing characteristic: `tank.model.json`
+predates Task 932's per-mesh `"texture"` field, so it has no texture entry to
+bind; unrelated to this item.)
+
+**Not yet done (future cleanup, optional, not blocking anything):** the
+already-shipped bypass code in InverseKinematics/ChaseCamera/MarbleMaze/
+ReachGraphicsDemo/RimLighting is no longer strictly necessary and could be
+replaced with plain `Content.Load<Model>()` for closer fidelity to each
+sample's C# original (per this repo's own porting philosophy of staying as
+close to the original as the language allows) — not verified per-sample live,
+and not done as part of this documentation update; a future session should
+treat this as a real but low-priority simplification opportunity, not a bug.
+
+---
+
+## 26 (original write-up, kept for full history)
 
 **Found while porting InverseKinematics (2026-07-10).** A straightforward first port of
 this sample's `cylinder.x` (converted via `assimp export` + `tools/obj2model.py`, the
@@ -1358,7 +1479,17 @@ already replicates gamer-roster changes.
 
 ---
 
-## 28. EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw call in the same frame breaks that frame's 3D rendering entirely
+## 28. EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw call in the same frame breaks that frame's 3D rendering entirely — investigated, not reproduced (2026-07-11 confirmed)
+
+**Update (2026-07-11):** `cna`'s own Task 933 (landed 2026-07-10) investigated
+this directly and could **not** reproduce it across 4 targeted repro attempts.
+Status stays open/unresolved (not closed as fixed, not closed as invalid) —
+ReachGraphicsDemo's existing `DrawBackgroundQuad()` workaround should remain
+in place. Task 933 did find a separate, real, latent bug while investigating
+(`EasyGLSpriteBatchBackend::FlushBatch()` never restores the GL viewport after
+resetting it) but did not establish a link between that and this item's
+original symptom — treat as two separate findings, not one resolved by the
+other.
 
 **Found while porting ReachGraphicsDemo's EnvmapDemo (2026-07-10).** A
 `SpriteBatch.Begin()/Draw()/End()` call that stretches a texture to cover the *entire*
@@ -1551,15 +1682,15 @@ samples is effort S each (re-run the tool, diff, screenshot-compare).
 | 3 | EasyGL: DiffuseColor ignored for VertexPositionColor | cna | S | Primitives3D | ✅ done |
 | 4 | EasyGL: Wireframe mode (OpenGL ES has no glPolygonMode) | cna | M | Primitives3D | ✅ done |
 | 5 | VertexPositionNormal + lit shader | cna | L | LensFlare, Graphics3D, PickingSample, TrianglePicking, HeightmapCollision, CustomModelClass, InverseKinematics, ChaseCamera, MarbleMaze | ✅ done for Model-based samples (2026-07-06); Primitives3D still needs a texture-less variant or port workaround |
-| 6 | Model asset conversion, static geometry (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works |
+| 6 | Model asset conversion, static geometry (.x/.fbx → .model.json) | tools | M/model | many | CNA itself works; multi-bone rigid-part addendum ✅ done (2026-07-10, unblocks SplitScreen/SimpleAnimation/TankOnHeightmap, may still need asset regen) |
 | 7 | Audio playback | cna | — | — | ✅ done (SDL3_mixer) |
 | 8 | SpriteBatch.DrawString / SpriteFont | cna | M | most | ✅ done |
 | 9 | Viewport.AspectRatio | cna | — | 0 | ✅ done (confirmed already implemented, 2026-07-10) |
 | 10 | GamePadButtons direct access | cna | — | 0 (workaround) |
 | 11 | Shader conversion (HLSL .fx → GLSL .shader.json) | tools | M/shader | many Phase 3+ | CNA itself works |
 | 12 | RenderTarget2D | cna | — | — | ✅ done |
-| 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | not started |
-| 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | none blocking (RimLighting/EnvmapDemo both bypassed via direct `TextureCube::SetData()`) | not started |
+| 13 | Skeletal animation playback (AnimationClip/Keyframe/AnimationPlayer) | cna | L/XL | SkinningSample, SkinnedModelExtensions, CPUSkinning, CustomModelAnimation | partially done (2026-07-10: classes/schema landed; loader/Model::Draw wiring/conversion tool still ⬜, still blocks every sample) |
+| 14 | TextureCube content loading (`Content.Load<TextureCube>`) | cna | S | none blocking (RimLighting/EnvmapDemo both bypassed via direct `TextureCube::SetData()`) | ✅ done (2026-07-10) |
 | 15 | Accelerometer/sensor platform reality (documentation correction, not a gap) | docs | — | AccelerometerSample ✅ ported 2026-07-10 (original's own emulator keyboard fallback, not invented); TiltPerspective ✅ ported 2026-07-10 (genuinely invented keyboard-tilt scheme — original has no fallback of any kind, only a non-interactive wobble); Orientation (miscategorized, likely portable); Geolocation (still genuinely blocked) | ✅ no CNA change needed |
 | 16 | Microphone capture | cna | M | MicrophoneEcho | ✅ done (merged 2026-07-04) |
 | 17 | Multiplayer networking (NetworkSession-alike) | cna | L/XL | ClientServerSample, NetworkPrediction, PeerToPeer (NetRumble still needs item 11) | ✅ done (merged 2026-07-04) |
@@ -1568,11 +1699,11 @@ samples is effort S each (re-run the tool, diff, screenshot-compare).
 | 20 | NetworkGamer.IsHost/Id hardcoded stubs | cna | M | ClientServerSample, NetworkPrediction, PeerToPeer, NetRumble | ✅ done (fixed 2026-07-06; scoped remote-host-IsHost limitation remains, see item) |
 | 21 | Initial GamerJoined event queued, not synchronous | cna + sharp-runtime | S | ClientServerSample, NetworkPrediction, PeerToPeer | ✅ done (fixed 2026-07-06 via sharp-runtime EventHandler<T>::SetReplayHook(), user-approved) |
 | 22 | EasyGL: BlendState.ColorWriteChannels ignored (no glColorMask) | cna | S | LensFlare | not started |
-| 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied); TrianglePicking confirmed NOT affected (constructor-time add) | not started |
-| 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | not started |
-| 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | not started |
-| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze and ReachGraphicsDemo applied the same RawMesh.hpp-style bypass proactively, not re-confirmed empirically) | not started |
+| 23 | Game::DoInitialize() wires ComponentAdded after calling Initialize() | cna | S | Graphics3D, PickingSample (workaround applied, still valid/needed); TrianglePicking confirmed NOT affected (constructor-time add) | ✅ not a bug (2026-07-10: FNA has identical ordering; workaround is correct XNA/FNA-gotcha handling, not a CNA defect) |
+| 24 | GraphicsDevice::Clear(Color) never clears depth buffer | cna | S | all 3D samples (latent, not blocking) | ✅ done (2026-07-10) |
+| 25 | VertexBuffer/IndexBuffer have no GetData() (no GPU buffer readback) | cna | S/M | none outright (tool-level workaround used by TrianglePicking) | ✅ done (2026-07-10) |
+| 26 | ModelTypeReader vertex-stride/IVertexType-vtable size mismatch corrupts all stride-32 .model.json vertex data (likely true cause of the "near-plane-clipping" bug family) | cna | S | every Content.Load<Model> sample (InverseKinematics worked around via CylinderModel.hpp; ChaseCamera independently reconfirmed via RawModel.hpp on 2 more assets; MarbleMaze and ReachGraphicsDemo applied the same RawMesh.hpp-style bypass proactively, not re-confirmed empirically) | ✅ done (2026-07-10, confirmed live 2026-07-11 via CameraShake — see item's own writeup) |
 | 27 | NetworkSession.SessionProperties has no mutable accessor and is never replicated over the wire | cna | S/M | NetworkPrediction (worked around via an explicit "options packet"); PeerToPeer ported 2026-07-10, confirmed doesn't use SessionProperties at all — not affected | not started |
-| 28 | EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw in the same frame breaks that frame's 3D rendering | cna | M | ReachGraphicsDemo (EnvmapDemo — worked around via a hand-built 3D quad instead of SpriteBatch) | not started |
+| 28 | EasyGL: a full-backbuffer SpriteBatch draw before any 3D draw in the same frame breaks that frame's 3D rendering | cna | M | ReachGraphicsDemo (EnvmapDemo — worked around via a hand-built 3D quad instead of SpriteBatch) | investigated 2026-07-10 (Task 933), NOT reproduced in 4 targeted attempts — stays open/unresolved, ReachGraphicsDemo's workaround should stay in place; found an unrelated real latent bug (EasyGLSpriteBatchBackend::FlushBatch() doesn't restore GL viewport) not linked to this symptom |
 | 29 | EasyGL: DualTextureEffect's shader hardcodes a Position+UV-only (no Normal) vertex attribute layout, unlike BasicEffect/EnvironmentMapEffect | cna | S/M | ReachGraphicsDemo (DualDemo — worked around via a Position+UV-only vertex upload, RawMeshPosTex.hpp) | not started |
 | 30 | tools/fbx_ascii2model.py assumed LayerElementNormal is always "ByPolygonVertex" (usually "ByVertice") | tools | S | RimLighting ✅ fixed; ChaseCamera/ReachGraphicsDemo's own already-shipped Ship/saucer/model assets suspected affected, not re-verified | ✅ tool fixed 2026-07-10; other samples' assets not re-shipped |
