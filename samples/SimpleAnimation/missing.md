@@ -121,22 +121,67 @@ directory, with **no reconversion**. This confirms DEFERRED.md item #6's own
 speculation that the existing asset could likely be reused once the reader fix
 landed, since its mesh names already match every bone name `Tank.cs` expects.
 
-## Flat, untextured shading (same known, already-documented characteristic — not new)
+## Flat, untextured shading — FIXED (2026-07-11, follow-up task)
 **XNA behaviour:** every tank part renders with its own real diffuse material
-texture (`steamroller_tank61_file3`/`file1`, per `tank.fbx`'s own `Material:`/
-`Texture:` blocks).
-**CNA port behaviour:** every part renders flat white/cream with only shading
-gradient, no texture detail.
-**Root cause:** `tank.model.json` predates `cna` Task 932 (per-mesh `"texture"`
-field support in `ModelTypeReader`) and has no `"texture"` entry on any mesh —
-the same already-documented DEFERRED.md item #6 "flat white saturation"
-finding first confirmed on PickingSample and reconfirmed live on CameraShake
-this same session (see NEXT.md's 2026-07-11 entry). Not re-investigated here;
-regenerating `tank.model.json` with real per-mesh textures (`Tank.png`/
-`Turret.png`, already converted and shipped in `samples/CameraShake/Content/`)
-is a real, low-effort follow-up someone could do, but out of scope for this
-task (which was specifically about validating the multi-bone fix).
-**Tracked in:** DEFERRED.md item #6.
+texture, resolved from `tank.fbx`'s own `Material:`/`Texture:`/`Connect:` graph:
+`Material::turret_phong` (→ `Texture::file1` → `turret_alt_diff_tex.tga`) is
+assigned to `tank_geo`, `turret_geo`, `canon_geo`, `hatch_geo`;
+`Material::engine_phong` (→ `Texture::steamroller_tank61_file3` →
+`engine_diff_tex.tga`) is assigned to all 8 remaining parts
+(`{l,r}_engine_geo`, `{l,r}_back_wheel_geo`, `{l,r}_steer_geo`,
+`{l,r}_front_wheel_geo`) — confirmed by direct read of the FBX's own `Connect:
+"OO"` lines (12 `Material::` edges, one per mesh), not guessed from filenames.
+**CNA port behaviour (before this fix):** every part rendered flat white/cream
+— `tank.model.json` (reused from `CameraShake`) predates `cna` Task 932
+(per-mesh `"texture"` field support in `ModelTypeReader`) and had no
+`"texture"` entry on any mesh.
+**Correction to this file's own earlier claim:** an earlier version of this
+write-up said "`Tank.png`/`Turret.png`, already converted and shipped in
+`samples/CameraShake/Content/`" — **this was wrong.** Those files don't exist
+in `CameraShake/Content/` at all; they're a same-named but *unrelated* pair of
+2D top-down sprite textures used by `ClientServerSample`/`NetworkPrediction`/
+`PeerToPeer`'s own different XNA sample family (a networked tank-battle game),
+not `tank.fbx`'s own 3D material. `CameraShake/Content/` actually already has
+the *real* source textures sitting unconverted:
+`engine_diff_tex.tga`/`turret_alt_diff_tex.tga` (1024×1024 RGB Targa, from
+`tank.fbx`'s own original XNA `Content/` directory) — confirmed by direct
+listing of the real XNA sample's own Content folder.
+**Fix applied:**
+1. Converted `engine_diff_tex.tga`/`turret_alt_diff_tex.tga` to PNG via
+   ImageMagick (this repo's usual `.tga`→`.png` path), placed directly in
+   `samples/SimpleAnimation/Content/`.
+2. Extended `tools/fbx_ascii2model.py` (reproducible generator fix, not a
+   one-off hand hack) with `find_texture_relative_filenames()`/
+   `find_mesh_texture_assignments()` — parses any FBX's `Texture::`
+   node blocks (`RelativeFilename`, extension stripped) and
+   `Connect: "OO", "Texture::X", "Model::Y"` edges, and emits an optional
+   `"texture"` field per mesh in `.model.json` when a mapping exists. Generic,
+   not tank-specific; a mesh with no `Texture::` edge in its source FBX simply
+   gets no `"texture"` field, unchanged from before.
+3. **Did NOT regenerate `tank.model.json`'s vertex/index binaries.** Verified
+   in a scratch directory first (per this repo's own "confirm before
+   overwriting a shipped asset" convention) — regenerating via the tool
+   produces **different, wrong** vertex data for this specific asset: a real,
+   newly-found, pre-existing bug in the tool's own node-transform baking (added
+   for LensFlare's single-mesh case) — see the new DEFERRED.md item #6
+   addendum below for the full mechanism. Instead, only added the 12
+   `"texture"` field values (by hand, using the tool's own scratch-directory
+   output as the source of truth for the *values*, not the *file*) to the
+   existing, already geometry-verified `tank.model.json` — zero change to any
+   `_verts.bin`/`_idx.bin` file.
+**Confirmed live, screenshot-verified (two captures ~3s apart, world rotating
+per the original's own animation):** the tank now renders in the correct
+olive/camo material with visible tread, rivet, and hatch-panel detail —
+matching the color palette of the original sample's own shipped icon art
+(`SimpleAnimationSample.png`) — instead of flat cream/white. Geometry stayed
+coherent and all animated parts (wheels, steering, turret, cannon, hatch)
+continued moving correctly between the two captures, confirming the texture
+fix didn't regress the multi-bone rest-transform fix above. Regression-checked
+`CameraShake` (same `tank.fbx` family, its own separate, untouched
+texture-less `tank.model.json`) — renders pixel-identical to before this
+change (same file size, same shape), confirming no cross-sample effect.
+**Tracked in:** DEFERRED.md item #6 (now resolved for this sample) and its new
+addendum (the `fbx_ascii2model.py` node-transform-baking gap, still open).
 
 ## No background/ground plane, no HUD text (faithful to the original)
 **XNA behaviour:** `SimpleAnimation.cs`'s `Draw()` only clears to `Color.DarkGray`
@@ -190,3 +235,43 @@ was sent). No new DEFERRED.md item filed for the core blocker (item #6 already
 covers it, updated status only); no item filed for the backbuffer-size finding
 above either, since it's a documented per-sample convention choice, not a
 confirmed `cna` bug.
+
+## Follow-up (2026-07-11): texture fix
+The "Flat, untextured shading" finding above is now fixed — see that section's
+own rewrite for the full account. Rebuilt (0 warnings), reran 7+ seconds with
+no crash across 2 separate runs, and re-verified live via 2 screenshots ~3s
+apart: the tank now renders in its correct olive/camo material with the
+geometry and all 5 animated parts still coherent and moving correctly between
+captures. Regression-checked `CameraShake` (same `tank.fbx` family, separate
+untouched `tank.model.json`) — pixel-identical render to before this change.
+No `cna` change was made or needed; the fix is entirely a `cna-samples`
+content/tooling change (`tools/fbx_ascii2model.py` + 2 new PNGs + 12
+`"texture"` field values added to this sample's own `tank.model.json`).
+
+## Follow-up (2026-07-11): turret underside/culling investigation — SEPARATE from the texture fix
+**Distinct problem, do not conflate with the texture fix above.** A dark, disc-shaped surface is
+visible under/behind the turret dome that should be hidden (legitimate interior/underside
+`turret_geo` geometry). Confirmed against a live, authoritative original XNA 4.0 screenshot
+(real C# `SimpleAnimation`, built and run on Windows 7/VirtualBox by the project owner) that this
+artifact is **not** present in real XNA — a genuine, confirmed CNA-vs-XNA rendering mismatch.
+
+**Full investigation, evidence, and current status**: `cna_graphics/docs/xna_culling_compatibility_audit.md`
+(cross-repo document, since the investigation spans both `cna`'s own `RasterizerState.CullMode`
+framework and this sample's own converted mesh data).
+
+**Summary of that document's own conclusion**: `cna`'s `CullMode` framework was proven correct and
+XNA-compatible via 2 new dedicated regression tests (36/36 checks pass across all 3 backends,
+covering real camera/projection/transform/draw-path combinations well beyond what this sample
+alone exercises) — **no `cna` change was made or needed**. The symptom itself was root-caused to a
+localized winding-orientation defect in `turret_geo`'s own converted mesh data (`tank_turret_geo_idx.bin`)
+— a real, internally self-consistent sub-region (not the whole mesh) whose winding doesn't match
+what real XNA's content pipeline evidently produced from the same source FBX. **Not yet fixed** —
+the exact affected triangle range needs further isolation (a blanket reversal of the whole mesh
+would be wrong) before a targeted fix can be safely applied. `Tank.hpp` was **not** modified by
+this investigation (confirmed via `git diff` showing zero net change) — no sample-specific
+`CullMode` workaround was added, per the investigation's own explicit requirement that any fix be
+generic (framework- or asset-level), not a per-sample hack.
+
+A new `tools/xna-reference/CullModeTest/` XNA 4.0 project (see that directory's own `README.md`)
+was prepared for the project owner to run on the same Windows 7 VM as a final, pixel-exact
+cross-check independent of this sample's own model entirely — not yet run.
